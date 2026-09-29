@@ -66,7 +66,8 @@ def test_initial_dashboard_has_inputs_and_no_fake_results(download: MagicMock) -
     assert not app.exception
     assert any(title.value == "RiskLens Quant" for title in app.title)
     assert app.text_input[0].value == "AAPL, MSFT"
-    assert [widget.value for widget in app.number_input] == [50.0, 50.0]
+    weights = [widget for widget in app.number_input if widget.label.endswith("weight (%)")]
+    assert [widget.value for widget in weights] == [50.0, 50.0]
     assert len(app.date_input) == 2
     assert not app.metric and not app.get("plotly_chart")
     assert any("not investment advice" in caption.value for caption in app.caption)
