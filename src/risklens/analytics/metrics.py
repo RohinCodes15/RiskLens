@@ -77,6 +77,39 @@ def _drifted_returns(values: np.ndarray, w: np.ndarray, periods: np.ndarray) -> 
     return out
 
 
+def _turnover(values: np.ndarray, w: np.ndarray, periods: np.ndarray) -> np.ndarray:
+    """One-way turnover traded at the start of each return row (0 without a reset)."""
+    out = np.zeros(len(values))
+    starts = np.flatnonzero(np.diff(periods, prepend=-1))
+    if len(starts) < 2:
+        return out
+    # Holdings at the end of every period except the last, from a start at ``w``.
+    holdings = w * np.multiply.reduceat(1.0 + values, starts, axis=0)[:-1]
+    totals = holdings.sum(axis=1)
+    alive = totals > 0  # a period that lost everything leaves nothing to trade
+    drifted = holdings[alive] / totals[alive, None]
+    out[starts[1:][alive]] = 0.5 * np.abs(w / w.sum() - drifted).sum(axis=1)
+    return out
+
+
+def rebalance_turnover(
+    returns: pd.DataFrame, weights: Sequence[float], rebalance: str = "daily"
+) -> pd.Series:
+    """One-way turnover on each return date, as a fraction of portfolio value.
+
+    On a rebalance date, holdings that drifted since the last reset are traded
+    back to ``weights`` before that date's return. Turnover is half the sum of
+    absolute weight changes (buys equal sells, so this is the value bought).
+    Dates without a reset, and the first date (the initial purchase), are 0.
+    ``rebalance`` follows ``portfolio_returns``.
+
+    Raises:
+        ValueError: on the same inputs as ``portfolio_returns``.
+    """
+    values, w, periods = _portfolio_inputs(returns, weights, rebalance)
+    return pd.Series(_turnover(values, w, periods), index=returns.index, name="turnover")
+
+
 def _portfolio_inputs(
     returns: pd.DataFrame, weights: Sequence[float], rebalance: str
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
