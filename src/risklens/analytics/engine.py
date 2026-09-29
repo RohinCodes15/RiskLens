@@ -27,7 +27,7 @@ class PortfolioMetrics:
     """Summary of a target-weight portfolio. All rates are fractions, not percents.
 
     Attributes:
-        daily_returns: simple daily portfolio returns.
+        daily_returns: simple daily portfolio returns, net of trading costs.
         annualized_return: mean daily return x 252.
         annualized_volatility: daily standard deviation x sqrt(252).
         sharpe_ratio: (annualized return - annual risk-free rate) / volatility;
@@ -47,6 +47,7 @@ def analyze_portfolio(
     weights: Sequence[float],
     risk_free_rate: float = 0.0,
     rebalance: str = "daily",
+    cost_bps: float = 0.0,
 ) -> PortfolioMetrics:
     """Compute portfolio metrics from adjusted prices, one column per asset.
 
@@ -54,14 +55,17 @@ def analyze_portfolio(
     ``risk_free_rate`` is an annual fraction used only for the Sharpe ratio.
     ``rebalance`` sets how often holdings reset to ``weights`` (see
     ``portfolio_returns``); the default ``"daily"`` keeps them fixed.
+    ``cost_bps`` is the trading cost in basis points per dollar traded on
+    rebalance dates; returns and every metric are net of it.
 
     Raises:
         ValueError: if prices are too short, contain missing or non-positive
-            values, or the weights / risk-free rate / rebalance are invalid.
+            values, or the weights / risk-free rate / rebalance / cost are
+            invalid.
     """
     rate = validate_risk_free_rate(risk_free_rate)
     clean = validate_prices(prices, min_rows=MIN_PRICE_ROWS)
-    daily = portfolio_returns(to_returns(clean), weights, rebalance)
+    daily = portfolio_returns(to_returns(clean), weights, rebalance, cost_bps)
     return PortfolioMetrics(
         daily_returns=daily,
         annualized_return=annualized_return(daily),
