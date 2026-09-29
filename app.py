@@ -383,7 +383,7 @@ def render_stress_test(analysis: dict) -> None:
     st.divider()
     st.subheader("Historical Stress Testing")
     st.caption(
-        "Hypothetical replay: current fixed weights applied to past adjusted prices, not your actual historical holdings. Not a prediction."
+        "Hypothetical replay: current target weights and rebalancing applied to past adjusted prices, not your actual historical holdings. Not a prediction."
     )
     names = [scenario.name for scenario in HISTORICAL_SCENARIOS]
     selected = st.selectbox("Historical scenario", names + ["Custom date range"])
@@ -412,6 +412,7 @@ def render_stress_test(analysis: dict) -> None:
         f"Requested window: {scenario.start:%b %d, %Y} – {scenario.end:%b %d, %Y} (inclusive)."
     )
     request = (scenario.name, scenario.start, scenario.end)
+    rebalance = analysis.get("rebalance", "daily")
     if st.button("Run historical stress test"):
         analysis.pop("stress", None)
         analysis.pop("stress_error", None)
@@ -422,11 +423,11 @@ def render_stress_test(analysis: dict) -> None:
                     scenario.start.date(),
                     scenario.end.date() + timedelta(days=1),
                 )
-                result = stress_test(history, analysis["weights"], scenario)
+                result = stress_test(history, analysis["weights"], scenario, rebalance)
                 curve = None
                 if result.available:
                     window = history.loc[result.first_date : result.last_date].dropna(how="any")
-                    daily = portfolio_returns(to_returns(window), analysis["weights"])
+                    daily = portfolio_returns(to_returns(window), analysis["weights"], rebalance)
                     curve = cumulative_wealth(daily).reindex(window.index, fill_value=1.0)
                 analysis["stress"] = (request, result, curve)
         except (ValueError, DataFetchError, NotImplementedError) as exc:
@@ -447,10 +448,10 @@ def render_stress_test(analysis: dict) -> None:
             "Try a later custom start date or a portfolio whose stocks traded throughout the window. At least three common price dates are required."
         )
         return
-    render_stress_result(saved)
+    render_stress_result(saved, rebalance)
 
 
-def render_stress_result(saved: tuple) -> None:
+def render_stress_result(saved: tuple, rebalance: str) -> None:
     """Show backend scenario metrics as fractions and wealth as a multiple."""
     _, result, curve = saved
     st.caption(
@@ -497,8 +498,8 @@ def render_stress_result(saved: tuple) -> None:
     )
     st.plotly_chart(stress_fig, key="stress_chart")
     st.caption(
-        result.note
-        + " Daily rebalancing; fees and taxes excluded. Missing trading dates are omitted."
+        f"{result.note} {REBALANCE_DESCRIPTIONS[rebalance]}; trading costs and taxes excluded. "
+        "Missing trading dates are omitted."
     )
 
 
