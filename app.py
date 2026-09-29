@@ -115,6 +115,22 @@ def render_tail_risk(analysis: dict) -> None:
     )
 
 
+REBALANCE_CHOICES = {
+    "Daily": "daily",
+    "Monthly": "monthly",
+    "Quarterly": "quarterly",
+    "Annually": "annual",
+    "Never (buy and hold)": "never",
+}
+REBALANCE_DESCRIPTIONS = {
+    "daily": "Weights reset to target every trading day",
+    "monthly": "Weights drift with prices and reset to target each month",
+    "quarterly": "Weights drift with prices and reset to target each quarter",
+    "annual": "Weights drift with prices and reset to target each year",
+    "never": "Buy and hold: weights drift with prices and are never reset",
+}
+
+
 ROLLING_VIEWS = {
     "Volatility": ("volatility", "Annualized volatility", ".0%"),
     "Sharpe ratio": ("sharpe", "Annualized Sharpe ratio", ".2f"),
@@ -660,6 +676,11 @@ with st.sidebar:
             min_value=date(1900, 1, 1),
             max_value=today,
         )
+        rebalance_label = st.selectbox(
+            "Rebalancing",
+            list(REBALANCE_CHOICES),
+            help="How often holdings are traded back to the target weights.",
+        )
         submitted = st.form_submit_button("Analyze portfolio", disabled=not tickers)
 
 st.caption("PORTFOLIO INTELLIGENCE / OVERVIEW")
@@ -688,7 +709,8 @@ if submitted:
             prices = fetch_prices(tickers, start, end + timedelta(days=1))
             if prices.empty:
                 raise ValueError("No price history was returned. Try different tickers or dates.")
-            result = analyze_portfolio(prices, weights)
+            rebalance = REBALANCE_CHOICES[rebalance_label]
+            result = analyze_portfolio(prices, weights, rebalance=rebalance)
             metrics = (
                 result.annualized_return,
                 result.annualized_volatility,
@@ -705,6 +727,7 @@ if submitted:
                 "metrics": metrics,
                 "drawdown": drawdown_series(result.daily_returns),
                 "daily_returns": result.daily_returns,
+                "rebalance": rebalance,
             }
             try:
                 benchmark_prices = fetch_benchmark_prices(start, end + timedelta(days=1))
@@ -712,6 +735,7 @@ if submitted:
                     prices,
                     weights,
                     benchmark_prices,
+                    rebalance=rebalance,
                 )
             except (ValueError, DataFetchError, NotImplementedError) as exc:
                 st.session_state["analysis"]["benchmark_error"] = str(exc)
@@ -767,7 +791,9 @@ else:
         st.caption(
             "Sharpe ratio is unavailable because portfolio volatility is zero or too close to zero."
         )
-    st.caption("Fixed weights, rebalanced daily. Annualized figures use 252 trading days.")
+    st.caption(
+        f"{REBALANCE_DESCRIPTIONS[analysis.get('rebalance', 'daily')]}. Annualized figures use 252 trading days."
+    )
 
     st.divider()
     st.subheader("Historical prices")
@@ -941,7 +967,7 @@ else:
                 help="Cumulative adjusted SPY return over the same shared dates; not annualized.",
             )
         st.caption(
-            "Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns."
+            "Ending returns are cumulative over this shared period, not annualized. The portfolio follows the selected rebalancing on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns."
         )
 
     render_tail_risk(analysis)
