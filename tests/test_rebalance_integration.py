@@ -12,8 +12,11 @@ from risklens.analytics import (
     benchmark_statistics,
     compare_to_benchmark,
     cumulative_wealth,
+    custom_scenario,
     portfolio_returns,
     rebalance_turnover,
+    run_stress_tests,
+    stress_test,
 )
 from risklens.data import to_returns
 
@@ -100,3 +103,24 @@ def test_benchmark_defaults_are_unchanged(prices: pd.DataFrame, spy: pd.Series) 
         compare_to_benchmark(prices, WEIGHTS, spy),
         compare_to_benchmark(prices, WEIGHTS, spy, rebalance="daily", cost_bps=0),
     )
+
+
+@pytest.mark.parametrize("rebalance", REBALANCE_FREQUENCIES)
+def test_stress_test_uses_rebalance_and_cost(prices: pd.DataFrame, rebalance: str) -> None:
+    window = prices.loc["2023-03-01":"2023-12-29"]
+    scenario = custom_scenario(window.index[0], window.index[-1])
+    result = stress_test(prices, WEIGHTS, scenario, rebalance=rebalance, cost_bps=30)
+    daily = portfolio_returns(to_returns(window), WEIGHTS, rebalance, 30)
+    assert result.available
+    assert result.cumulative_return == pytest.approx(cumulative_wealth(daily).iloc[-1] - 1)
+
+
+def test_run_stress_tests_passes_rebalance_and_cost(prices: pd.DataFrame) -> None:
+    scenarios = [
+        custom_scenario(prices.index[10], prices.index[200]),
+        custom_scenario(prices.index[150], prices.index[380]),
+    ]
+    results = run_stress_tests(prices, WEIGHTS, scenarios, rebalance="quarterly", cost_bps=15)
+    expected = [stress_test(prices, WEIGHTS, s, "quarterly", 15) for s in scenarios]
+    assert results == expected
+    assert results != run_stress_tests(prices, WEIGHTS, scenarios)
