@@ -9,6 +9,9 @@ from risklens.analytics import (
     TRADING_DAYS_PER_YEAR,
     analyze_portfolio,
     annualized_return,
+    benchmark_statistics,
+    compare_to_benchmark,
+    cumulative_wealth,
     portfolio_returns,
     rebalance_turnover,
 )
@@ -65,3 +68,35 @@ def test_buy_and_hold_has_no_turnover(prices: pd.DataFrame) -> None:
 def test_engine_rejects_bad_options(prices: pd.DataFrame, kwargs: dict, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         analyze_portfolio(prices, WEIGHTS, **kwargs)
+
+
+@pytest.fixture
+def spy(prices: pd.DataFrame) -> pd.Series:
+    rng = np.random.default_rng(8)
+    growth = np.cumprod(1 + rng.normal(0.0004, 0.01, len(prices)))
+    return pd.Series(400 * growth, index=prices.index, name="SPY")
+
+
+@pytest.mark.parametrize("rebalance", REBALANCE_FREQUENCIES)
+def test_benchmark_growth_uses_rebalance_and_cost(
+    prices: pd.DataFrame, spy: pd.Series, rebalance: str
+) -> None:
+    curves = compare_to_benchmark(prices, WEIGHTS, spy, rebalance=rebalance, cost_bps=20)
+    expected = cumulative_wealth(portfolio_returns(to_returns(prices), WEIGHTS, rebalance, 20))
+    np.testing.assert_allclose(curves["portfolio"].iloc[1:].to_numpy(), expected.to_numpy())
+    assert curves["portfolio"].iloc[0] == 1.0
+
+
+def test_benchmark_statistics_use_rebalance_and_cost(prices: pd.DataFrame, spy: pd.Series) -> None:
+    daily = benchmark_statistics(prices, WEIGHTS, spy)
+    monthly = benchmark_statistics(prices, WEIGHTS, spy, rebalance="monthly")
+    costly = benchmark_statistics(prices, WEIGHTS, spy, rebalance="monthly", cost_bps=50)
+    assert monthly != daily
+    assert costly.excess_return < monthly.excess_return
+
+
+def test_benchmark_defaults_are_unchanged(prices: pd.DataFrame, spy: pd.Series) -> None:
+    pd.testing.assert_frame_equal(
+        compare_to_benchmark(prices, WEIGHTS, spy),
+        compare_to_benchmark(prices, WEIGHTS, spy, rebalance="daily", cost_bps=0),
+    )
