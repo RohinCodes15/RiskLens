@@ -750,6 +750,7 @@ if submitted:
                 "daily_returns": result.daily_returns,
                 "rebalance": rebalance,
                 "cost_bps": cost_bps,
+                "annual_turnover": result.annual_turnover,
             }
             try:
                 benchmark_prices = fetch_benchmark_prices(start, end + timedelta(days=1))
@@ -818,6 +819,11 @@ else:
         f"{REBALANCE_DESCRIPTIONS[analysis.get('rebalance', 'daily')]}; "
         f"{cost_text(analysis.get('cost_bps', 0.0))}. Annualized figures use 252 trading days."
     )
+    if "annual_turnover" in analysis:
+        st.caption(
+            f"Annual turnover: {analysis['annual_turnover']:.1%} of the portfolio bought "
+            "(and sold) per year to restore target weights."
+        )
 
     st.divider()
     st.subheader("Historical prices")
