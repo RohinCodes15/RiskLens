@@ -6,6 +6,7 @@ import pytest
 
 from risklens.validation import (
     MAX_TICKERS,
+    validate_cost_bps,
     validate_price_history,
     validate_prices,
     validate_risk_free_rate,
@@ -94,6 +95,28 @@ def test_risk_free_rate_accepts_annual_fractions(rate: float) -> None:
 def test_risk_free_rate_rejects_bad_input(rate: object, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         validate_risk_free_rate(rate)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("cost", [0, 5, 2.5, np.float64(10.0), 1000])
+def test_cost_bps_accepts_non_negative_basis_points(cost: float) -> None:
+    assert validate_cost_bps(cost) == pytest.approx(float(cost))
+
+
+@pytest.mark.parametrize(
+    ("cost", "message"),
+    [
+        ("5", "must be a number"),
+        (True, "must be a number"),
+        (None, "must be a number"),
+        (float("nan"), "finite"),
+        (float("inf"), "finite"),
+        (-1, "cannot be negative"),
+        (1000.01, "basis points"),
+    ],
+)
+def test_cost_bps_rejects_bad_input(cost: object, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        validate_cost_bps(cost)  # type: ignore[arg-type]
 
 
 def test_prices_return_float_copy_without_mutating_input() -> None:
