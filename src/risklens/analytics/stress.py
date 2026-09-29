@@ -201,11 +201,13 @@ def stress_test(
     weights: Sequence[float],
     scenario: StressScenario,
     rebalance: str = "daily",
+    cost_bps: float = 0.0,
 ) -> StressResult:
     """Realized portfolio results over one historical window.
 
     The portfolio starts the window at ``weights`` and resets to them at the
-    ``rebalance`` frequency (see ``portfolio_returns``), daily by default.
+    ``rebalance`` frequency (see ``portfolio_returns``), daily by default,
+    paying ``cost_bps`` per dollar traded on those dates (0 by default).
 
     ``prices`` are adjusted closes, one column per asset in ``weights`` order;
     NaN marks dates an asset has no observation (for example before listing).
@@ -228,7 +230,7 @@ def stress_test(
     if len(window) < MIN_WINDOW_PRICES:
         reason = f"Need {MIN_WINDOW_PRICES} common price dates in the window; got {len(window)}."
         return StressResult(scenario, False, reason)
-    daily = portfolio_returns(to_returns(window), w, rebalance)
+    daily = portfolio_returns(to_returns(window), w, rebalance, cost_bps)
     return StressResult(
         scenario=scenario,
         available=True,
@@ -246,6 +248,7 @@ def run_stress_tests(
     weights: Sequence[float],
     scenarios: Sequence[StressScenario] = HISTORICAL_SCENARIOS,
     rebalance: str = "daily",
+    cost_bps: float = 0.0,
 ) -> list[StressResult]:
     """Run ``stress_test`` for each scenario, keeping the scenario order."""
-    return [stress_test(prices, weights, scenario, rebalance) for scenario in scenarios]
+    return [stress_test(prices, weights, scenario, rebalance, cost_bps) for scenario in scenarios]
