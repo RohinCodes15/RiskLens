@@ -46,7 +46,7 @@ from risklens.data import (
     fetch_prices,
     to_returns,
 )
-from risklens.validation import validate_tickers, validate_weights
+from risklens.validation import MAX_COST_BPS, validate_tickers, validate_weights
 
 
 def render_tail_risk(analysis: dict) -> None:
@@ -129,6 +129,13 @@ REBALANCE_DESCRIPTIONS = {
     "annual": "Weights drift with prices and reset to target each year",
     "never": "Buy and hold: weights drift with prices and are never reset",
 }
+
+
+def cost_text(cost_bps: float) -> str:
+    """Describe the trading cost applied to rebalance trades, taxes always excluded."""
+    if cost_bps == 0:
+        return "trading costs and taxes excluded"
+    return f"{cost_bps:g} bps trading cost per dollar traded; taxes excluded"
 
 
 ROLLING_VIEWS = {
@@ -413,6 +420,7 @@ def render_stress_test(analysis: dict) -> None:
     )
     request = (scenario.name, scenario.start, scenario.end)
     rebalance = analysis.get("rebalance", "daily")
+    cost_bps = analysis.get("cost_bps", 0.0)
     if st.button("Run historical stress test"):
         analysis.pop("stress", None)
         analysis.pop("stress_error", None)
@@ -423,11 +431,13 @@ def render_stress_test(analysis: dict) -> None:
                     scenario.start.date(),
                     scenario.end.date() + timedelta(days=1),
                 )
-                result = stress_test(history, analysis["weights"], scenario, rebalance)
+                result = stress_test(history, analysis["weights"], scenario, rebalance, cost_bps)
                 curve = None
                 if result.available:
                     window = history.loc[result.first_date : result.last_date].dropna(how="any")
-                    daily = portfolio_returns(to_returns(window), analysis["weights"], rebalance)
+                    daily = portfolio_returns(
+                        to_returns(window), analysis["weights"], rebalance, cost_bps
+                    )
                     curve = cumulative_wealth(daily).reindex(window.index, fill_value=1.0)
                 analysis["stress"] = (request, result, curve)
         except (ValueError, DataFetchError, NotImplementedError) as exc:
@@ -448,10 +458,10 @@ def render_stress_test(analysis: dict) -> None:
             "Try a later custom start date or a portfolio whose stocks traded throughout the window. At least three common price dates are required."
         )
         return
-    render_stress_result(saved, rebalance)
+    render_stress_result(saved, rebalance, cost_bps)
 
 
-def render_stress_result(saved: tuple, rebalance: str) -> None:
+def render_stress_result(saved: tuple, rebalance: str, cost_bps: float) -> None:
     """Show backend scenario metrics as fractions and wealth as a multiple."""
     _, result, curve = saved
     st.caption(
@@ -498,7 +508,7 @@ def render_stress_result(saved: tuple, rebalance: str) -> None:
     )
     st.plotly_chart(stress_fig, key="stress_chart")
     st.caption(
-        f"{result.note} {REBALANCE_DESCRIPTIONS[rebalance]}; trading costs and taxes excluded. "
+        f"{result.note} {REBALANCE_DESCRIPTIONS[rebalance]}; {cost_text(cost_bps)}. "
         "Missing trading dates are omitted."
     )
 
@@ -682,6 +692,16 @@ with st.sidebar:
             list(REBALANCE_CHOICES),
             help="How often holdings are traded back to the target weights.",
         )
+        cost_bps = st.number_input(
+            "Trading cost (bps)",
+            min_value=0.0,
+            max_value=MAX_COST_BPS,
+            value=0.0,
+            step=1.0,
+            format="%.1f",
+            help="Commission plus spread per dollar bought or sold, in basis points "
+            "(5 bps = 0.05%). Charged on rebalance dates; the initial purchase is free.",
+        )
         submitted = st.form_submit_button("Analyze portfolio", disabled=not tickers)
 
 st.caption("PORTFOLIO INTELLIGENCE / OVERVIEW")
@@ -711,7 +731,7 @@ if submitted:
             if prices.empty:
                 raise ValueError("No price history was returned. Try different tickers or dates.")
             rebalance = REBALANCE_CHOICES[rebalance_label]
-            result = analyze_portfolio(prices, weights, rebalance=rebalance)
+            result = analyze_portfolio(prices, weights, rebalance=rebalance, cost_bps=cost_bps)
             metrics = (
                 result.annualized_return,
                 result.annualized_volatility,
@@ -729,6 +749,7 @@ if submitted:
                 "drawdown": drawdown_series(result.daily_returns),
                 "daily_returns": result.daily_returns,
                 "rebalance": rebalance,
+                "cost_bps": cost_bps,
             }
             try:
                 benchmark_prices = fetch_benchmark_prices(start, end + timedelta(days=1))
@@ -737,6 +758,7 @@ if submitted:
                     weights,
                     benchmark_prices,
                     rebalance=rebalance,
+                    cost_bps=cost_bps,
                 )
             except (ValueError, DataFetchError, NotImplementedError) as exc:
                 st.session_state["analysis"]["benchmark_error"] = str(exc)
@@ -793,7 +815,8 @@ else:
             "Sharpe ratio is unavailable because portfolio volatility is zero or too close to zero."
         )
     st.caption(
-        f"{REBALANCE_DESCRIPTIONS[analysis.get('rebalance', 'daily')]}. Annualized figures use 252 trading days."
+        f"{REBALANCE_DESCRIPTIONS[analysis.get('rebalance', 'daily')]}; "
+        f"{cost_text(analysis.get('cost_bps', 0.0))}. Annualized figures use 252 trading days."
     )
 
     st.divider()
