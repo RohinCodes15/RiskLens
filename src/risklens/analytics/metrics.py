@@ -10,7 +10,7 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
-from risklens.validation import validate_risk_free_rate, validate_weights
+from risklens.validation import validate_cost_bps, validate_risk_free_rate, validate_weights
 
 TRADING_DAYS_PER_YEAR = 252
 DEFAULT_VAR_CONFIDENCE = 0.95
@@ -21,6 +21,7 @@ MIN_VOLATILITY_OBS = 2  # sample std (ddof=1) needs two returns
 RETURN_NOISE_TOLERANCE = 1e-12
 REBALANCE_FREQUENCIES = ("daily", "monthly", "quarterly", "annual", "never")
 _PERIOD_CODES = {"monthly": "M", "quarterly": "Q", "annual": "Y"}
+BPS_PER_UNIT = 10_000  # basis points in 1.0 (100%)
 
 
 def _as_float_values(returns: pd.Series | pd.DataFrame) -> np.ndarray:
@@ -124,7 +125,10 @@ def _portfolio_inputs(
 
 
 def portfolio_returns(
-    returns: pd.DataFrame, weights: Sequence[float], rebalance: str = "daily"
+    returns: pd.DataFrame,
+    weights: Sequence[float],
+    rebalance: str = "daily",
+    cost_bps: float = 0.0,
 ) -> pd.Series:
     """Daily returns of a portfolio rebalanced to ``weights`` at a fixed frequency.
 
@@ -136,15 +140,26 @@ def portfolio_returns(
       month, quarter, or year. Needs a sorted, unique ``DatetimeIndex``.
     * ``"never"``: buy-and-hold; weights are only the starting allocation.
 
-    The first return date always starts at ``weights``. No trading costs.
+    The first return date always starts at ``weights``.
+
+    ``cost_bps`` is the trading cost in basis points per dollar bought or
+    sold (5 == 0.05%). On each rebalance date the portfolio pays
+    ``cost_bps / 10_000 x 2 x rebalance_turnover`` of its value before that
+    date's return, so the net return is ``(1 - cost) x (1 + gross) - 1``.
+    The initial purchase is free; the default 0 charges nothing.
 
     Raises:
         ValueError: if ``returns`` is not a non-empty DataFrame of finite
             returns >= -100%, the weights are invalid, ``rebalance`` is
-            unknown, or a calendar frequency gets undated or unsorted returns.
+            unknown, a calendar frequency gets undated or unsorted returns,
+            or ``cost_bps`` is invalid (see ``validate_cost_bps``).
     """
+    cost_rate = validate_cost_bps(cost_bps) / BPS_PER_UNIT
     values, w, periods = _portfolio_inputs(returns, weights, rebalance)
     daily = values @ w if rebalance == "daily" else _drifted_returns(values, w, periods)
+    if cost_rate > 0:
+        cost = cost_rate * 2.0 * _turnover(values, w, periods)
+        daily = (1.0 - cost) * (1.0 + daily) - 1.0
     return pd.Series(daily, index=returns.index, name="portfolio")
 
 
