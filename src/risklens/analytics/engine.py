@@ -10,10 +10,12 @@ from dataclasses import dataclass
 import pandas as pd
 
 from risklens.analytics.metrics import (
+    TRADING_DAYS_PER_YEAR,
     annualized_return,
     annualized_volatility,
     max_drawdown,
     portfolio_returns,
+    rebalance_turnover,
     sharpe_ratio,
 )
 from risklens.data import to_returns
@@ -33,6 +35,8 @@ class PortfolioMetrics:
         sharpe_ratio: (annualized return - annual risk-free rate) / volatility;
             NaN when volatility is zero.
         max_drawdown: worst peak-to-trough decline, as a negative fraction.
+        annual_turnover: one-way turnover per year (mean daily turnover x 252);
+            0.5 means half the portfolio is bought and sold each year.
     """
 
     daily_returns: pd.Series
@@ -40,6 +44,7 @@ class PortfolioMetrics:
     annualized_volatility: float
     sharpe_ratio: float
     max_drawdown: float
+    annual_turnover: float
 
 
 def analyze_portfolio(
@@ -65,11 +70,14 @@ def analyze_portfolio(
     """
     rate = validate_risk_free_rate(risk_free_rate)
     clean = validate_prices(prices, min_rows=MIN_PRICE_ROWS)
-    daily = portfolio_returns(to_returns(clean), weights, rebalance, cost_bps)
+    returns = to_returns(clean)
+    daily = portfolio_returns(returns, weights, rebalance, cost_bps)
+    turnover = rebalance_turnover(returns, weights, rebalance)
     return PortfolioMetrics(
         daily_returns=daily,
         annualized_return=annualized_return(daily),
         annualized_volatility=annualized_volatility(daily),
         sharpe_ratio=sharpe_ratio(daily, rate),
         max_drawdown=max_drawdown(daily),
+        annual_turnover=float(turnover.mean()) * TRADING_DAYS_PER_YEAR,
     )
