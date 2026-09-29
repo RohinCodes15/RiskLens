@@ -1,4 +1,4 @@
-"""Validate user-supplied tickers, weights, rates, dates, and price tables.
+"""Validate user-supplied tickers, weights, rates, costs, dates, and price tables.
 
 Price tables come in two forms: ``validate_prices`` for aligned prices with
 no gaps, and ``validate_price_history`` for per-asset histories with NaN.
@@ -19,6 +19,8 @@ WEIGHT_SUM_TOLERANCE = 1e-6
 MIN_PRICE_ROWS = 2
 # An annual rate above 100% is almost certainly a percent typed as a fraction.
 MAX_ABS_RISK_FREE_RATE = 1.0
+# 1000 bps (10%) per dollar traded is far above any real commission plus spread.
+MAX_COST_BPS = 1000.0
 # Letters/digits plus the separators Yahoo uses: BRK-B, BRK.B, ^GSPC, EURUSD=X, ES=F.
 _TICKER_PATTERN = re.compile(r"^\^?[A-Z0-9][A-Z0-9.\-]{0,9}(=[XF])?$")
 _NUMERIC_KINDS = "iuf"  # numpy dtype kinds for int, unsigned int, float
@@ -100,6 +102,28 @@ def validate_risk_free_rate(rate: float) -> float:
         raise ValueError("Risk-free rate must be a finite number.")
     if abs(value) > MAX_ABS_RISK_FREE_RATE:
         raise ValueError(f"Risk-free rate must be an annual fraction (0.04 for 4%); got {value}.")
+    return value
+
+
+def validate_cost_bps(cost_bps: float) -> float:
+    """Return a trading cost in basis points per dollar traded (5 == 0.05%).
+
+    Raises:
+        ValueError: if the cost is not a real number, is NaN/inf, is negative,
+            or exceeds ``MAX_COST_BPS``.
+    """
+    if isinstance(cost_bps, (bool, np.bool_)) or not isinstance(cost_bps, numbers.Real):
+        raise ValueError("Trading cost must be a number.")
+    value = float(cost_bps)
+    if not np.isfinite(value):
+        raise ValueError("Trading cost must be a finite number.")
+    if value < 0:
+        raise ValueError("Trading cost cannot be negative.")
+    if value > MAX_COST_BPS:
+        raise ValueError(
+            f"Trading cost must be in basis points (5 for 0.05%) and at most "
+            f"{MAX_COST_BPS:g}; got {value:g}."
+        )
     return value
 
 
