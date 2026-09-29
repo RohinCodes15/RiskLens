@@ -77,6 +77,19 @@ def _drifted_returns(values: np.ndarray, w: np.ndarray, periods: np.ndarray) -> 
     return out
 
 
+def _portfolio_inputs(
+    returns: pd.DataFrame, weights: Sequence[float], rebalance: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Checked ``(return values, weights, rebalance period labels)``."""
+    if not isinstance(returns, pd.DataFrame):
+        raise ValueError("returns must be a pandas DataFrame.")
+    if returns.empty:
+        raise ValueError("No returns provided.")
+    w = validate_weights(weights, returns.shape[1])
+    values = _as_float_values(returns)
+    return values, w, _rebalance_periods(returns.index, rebalance)
+
+
 def portfolio_returns(
     returns: pd.DataFrame, weights: Sequence[float], rebalance: str = "daily"
 ) -> pd.Series:
@@ -97,13 +110,7 @@ def portfolio_returns(
             returns >= -100%, the weights are invalid, ``rebalance`` is
             unknown, or a calendar frequency gets undated or unsorted returns.
     """
-    if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a pandas DataFrame.")
-    if returns.empty:
-        raise ValueError("No returns provided.")
-    w = validate_weights(weights, returns.shape[1])
-    values = _as_float_values(returns)
-    periods = _rebalance_periods(returns.index, rebalance)
+    values, w, periods = _portfolio_inputs(returns, weights, rebalance)
     daily = values @ w if rebalance == "daily" else _drifted_returns(values, w, periods)
     return pd.Series(daily, index=returns.index, name="portfolio")
 
