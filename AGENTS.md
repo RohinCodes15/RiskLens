@@ -28,6 +28,10 @@ Data flow: raw input → `validation` → `data.fetch_prices` → `data.to_retur
 → `analytics.analyze_portfolio` (→ `portfolio_returns` → metric functions)
 → UI charts/tables.
 
+Holdings entered as shares or dollar values (typed in or from a CSV file)
+become weights after the prices download: `holdings.holdings_to_weights`
+values shares at the last price row, then the flow above continues.
+
 Stress testing uses `data.fetch_price_history` instead, which keeps each
 ticker's own dates (NaN where it has no price) so `stress_test` can name the
 asset that does not cover a scenario. `fetch_prices` keeps only shared dates.
