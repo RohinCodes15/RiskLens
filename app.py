@@ -735,6 +735,18 @@ with st.sidebar:
         else:
             amounts = imported_amounts.tolist()
             st.dataframe(imported_amounts, key="imported_holdings")
+        entered_value = None
+        if holding_kind == "weight":
+            entered_value = st.number_input(
+                "Portfolio value ($)",
+                min_value=1.0,
+                value=None,
+                step=1000.0,
+                format="%.2f",
+                placeholder="Optional",
+                help="Total market value. When set, VaR, CVaR, drawdown, and stress results "
+                "also show dollar amounts.",
+            )
         today = date.today()
         start = st.date_input(
             "Start date",
@@ -792,7 +804,7 @@ if submitted:
             prices = fetch_prices(tickers, start, end + timedelta(days=1))
             if prices.empty:
                 raise ValueError("No price history was returned. Try different tickers or dates.")
-            portfolio_value = None
+            portfolio_value = entered_value
             if holding_kind != "weight":
                 weights, portfolio_value = holdings_to_weights(
                     pd.Series(amounts, index=tickers), holding_kind, prices
