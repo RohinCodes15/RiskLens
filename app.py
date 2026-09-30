@@ -173,6 +173,16 @@ def holding_inputs(tickers: list[str], kind: str) -> list[float]:
     return amounts
 
 
+def dollar_change(fraction: float, portfolio_value: float | None) -> str | None:
+    """Signed whole-dollar change for a return fraction, or None without a portfolio value."""
+    if portfolio_value is None or not isfinite(fraction):
+        return None
+    amount = round(fraction * portfolio_value)
+    # st.metric colors a delta red with a down arrow when it starts with an ASCII "-".
+    sign = "-" if amount < 0 else "+" if amount > 0 else ""
+    return f"{sign}${abs(amount):,}"
+
+
 def cost_text(cost_bps: float) -> str:
     """Describe the trading cost applied to rebalance trades, taxes always excluded."""
     if cost_bps == 0:
@@ -881,7 +891,10 @@ else:
             if analysis.get("holding_kind") == "shares"
             else ""
         )
-        st.caption(f"Portfolio value: ${portfolio_value:,.2f}{valued}.")
+        st.caption(
+            f"Portfolio value: ${portfolio_value:,.2f}{valued}. "
+            "Dollar amounts under the cards apply each percentage to this value."
+        )
     descriptions = (
         (
             "Annualized return",
@@ -900,14 +913,21 @@ else:
             ".2%",
         ),
     )
-    for column, (label, help_text, spec), value in zip(
+    deltas = (None, None, None, dollar_change(analysis["metrics"][3], portfolio_value))
+    for column, (label, help_text, spec), value, delta in zip(
         st.columns(4),
         descriptions,
         analysis["metrics"],
+        deltas,
         strict=True,
     ):
         with column.container(border=True):
-            st.metric(label, format(value, spec) if isfinite(value) else "N/A", help=help_text)
+            st.metric(
+                label,
+                format(value, spec) if isfinite(value) else "N/A",
+                delta=delta,
+                help=help_text,
+            )
     if not isfinite(analysis["metrics"][2]):
         st.caption(
             "Sharpe ratio is unavailable because portfolio volatility is zero or too close to zero."
