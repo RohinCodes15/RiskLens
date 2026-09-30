@@ -46,7 +46,7 @@ from risklens.data import (
     fetch_prices,
     to_returns,
 )
-from risklens.holdings import holdings_to_weights
+from risklens.holdings import holdings_to_weights, parse_holdings_csv
 from risklens.validation import MAX_COST_BPS, validate_tickers, validate_weights
 
 
@@ -692,23 +692,49 @@ with st.sidebar:
     st.title("◈ RiskLens")
     st.caption("QUANT · PORTFOLIO ANALYTICS")
     st.divider()
-    raw_tickers = st.text_input(
-        "Stock tickers",
-        "AAPL, MSFT",
-        help="Separate tickers with commas or spaces; maximum 25.",
-    )
-    try:
-        tickers = validate_tickers(raw_tickers)
-    except ValueError as exc:
-        tickers = []
-        st.error(str(exc))
-
-    holding_kind = HOLDING_INPUTS[st.radio("Enter holdings as", list(HOLDING_INPUTS))]
+    with st.expander("Import holdings from CSV"):
+        upload = st.file_uploader(
+            "Holdings CSV",
+            type="csv",
+            help="A header row naming ticker and either shares or value (dollars), "
+            "then one row per stock; maximum 25.",
+        )
+    imported = None
+    if upload is not None:
+        try:
+            imported = parse_holdings_csv(upload.getvalue())
+        except ValueError as exc:
+            st.error(f"Could not import {upload.name}. {exc}")
+    if imported is not None:
+        holding_kind, imported_amounts = imported
+        tickers = list(imported_amounts.index)
+        st.caption(
+            f"Using {len(tickers)} holdings from {upload.name}. "
+            "Remove the file to enter holdings by hand."
+        )
+    elif upload is not None:
+        tickers, holding_kind = [], "value"  # a bad file blocks analysis instead of falling back
+    else:
+        raw_tickers = st.text_input(
+            "Stock tickers",
+            "AAPL, MSFT",
+            help="Separate tickers with commas or spaces; maximum 25.",
+        )
+        try:
+            tickers = validate_tickers(raw_tickers)
+        except ValueError as exc:
+            tickers = []
+            st.error(str(exc))
+        holding_kind = HOLDING_INPUTS[st.radio("Enter holdings as", list(HOLDING_INPUTS))]
 
     with st.form("portfolio_request"):
         st.markdown("**Portfolio holdings**")
         st.caption(HOLDING_CAPTIONS[holding_kind])
-        amounts = holding_inputs(tickers, holding_kind)
+        if imported is None:
+            amounts = holding_inputs(tickers, holding_kind)
+        else:
+            amounts = imported_amounts.tolist()
+            st.dataframe(imported_amounts, key="imported_holdings")
         today = date.today()
         start = st.date_input(
             "Start date",
