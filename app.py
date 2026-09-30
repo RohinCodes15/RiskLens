@@ -525,11 +525,13 @@ def render_stress_test(analysis: dict) -> None:
             "Try a later custom start date or a portfolio whose stocks traded throughout the window. At least three common price dates are required."
         )
         return
-    render_stress_result(saved, rebalance, cost_bps)
+    render_stress_result(saved, rebalance, cost_bps, analysis.get("portfolio_value"))
 
 
-def render_stress_result(saved: tuple, rebalance: str, cost_bps: float) -> None:
-    """Show backend scenario metrics as fractions and wealth as a multiple."""
+def render_stress_result(
+    saved: tuple, rebalance: str, cost_bps: float, portfolio_value: float | None
+) -> None:
+    """Show backend scenario metrics as fractions, dollars when known, and wealth as a multiple."""
     _, result, curve = saved
     st.caption(
         f"Actual price dates: {result.first_date:%b %d, %Y} – {result.last_date:%b %d, %Y} · {result.n_returns:,} return observations."
@@ -539,12 +541,14 @@ def render_stress_result(saved: tuple, rebalance: str, cost_bps: float) -> None:
         st.metric(
             "Scenario return",
             f"{result.cumulative_return:.2%}",
+            delta=dollar_change(result.cumulative_return, portfolio_value),
             help="Cumulative return over the actual scenario price dates.",
         )
     with drawdown_column.container(border=True):
         st.metric(
             "Scenario maximum drawdown",
             f"{result.max_drawdown:.2%}",
+            delta=dollar_change(result.max_drawdown, portfolio_value),
             help="Worst peak-to-trough decline; negative values represent losses.",
         )
     with volatility_column.container(border=True):
@@ -574,9 +578,14 @@ def render_stress_result(saved: tuple, rebalance: str, cost_bps: float) -> None:
         line_width=2, hovertemplate="%{x|%b %d, %Y}<br>Portfolio wealth: %{y:.3f}×<extra></extra>"
     )
     st.plotly_chart(stress_fig, key="stress_chart")
+    in_dollars = (
+        f" Dollar amounts apply the scenario to your ${portfolio_value:,.2f} portfolio today."
+        if portfolio_value is not None
+        else ""
+    )
     st.caption(
         f"{result.note} {REBALANCE_DESCRIPTIONS[rebalance]}; {cost_text(cost_bps)}. "
-        "Missing trading dates are omitted."
+        f"Missing trading dates are omitted.{in_dollars}"
     )
 
 
