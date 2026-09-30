@@ -14,7 +14,14 @@ There is no separate backend or database: the Streamlit app calls the
 **Dashboard (`app.py`)**
 
 - Sidebar inputs: comma-separated tickers (up to 25), a weight per ticker in
-  percent (must total 100%), and a start/end date (end date is inclusive).
+  percent (must total 100%), a start/end date (end date is inclusive), a
+  rebalancing frequency (daily, monthly, quarterly, annually, or never), and
+  a trading cost in basis points per dollar traded.
+- The risk cards, rolling risk, tail risk, SPY comparison, and stress tests
+  all follow the chosen rebalancing and are net of trading costs; the
+  snapshot shows annual turnover. Optimization compares allocations with
+  daily rebalancing and no costs, and says so when that differs from your
+  settings.
 - **Analyze portfolio** runs the analysis and keeps the result in the session.
 - Four risk metric cards: annualized return, annualized volatility, Sharpe
   ratio (0% risk-free rate), and maximum drawdown. Non-finite values show
