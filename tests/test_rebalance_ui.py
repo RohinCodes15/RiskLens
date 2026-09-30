@@ -10,7 +10,12 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from risklens.analytics import analyze_portfolio
+from risklens.analytics import (
+    analyze_portfolio,
+    compare_to_benchmark,
+    custom_scenario,
+    stress_test,
+)
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 WEIGHTS = [0.5, 0.5]
@@ -106,3 +111,47 @@ def test_risk_cards_follow_the_chosen_rebalancing_and_cost(
     turnover = f"Annual turnover: {expected.annual_turnover:.1%}"
     assert any(turnover in caption.value for caption in app.caption)
     assert any("10 bps trading cost" in caption.value for caption in app.caption)
+
+
+def test_spy_comparison_uses_the_chosen_rebalancing_and_cost(
+    prices: pd.DataFrame, spy: pd.Series
+) -> None:
+    curves = compare_to_benchmark(prices, WEIGHTS, spy, rebalance="quarterly", cost_bps=25)
+    app = analyze("Quarterly", 25.0)
+    assert not app.exception and not app.error
+    expected = curves["portfolio"].iloc[-1] - 1.0
+    assert card_values(app)["Portfolio ending return"] == f"{expected:.2%}"
+
+
+def test_stress_replay_uses_the_chosen_rebalancing_and_cost(prices: pd.DataFrame) -> None:
+    app = analyze("Monthly", 20.0)
+    widget(app.selectbox, "Historical scenario").select("Custom date range").run()
+    scenario = custom_scenario(prices.index[0], prices.index[-1])
+    expected = stress_test(prices, WEIGHTS, scenario, "monthly", 20.0)
+    widget(app.button, "Run historical stress test").click().run()
+    assert not app.exception and not app.error
+    assert card_values(app)["Scenario return"] == f"{expected.cumulative_return:.2%}"
+    assert any(
+        "reset to target each month; 20 bps trading cost" in caption.value
+        for caption in app.caption
+    )
+
+
+def test_optimization_compares_with_a_daily_cost_free_current_portfolio(
+    prices: pd.DataFrame,
+) -> None:
+    baseline = analyze_portfolio(prices, WEIGHTS)
+    app = analyze("Annually", 30.0)
+    widget(app.button, "Optimize portfolio").click().run()
+    assert not app.exception and not app.error
+    table = app.dataframe[0].value
+    assert table.loc["Annualized return", "Current"] == pytest.approx(baseline.annualized_return)
+    assert any("assumes daily rebalancing with no trading costs" in c.value for c in app.caption)
+
+
+def test_daily_cost_free_optimization_has_no_baseline_note() -> None:
+    app = analyze()
+    widget(app.button, "Optimize portfolio").click().run()
+    assert not app.exception and not app.error
+    assert "optimization_baseline" not in app.session_state["analysis"]
+    assert not any("assumes daily rebalancing" in c.value for c in app.caption)
