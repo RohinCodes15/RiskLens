@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from risklens.analytics import analyze_portfolio
+from risklens.analytics import analyze_portfolio, tail_risk_summary
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
@@ -162,3 +162,33 @@ def test_percent_weights_take_an_optional_portfolio_value() -> None:
 def test_share_and_dollar_holdings_need_no_separate_portfolio_value() -> None:
     app = enter_holdings("Shares", {"AAPL": 1.0})
     assert "Portfolio value ($)" not in [field.label for field in app.number_input]
+
+
+def usd(fraction: float, value: float) -> str:
+    """Expected card delta: a signed whole-dollar change."""
+    amount = round(fraction * value)
+    return f"{'-' if amount < 0 else '+' if amount > 0 else ''}${abs(amount):,}"
+
+
+def test_portfolio_value_shows_drawdown_var_and_cvar_in_dollars(prices: pd.DataFrame) -> None:
+    app = AppTest.from_file(APP_PATH).run()
+    widget(app.number_input, "Portfolio value ($)").set_value(100_000.0)
+    app.date_input[0].set_value(date(2026, 1, 1))
+    app = analyze(app)
+    assert not app.exception and not app.error
+    result = analyze_portfolio(prices[["AAPL", "MSFT"]], [0.5, 0.5])
+    tail = tail_risk_summary(result.daily_returns, (0.95,)).loc[0.95]
+    deltas = {card.label: card.delta for card in app.metric}
+    assert deltas["Maximum drawdown"] == usd(result.max_drawdown, 100_000.0)
+    assert deltas["Maximum drawdown"].startswith("-$")
+    assert deltas["One-day VaR"] == usd(-tail["var"], 100_000.0)
+    assert deltas["One-day CVaR"] == usd(-tail["cvar"], 100_000.0)
+    assert "same changes on your $100,000.00 portfolio" in captions(app)
+
+
+def test_cards_have_no_dollar_amounts_without_a_portfolio_value() -> None:
+    app = AppTest.from_file(APP_PATH).run()
+    app.date_input[0].set_value(date(2026, 1, 1))
+    app = analyze(app)
+    assert not app.exception and app.metric
+    assert not any(card.delta for card in app.metric)
