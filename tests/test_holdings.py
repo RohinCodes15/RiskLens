@@ -1,9 +1,10 @@
 """Holdings CSV parsing and share/dollar conversion to weights."""
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from risklens.holdings import parse_holdings_csv
+from risklens.holdings import holdings_to_weights, parse_holdings_csv
 
 
 def test_reads_shares_in_file_order() -> None:
@@ -84,3 +85,53 @@ def test_lists_every_bad_row_including_repeated_tickers() -> None:
         "Line 5: AAPL is already listed on line 2. "
         "Line 6: Value must be a finite number of zero or more; got '-1'."
     )
+
+
+@pytest.fixture
+def prices() -> pd.DataFrame:
+    index = pd.bdate_range("2026-03-02", periods=3)
+    return pd.DataFrame({"AAPL": [190.0, 195.0, 200.0], "MSFT": [410.0, 405.0, 400.0]}, index=index)
+
+
+def test_shares_are_valued_at_the_last_price_in_price_column_order(
+    prices: pd.DataFrame,
+) -> None:
+    weights, total = holdings_to_weights(pd.Series({"MSFT": 5.0, "AAPL": 10.0}), "shares", prices)
+    assert total == pytest.approx(10 * 200.0 + 5 * 400.0)
+    np.testing.assert_allclose(weights, [0.5, 0.5])
+
+
+def test_dollar_values_ignore_prices(prices: pd.DataFrame) -> None:
+    weights, total = holdings_to_weights(pd.Series({"AAPL": 750.0, "MSFT": 250.0}), "value", prices)
+    assert total == pytest.approx(1000.0)
+    np.testing.assert_allclose(weights, [0.75, 0.25])
+
+
+def test_zero_holdings_keep_a_zero_weight(prices: pd.DataFrame) -> None:
+    weights, total = holdings_to_weights(pd.Series({"AAPL": 0.0, "MSFT": 3.0}), "shares", prices)
+    assert total == pytest.approx(1200.0)
+    np.testing.assert_allclose(weights, [0.0, 1.0])
+
+
+@pytest.mark.parametrize(
+    ("amounts", "kind", "message"),
+    [
+        ({"AAPL": 1.0, "MSFT": 1.0}, "percent", "shares or value"),
+        ({"AAPL": 1.0}, "shares", "each priced ticker exactly once"),
+        ({"AAPL": 1.0, "TLT": 1.0}, "shares", "each priced ticker exactly once"),
+        ({"AAPL": 1.0, "MSFT": -1.0}, "shares", "finite numbers of zero or more"),
+        ({"AAPL": 1.0, "MSFT": float("nan")}, "value", "finite numbers of zero or more"),
+        ({"AAPL": "ten", "MSFT": 1.0}, "value", "Value must be numbers"),
+        ({"AAPL": 0.0, "MSFT": 0.0}, "shares", "at least one holding above zero"),
+    ],
+)
+def test_rejects_unusable_holdings(
+    prices: pd.DataFrame, amounts: dict[str, object], kind: str, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        holdings_to_weights(pd.Series(amounts), kind, prices)
+
+
+def test_rejects_unusable_prices(prices: pd.DataFrame) -> None:
+    with pytest.raises(ValueError, match="positive"):
+        holdings_to_weights(pd.Series({"AAPL": 1.0, "MSFT": 1.0}), "shares", -prices)
