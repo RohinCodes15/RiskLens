@@ -116,7 +116,9 @@ newer Ruff releases do not change what is enforced.
 The main entry point is `analyze_portfolio`:
 
 ```python
-analyze_portfolio(prices, weights, risk_free_rate=0.0) -> PortfolioMetrics
+analyze_portfolio(
+    prices, weights, risk_free_rate=0.0, rebalance="daily", cost_bps=0.0
+) -> PortfolioMetrics
 ```
 
 - `prices`: a DataFrame of adjusted prices, one column per asset, dated
@@ -125,17 +127,22 @@ analyze_portfolio(prices, weights, risk_free_rate=0.0) -> PortfolioMetrics
   to 1.
 - `risk_free_rate`: annual rate as a fraction. It only affects the Sharpe
   ratio.
-- Raises `ValueError` for invalid prices, weights, or rate.
+- `rebalance`: how often holdings reset to `weights`; one of
+  `REBALANCE_FREQUENCIES`.
+- `cost_bps`: trading cost in basis points per dollar traded on rebalance
+  dates. Every metric below is net of it.
+- Raises `ValueError` for invalid prices, weights, rate, rebalance, or cost.
 
 `PortfolioMetrics` is a frozen dataclass. All rates are fractions.
 
 | Field | Meaning |
 |-------|---------|
-| `daily_returns` | `pd.Series` of simple daily portfolio returns |
+| `daily_returns` | `pd.Series` of simple daily portfolio returns, net of trading costs |
 | `annualized_return` | mean daily return × 252 |
 | `annualized_volatility` | sample daily standard deviation × √252 |
 | `sharpe_ratio` | (annualized return − risk-free rate) / volatility; NaN if volatility is zero |
 | `max_drawdown` | worst peak-to-trough decline (negative) |
+| `annual_turnover` | one-way turnover per year: mean daily turnover × 252 (0.5 = half the portfolio traded) |
 
 Example:
 
@@ -152,7 +159,7 @@ drawdowns = analytics.drawdown_series(result.daily_returns)
 var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 ```
 
-`risklens.analytics` also exports `portfolio_returns`, `annualized_return`,
+`risklens.analytics` also exports `portfolio_returns`, `rebalance_turnover`, `annualized_return`,
 `annualized_volatility`, `sharpe_ratio`, `historical_var`,
 `cumulative_wealth`, `drawdown_series`, `max_drawdown`, `risk_contributions`,
 `compare_to_benchmark`, `herfindahl_index`, `effective_holdings`,
@@ -170,7 +177,7 @@ plus the frozen result types `PortfolioMetrics`, `BenchmarkStatistics`,
 docstring gives its units and sign conventions.
 
 `risklens.validation` provides `validate_tickers`, `validate_weights`,
-`validate_risk_free_rate`, `validate_prices`, `validate_price_history`, and
+`validate_risk_free_rate`, `validate_cost_bps`, `validate_prices`, `validate_price_history`, and
 `validate_date_range`; `risklens.data` provides `fetch_prices`,
 `fetch_price_history`, `fetch_benchmark_prices`, `to_returns`, and
 `DataFetchError`.
