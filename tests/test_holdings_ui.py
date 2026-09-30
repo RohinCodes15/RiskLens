@@ -146,3 +146,19 @@ def test_bad_csv_lists_its_rows_and_blocks_analysis(download: MagicMock) -> None
     assert widget(app.button, "Analyze portfolio").disabled
     assert not app.text_input
     download.assert_not_called()
+
+
+def test_percent_weights_take_an_optional_portfolio_value() -> None:
+    app = AppTest.from_file(APP_PATH).run()
+    field = widget(app.number_input, "Portfolio value ($)")
+    assert field.value is None
+    field.set_value(100_000.0)
+    app.date_input[0].set_value(date(2026, 1, 1))
+    app = analyze(app)
+    assert not app.exception and not app.error
+    assert "Portfolio value: $100,000.00." in captions(app)
+
+
+def test_share_and_dollar_holdings_need_no_separate_portfolio_value() -> None:
+    app = enter_holdings("Shares", {"AAPL": 1.0})
+    assert "Portfolio value ($)" not in [field.label for field in app.number_input]
