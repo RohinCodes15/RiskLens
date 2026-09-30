@@ -65,6 +65,8 @@ There is no separate backend or database: the Streamlit app calls the
 - Price download (yfinance, auto-adjusted closes) with date checks before
   any request, either aligned to shared dates or as per-ticker history that
   keeps each ticker's own coverage, and simple daily returns.
+- Holdings: CSV parsing with per-line errors, and share counts or dollar
+  values converted to weights (see [Holdings input](#holdings-input)).
 - Portfolio returns rebalanced daily, monthly, quarterly, annually, or never
   (buy-and-hold); see [Rebalancing and trading costs](#rebalancing-and-trading-costs).
 - Risk metrics: annualized return and volatility, Sharpe ratio, cumulative
@@ -198,7 +200,8 @@ docstring gives its units and sign conventions.
 `validate_risk_free_rate`, `validate_cost_bps`, `validate_prices`, `validate_price_history`, and
 `validate_date_range`; `risklens.data` provides `fetch_prices`,
 `fetch_price_history`, `fetch_benchmark_prices`, `to_returns`, and
-`DataFetchError`.
+`DataFetchError`; `risklens.holdings` provides `parse_holdings_csv`,
+`holdings_to_weights`, and `HOLDING_KINDS`.
 
 **Two ways to fetch prices.**
 
