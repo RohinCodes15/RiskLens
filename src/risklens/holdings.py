@@ -13,7 +13,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from risklens.validation import MAX_TICKERS, validate_tickers
+from risklens.validation import MAX_TICKERS, validate_prices, validate_tickers, validate_weights
 
 HOLDING_KINDS = ("shares", "value")  # share counts, or market values in dollars
 # Thousands separators such as "1,250.50"; "1,5" is rejected rather than read as 15.
@@ -106,3 +106,37 @@ def _parse_row(ticker_text: str, amount_text: str, kind: str) -> tuple[str, floa
             f"got {amount_text.strip()!r}."
         )
     return ticker, amount
+
+
+def holdings_to_weights(
+    amounts: pd.Series, kind: str, prices: pd.DataFrame
+) -> tuple[np.ndarray, float]:
+    """Return ``(weights, total_value)`` for holdings valued at the latest prices.
+
+    ``amounts`` is indexed by ticker and holds share counts when ``kind`` is
+    ``"shares"`` or market values in dollars when it is ``"value"``. Shares
+    are valued at the last row of ``prices``: adjusted closes, which equal
+    the actual closes when the prices end today. Weights are fractions in the
+    order of ``prices.columns``; ``total_value`` is in dollars.
+
+    Raises:
+        ValueError: if ``kind`` is unknown, ``prices`` fail ``validate_prices``,
+            ``amounts`` does not list each price column exactly once, an amount
+            is negative or not finite, or the total value is not above zero.
+    """
+    if kind not in HOLDING_KINDS:
+        raise ValueError(f"Holdings must be shares or value; got {kind!r}.")
+    prices = validate_prices(prices, min_rows=1)
+    if len(amounts) != prices.shape[1] or set(amounts.index) != set(prices.columns):
+        raise ValueError("Holdings must list each priced ticker exactly once.")
+    try:
+        held = amounts.reindex(prices.columns).to_numpy(dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{kind.capitalize()} must be numbers.") from exc
+    if not np.all(np.isfinite(held)) or np.any(held < 0):
+        raise ValueError(f"{kind.capitalize()} must be finite numbers of zero or more.")
+    values = held * prices.iloc[-1].to_numpy() if kind == "shares" else held
+    total = float(values.sum())
+    if not (np.isfinite(total) and total > 0):
+        raise ValueError("Enter at least one holding above zero.")
+    return validate_weights(values / total, len(values)), total
