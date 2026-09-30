@@ -104,3 +104,45 @@ def test_percent_weights_stay_the_default_without_a_portfolio_value() -> None:
     app = analyze(app)
     assert not app.exception and not app.error
     assert "Portfolio value" not in captions(app)
+
+
+def upload(app: AppTest, content: str, name: str = "holdings.csv") -> AppTest:
+    return app.file_uploader[0].set_value((name, content.encode(), "text/csv")).run()
+
+
+def test_csv_import_replaces_the_manual_inputs(prices: pd.DataFrame) -> None:
+    app = upload(AppTest.from_file(APP_PATH).run(), 'ticker,value\nTLT,"$2,500.00"\nAAPL,7500\n')
+    assert not app.exception and not app.error
+    assert not app.text_input and not app.radio
+    assert "Using 2 holdings from holdings.csv." in captions(app)
+    app.date_input[0].set_value(date(2026, 1, 1))
+    with patch("risklens.analytics.analyze_portfolio", wraps=analyze_portfolio) as engine:
+        app = analyze(app)
+    assert not app.exception and not app.error
+    pd.testing.assert_frame_equal(engine.call_args.args[0], prices[["TLT", "AAPL"]])
+    np.testing.assert_allclose(engine.call_args.args[1], [0.25, 0.75])
+    assert "Portfolio value: $10,000.00." in captions(app)
+
+    app = app.file_uploader[0].set_value(None).run()
+    assert app.text_input[0].value == "AAPL, MSFT" and not app.metric
+
+
+def test_csv_shares_are_valued_like_manual_shares(prices: pd.DataFrame) -> None:
+    app = upload(AppTest.from_file(APP_PATH).run(), "Ticker,Shares\nMSFT,4\nAAPL,10\n")
+    app.date_input[0].set_value(date(2026, 1, 1))
+    with patch("risklens.analytics.analyze_portfolio", wraps=analyze_portfolio) as engine:
+        app = analyze(app)
+    values = np.array([4 * prices["MSFT"].iloc[-1], 10 * prices["AAPL"].iloc[-1]])
+    np.testing.assert_allclose(engine.call_args.args[1], values / values.sum())
+
+
+def test_bad_csv_lists_its_rows_and_blocks_analysis(download: MagicMock) -> None:
+    app = upload(AppTest.from_file(APP_PATH).run(), "ticker,shares\nAAPL,abc\n,3\n", "bad.csv")
+    assert not app.exception
+    assert [error.value for error in app.error] == [
+        "Could not import bad.csv. Line 2: Shares must be a number; got 'abc'. "
+        "Line 3: Ticker is missing."
+    ]
+    assert widget(app.button, "Analyze portfolio").disabled
+    assert not app.text_input
+    download.assert_not_called()
