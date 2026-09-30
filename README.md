@@ -215,6 +215,52 @@ the two return the same prices.
 Errors: `ValueError` for bad input, `risklens.data.DataFetchError` for
 download problems.
 
+## Holdings input
+
+```python
+parse_holdings_csv(content) -> tuple[str, pd.Series]
+holdings_to_weights(amounts, kind, prices) -> tuple[np.ndarray, float]
+```
+
+Both live in `risklens.holdings`. A holdings CSV has a header row with a
+`ticker` column and exactly one of `shares` or `value` (dollars), in any
+letter case, then one row per stock (up to 25):
+
+```csv
+ticker,shares
+AAPL,10
+MSFT,4.5
+```
+
+```csv
+Ticker,Value
+AAPL,"$12,500.00"
+TLT,4000
+```
+
+Other columns are ignored and blank lines are skipped, so a brokerage export
+with extra columns works once its headers are renamed. Amounts may have a
+leading `$` and thousands separators; zero is allowed, negatives are not.
+UTF-8 files with or without Excel's byte-order mark are accepted.
+`parse_holdings_csv` returns the column used (`"shares"` or `"value"`) and
+the amounts indexed by upper-case ticker in file order. A bad file raises one
+`ValueError` that lists every problem by line, for example
+`Line 3: Shares must be a number; got 'ten'. Line 5: AAPL is already listed on line 2.`
+
+`holdings_to_weights` turns share counts or dollar values into weights in
+the order of `prices.columns` and returns the portfolio's total value in
+dollars. Shares are valued at the last row of `prices`. These are adjusted
+closes, which equal the actual closes when the period ends today; for an
+earlier end date they are the split- and dividend-adjusted closes on that
+date. It raises `ValueError` when the holdings do not match the price
+columns, an amount is negative or not finite, or every holding is zero.
+
+**Dollar amounts.** The dashboard multiplies each percentage by the portfolio
+value: one-day VaR and CVaR become the dollar change on a bad day, and the
+maximum drawdown and stress-test return and drawdown become the dollar
+change if that history repeated on today's portfolio. Amounts are signed
+(negative means a loss) and rounded to whole dollars.
+
 ## Rebalancing and trading costs
 
 ```python
