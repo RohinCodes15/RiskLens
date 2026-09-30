@@ -1,7 +1,8 @@
 # RiskLens Quant
 
-A portfolio risk analyzer built with Python and Streamlit. Enter tickers and
-weights, pull adjusted daily prices from Yahoo Finance, and see the
+A portfolio risk analyzer built with Python and Streamlit. Enter holdings as
+percent weights, share counts, or dollar values (or import them from a CSV
+file), pull adjusted daily prices from Yahoo Finance, and see the
 portfolio's historical return, volatility, Sharpe ratio, drawdown,
 diversification, comparison with the S&P 500 (SPY), one-day VaR and CVaR,
 Monte Carlo scenarios, and historical stress tests.
