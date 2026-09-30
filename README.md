@@ -13,10 +13,20 @@ There is no separate backend or database: the Streamlit app calls the
 
 **Dashboard (`app.py`)**
 
-- Sidebar inputs: comma-separated tickers (up to 25), a weight per ticker in
-  percent (must total 100%), a start/end date (end date is inclusive), a
-  rebalancing frequency (daily, monthly, quarterly, annually, or never), and
-  a trading cost in basis points per dollar traded.
+- Sidebar inputs: comma-separated tickers (up to 25); holdings per ticker as
+  percent weights (must total 100%), share counts, or dollar values; a
+  start/end date (end date is inclusive); a rebalancing frequency (daily,
+  monthly, quarterly, annually, or never); and a trading cost in basis points
+  per dollar traded. Shares are valued at each stock's last close in the
+  selected period to get the weights.
+- **Import holdings from CSV**: upload a file with `ticker` and `shares` or
+  `value` columns instead of typing holdings. Every bad row is reported by
+  line number and blocks the analysis until fixed; see
+  [Holdings input](#holdings-input).
+- **Dollar amounts**: holdings in shares or dollars give the portfolio value;
+  with percent weights you can enter it (optional). When it is known, the
+  maximum drawdown, one-day VaR and CVaR, and stress-test return and
+  drawdown cards also show the change in dollars, e.g. "-$4,820".
 - The risk cards, rolling risk, tail risk, SPY comparison, and stress tests
   all follow the chosen rebalancing and are net of trading costs; the
   snapshot shows annual turnover. Optimization compares allocations with
