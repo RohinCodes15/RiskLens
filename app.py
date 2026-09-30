@@ -69,21 +69,29 @@ def render_tail_risk(analysis: dict) -> None:
     except (ValueError, NotImplementedError) as exc:
         st.warning(f"Tail risk is unavailable. {exc}")
         return
+    portfolio_value = analysis.get("portfolio_value")
     var_column, cvar_column = st.columns(2)
     with var_column.container(border=True):
         st.metric(
             "One-day VaR",
             f"{summary['var']:.2%}",
+            delta=dollar_change(-summary["var"], portfolio_value),
             help="Historical Value at Risk: positive values represent losses; negative values mean the threshold was a gain.",
         )
     with cvar_column.container(border=True):
         st.metric(
             "One-day CVaR",
             f"{summary['cvar']:.2%}",
+            delta=dollar_change(-summary["cvar"], portfolio_value),
             help="Conditional VaR / Expected Shortfall: average loss among observations at or below the VaR return cutoff, including ties.",
         )
+    in_dollars = (
+        f" Dollar amounts are the same changes on your ${portfolio_value:,.2f} portfolio."
+        if portfolio_value is not None
+        else ""
+    )
     st.caption(
-        f"{confidence:.0%} confidence · {len(daily):,} observed daily returns. Positive card values mean losses; negative values mean gains. Figures are one-day estimates, not annualized."
+        f"{confidence:.0%} confidence · {len(daily):,} observed daily returns. Positive card values mean losses; negative values mean gains. Figures are one-day estimates, not annualized.{in_dollars}"
     )
     if not summary["sufficient_sample"]:
         st.warning(
