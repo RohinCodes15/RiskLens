@@ -258,7 +258,9 @@ def render_optimization(analysis: dict) -> None:
 def render_optimization_results(analysis: dict) -> None:
     """Show successful allocations and frontier with annualized fractional rates."""
     min_vol, max_sharpe, frontier = analysis["optimization"]
-    current_return, current_volatility, current_sharpe, _ = analysis["metrics"]
+    current_return, current_volatility, current_sharpe = analysis.get(
+        "optimization_baseline", analysis["metrics"][:3]
+    )
     allocations = {
         "Current": [*analysis["weights"], current_return, current_volatility, current_sharpe],
     }
@@ -293,6 +295,11 @@ def render_optimization_results(analysis: dict) -> None:
     st.caption(
         "In-sample results: weights are fit to the same history used to score them, so these figures are optimistic and not a forecast. Maximum-Sharpe weights are especially sensitive to the chosen period."
     )
+    if "optimization_baseline" in analysis:
+        st.caption(
+            "Every column, including Current, assumes daily rebalancing with no trading costs, "
+            "so it can differ from the risk cards above."
+        )
     if frontier is not None:
         render_frontier(
             frontier,
@@ -752,6 +759,14 @@ if submitted:
                 "cost_bps": cost_bps,
                 "annual_turnover": result.annual_turnover,
             }
+            if rebalance != "daily" or cost_bps > 0:
+                # Optimized weights assume daily rebalancing and no costs; compare like for like.
+                baseline = analyze_portfolio(prices, weights)
+                st.session_state["analysis"]["optimization_baseline"] = (
+                    baseline.annualized_return,
+                    baseline.annualized_volatility,
+                    baseline.sharpe_ratio,
+                )
             try:
                 benchmark_prices = fetch_benchmark_prices(start, end + timedelta(days=1))
                 st.session_state["analysis"]["benchmark"] = compare_to_benchmark(
