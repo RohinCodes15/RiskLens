@@ -46,6 +46,7 @@ from risklens.data import (
     fetch_prices,
     to_returns,
 )
+from risklens.holdings import holdings_to_weights
 from risklens.validation import MAX_COST_BPS, validate_tickers, validate_weights
 
 
@@ -129,6 +130,47 @@ REBALANCE_DESCRIPTIONS = {
     "annual": "Weights drift with prices and reset to target each year",
     "never": "Buy and hold: weights drift with prices and are never reset",
 }
+
+
+HOLDING_INPUTS = {
+    "Percent weights": "weight",
+    "Shares": "shares",
+    "Dollar values": "value",
+}
+HOLDING_CAPTIONS = {
+    "weight": "Long-only allocation: percentages must total 100%.",
+    "shares": "Shares held in each stock, valued at its last close in the selected period.",
+    "value": "Market value of each holding in dollars.",
+}
+
+
+def holding_inputs(tickers: list[str], kind: str) -> list[float]:
+    """Render one input per ticker: a percent weight, a share count, or a dollar value."""
+    amounts = []
+    for index, ticker in enumerate(tickers):
+        key = f"{kind}:{','.join(tickers)}:{ticker}"
+        if kind == "weight":
+            equal_weight = round(100 / len(tickers), 2)
+            default = 100 - equal_weight * index if index == len(tickers) - 1 else equal_weight
+            amount = st.number_input(
+                f"{ticker} weight (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=default,
+                step=1.0,
+                format="%.2f",
+                key=key,
+            )
+        elif kind == "shares":
+            amount = st.number_input(
+                f"{ticker} shares", min_value=0.0, value=0.0, step=1.0, format="%.4f", key=key
+            )
+        else:
+            amount = st.number_input(
+                f"{ticker} value ($)", min_value=0.0, value=0.0, step=100.0, format="%.2f", key=key
+            )
+        amounts.append(amount)
+    return amounts
 
 
 def cost_text(cost_bps: float) -> str:
@@ -661,26 +703,12 @@ with st.sidebar:
         tickers = []
         st.error(str(exc))
 
+    holding_kind = HOLDING_INPUTS[st.radio("Enter holdings as", list(HOLDING_INPUTS))]
+
     with st.form("portfolio_request"):
-        st.markdown("**Portfolio weights**")
-        st.caption("Long-only allocation: percentages must total 100%.")
-        weights_pct = []
-        for index, ticker in enumerate(tickers):
-            equal_weight = round(100 / len(tickers), 2)
-            default_weight = (
-                100 - equal_weight * index if index == len(tickers) - 1 else equal_weight
-            )
-            weights_pct.append(
-                st.number_input(
-                    f"{ticker} weight (%)",
-                    min_value=0.0,
-                    max_value=100.0,
-                    value=default_weight,
-                    step=1.0,
-                    format="%.2f",
-                    key=f"weight:{','.join(tickers)}:{ticker}",
-                )
-            )
+        st.markdown("**Portfolio holdings**")
+        st.caption(HOLDING_CAPTIONS[holding_kind])
+        amounts = holding_inputs(tickers, holding_kind)
         today = date.today()
         start = st.date_input(
             "Start date",
@@ -724,12 +752,13 @@ if analysis is not None and list(analysis["prices"].columns) != tickers:
 if submitted:
     st.session_state.pop("analysis", None)
     try:
-        try:
-            weights = validate_weights([value / 100 for value in weights_pct], len(tickers))
-        except ValueError as exc:
-            raise ValueError(
-                f"Use non-negative weights totaling 100%. Current total: {sum(weights_pct):.2f}%."
-            ) from exc
+        if holding_kind == "weight":
+            try:
+                weights = validate_weights([value / 100 for value in amounts], len(tickers))
+            except ValueError as exc:
+                raise ValueError(
+                    f"Use non-negative weights totaling 100%. Current total: {sum(amounts):.2f}%."
+                ) from exc
         if start >= end:
             raise ValueError("Start date must be before end date.")
         with st.spinner("Loading prices and calculating portfolio metrics…"):
@@ -737,6 +766,11 @@ if submitted:
             prices = fetch_prices(tickers, start, end + timedelta(days=1))
             if prices.empty:
                 raise ValueError("No price history was returned. Try different tickers or dates.")
+            portfolio_value = None
+            if holding_kind != "weight":
+                weights, portfolio_value = holdings_to_weights(
+                    pd.Series(amounts, index=tickers), holding_kind, prices
+                )
             rebalance = REBALANCE_CHOICES[rebalance_label]
             result = analyze_portfolio(prices, weights, rebalance=rebalance, cost_bps=cost_bps)
             metrics = (
@@ -758,6 +792,8 @@ if submitted:
                 "rebalance": rebalance,
                 "cost_bps": cost_bps,
                 "annual_turnover": result.annual_turnover,
+                "holding_kind": holding_kind,
+                "portfolio_value": portfolio_value,
             }
             if rebalance != "daily" or cost_bps > 0:
                 # Optimized weights assume daily rebalancing and no costs; compare like for like.
@@ -788,7 +824,7 @@ if submitted:
 analysis = st.session_state.get("analysis")
 if analysis is None:
     if not submitted:
-        st.info("Choose tickers, set weights totaling 100%, and select Analyze portfolio.")
+        st.info("Choose tickers, enter your holdings, and select Analyze portfolio.")
 else:
     prices = analysis["prices"]
     st.subheader("Portfolio snapshot")
@@ -800,6 +836,14 @@ else:
         f"{allocation} | {prices.index.min():%b %d, %Y} – "
         f"{prices.index.max():%b %d, %Y} | {len(prices):,} price observations"
     )
+    portfolio_value = analysis.get("portfolio_value")
+    if portfolio_value is not None:
+        valued = (
+            f", with shares valued at {prices.index.max():%b %d, %Y} closes"
+            if analysis.get("holding_kind") == "shares"
+            else ""
+        )
+        st.caption(f"Portfolio value: ${portfolio_value:,.2f}{valued}.")
     descriptions = (
         (
             "Annualized return",
