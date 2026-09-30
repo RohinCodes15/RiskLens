@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from risklens.analytics import analyze_portfolio, tail_risk_summary
+from risklens.analytics import analyze_portfolio, custom_scenario, stress_test, tail_risk_summary
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
@@ -192,3 +192,17 @@ def test_cards_have_no_dollar_amounts_without_a_portfolio_value() -> None:
     app = analyze(app)
     assert not app.exception and app.metric
     assert not any(card.delta for card in app.metric)
+
+
+def test_stress_results_show_dollar_changes(prices: pd.DataFrame) -> None:
+    app = analyze(enter_holdings("Dollar values", {"AAPL": 3000.0, "MSFT": 1000.0}))
+    widget(app.selectbox, "Historical scenario").select("Custom date range").run()
+    app = widget(app.button, "Run historical stress test").click().run()
+    assert not app.exception and not app.error
+    start, end = prices.index[0].date(), prices.index[-1].date()
+    expected = stress_test(prices[["AAPL", "MSFT"]], [0.75, 0.25], custom_scenario(start, end))
+    deltas = {card.label: card.delta for card in app.metric}
+    assert deltas["Scenario return"] == usd(expected.cumulative_return, 4000.0)
+    assert deltas["Scenario maximum drawdown"] == usd(expected.max_drawdown, 4000.0)
+    assert not deltas["Scenario annualized volatility"]
+    assert "apply the scenario to your $4,000.00 portfolio today" in captions(app)
