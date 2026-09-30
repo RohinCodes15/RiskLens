@@ -48,7 +48,7 @@ There is no separate backend or database: the Streamlit app calls the
   any request, either aligned to shared dates or as per-ticker history that
   keeps each ticker's own coverage, and simple daily returns.
 - Portfolio returns rebalanced daily, monthly, quarterly, annually, or never
-  (buy-and-hold); see [Rebalancing](#rebalancing).
+  (buy-and-hold); see [Rebalancing and trading costs](#rebalancing-and-trading-costs).
 - Risk metrics: annualized return and volatility, Sharpe ratio, cumulative
   wealth, drawdown series, max drawdown, and per-asset risk contributions.
 - Tail risk: historical VaR and CVaR (Expected Shortfall) at 95% and 99%
@@ -66,7 +66,7 @@ There is no separate backend or database: the Streamlit app calls the
 Conventions: returns are simple daily returns as fractions (0.01 = 1%),
 annualized with 252 trading days, and portfolios reset to their target weights
 daily unless another rebalance frequency is chosen (see
-[Rebalancing](#rebalancing)). Drawdowns are negative fractions.
+[Rebalancing and trading costs](#rebalancing-and-trading-costs)). Drawdowns are negative fractions.
 
 ## Installation
 
@@ -190,10 +190,11 @@ the two return the same prices.
 Errors: `ValueError` for bad input, `risklens.data.DataFetchError` for
 download problems.
 
-## Rebalancing
+## Rebalancing and trading costs
 
 ```python
-portfolio_returns(returns, weights, rebalance="daily") -> pd.Series
+portfolio_returns(returns, weights, rebalance="daily", cost_bps=0.0) -> pd.Series
+rebalance_turnover(returns, weights, rebalance="daily") -> pd.Series
 ```
 
 `rebalance` is one of `REBALANCE_FREQUENCIES`:
@@ -205,11 +206,32 @@ portfolio_returns(returns, weights, rebalance="daily") -> pd.Series
 | `"never"` | buy-and-hold: `weights` is only the starting allocation |
 
 The first return date always starts at `weights`. Calendar frequencies need
-returns on a sorted, unique `DatetimeIndex` (time zones are fine). No
-trading costs are charged. `analyze_portfolio`, `compare_to_benchmark`,
-`benchmark_statistics`, `stress_test`, and `run_stress_tests` take the same
-`rebalance` argument and pass it through. Optimization, risk contributions,
-and Monte Carlo still assume constant weights.
+returns on a sorted, unique `DatetimeIndex` (time zones are fine).
+
+**Turnover.** On a rebalance date, holdings that drifted since the last
+reset are traded back to `weights` before that date's return.
+`rebalance_turnover` gives the one-way turnover on each date: half the sum
+of absolute weight changes, which equals the fraction of the portfolio
+bought (and sold). It is 0 on dates without a reset and on the first date,
+because the initial purchase is not counted.
+
+**Trading costs.** `cost_bps` is the cost in basis points per dollar bought
+or sold (5 = 0.05%), covering commission and spread. On each rebalance date
+the portfolio pays `cost_bps / 10,000 × 2 × turnover` of its value, so the
+net return is `(1 − cost) × (1 + gross return) − 1`. The default 0 charges
+nothing, buy-and-hold never pays, and `validate_cost_bps` rejects negative,
+non-finite, or above-1,000 bps values.
+
+Example: 50/50 weights after one asset doubles are 2/3 and 1/3. Resetting
+them sells 1/6 of the portfolio and buys 1/6 (turnover 1/6); at 100 bps
+that costs 1/300 of the portfolio.
+
+`analyze_portfolio`, `compare_to_benchmark`, `benchmark_statistics`,
+`stress_test`, and `run_stress_tests` take the same `rebalance` and
+`cost_bps` arguments and pass them through, so every return-based metric is
+net of costs. `PortfolioMetrics.annual_turnover` reports mean daily
+turnover × 252. Optimization, risk contributions, and Monte Carlo still
+assume constant weights without costs.
 
 ## Historical VaR and CVaR
 
