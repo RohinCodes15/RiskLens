@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from risklens.analytics import analyze_portfolio
 from risklens.analytics.metrics import (
     TRADING_DAYS_PER_YEAR,
     calmar_ratio,
@@ -77,3 +78,16 @@ def test_calmar_is_nan_without_a_drawdown(values: list[float]) -> None:
 def test_calmar_needs_dated_returns() -> None:
     with pytest.raises(ValueError, match="indexed by date"):
         calmar_ratio(pd.Series([0.01, -0.02]))
+
+
+def test_analyze_portfolio_reports_sortino_and_calmar_on_its_daily_returns() -> None:
+    rng = np.random.default_rng(5)
+    prices = pd.DataFrame(
+        100 * np.cumprod(1 + rng.normal(4e-4, 0.01, (120, 2)), axis=0),
+        index=pd.bdate_range("2025-01-02", periods=120),
+        columns=["A", "B"],
+    )
+    result = analyze_portfolio(prices, [0.7, 0.3], risk_free_rate=0.03, rebalance="monthly")
+    assert result.sortino_ratio == pytest.approx(sortino_ratio(result.daily_returns, 0.03))
+    assert result.calmar_ratio == pytest.approx(calmar_ratio(result.daily_returns))
+    assert np.isfinite(result.sortino_ratio) and np.isfinite(result.calmar_ratio)
