@@ -206,3 +206,15 @@ def test_stress_results_show_dollar_changes(prices: pd.DataFrame) -> None:
     assert deltas["Scenario maximum drawdown"] == usd(expected.max_drawdown, 4000.0)
     assert not deltas["Scenario annualized volatility"]
     assert "apply the scenario to your $4,000.00 portfolio." in captions(app)
+
+
+def test_dollar_signs_from_files_and_tickers_are_escaped_for_markdown() -> None:
+    app = upload(AppTest.from_file(APP_PATH).run(), "ticker,value\nAAPL,-$500\nMSFT,-$1200\n")
+    assert [error.value for error in app.error] == [
+        "Could not import holdings.csv. "
+        "Line 2: Value must be a number; got '-\\$500'. "
+        "Line 3: Value must be a number; got '-\\$1200'."
+    ]
+    app = app.file_uploader[0].set_value(None).run()
+    app = app.text_input[0].set_value("$A, $B").run()
+    assert [error.value for error in app.error] == ["Invalid ticker symbol(s): \\$A, \\$B."]
