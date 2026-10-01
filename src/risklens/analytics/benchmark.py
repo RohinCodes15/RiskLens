@@ -36,12 +36,16 @@ class BenchmarkStatistics:
             portfolio's returns are constant.
         tracking_error: annualized volatility of daily (portfolio - benchmark)
             returns, x sqrt(252).
+        information_ratio: excess_return / tracking_error, the annual excess
+            return earned per unit of tracking error; NaN when tracking error
+            is zero (the portfolio moves exactly with the benchmark).
     """
 
     excess_return: float
     beta: float
     correlation: float
     tracking_error: float
+    information_ratio: float
 
 
 def _aligned_returns(
@@ -122,7 +126,7 @@ def benchmark_statistics(
     rebalance: str = "daily",
     cost_bps: float = 0.0,
 ) -> BenchmarkStatistics:
-    """Excess return, beta, correlation, and tracking error against SPY.
+    """Excess return, beta, correlation, tracking error, and information ratio against SPY.
 
     Inputs and date alignment match ``compare_to_benchmark``: adjusted prices,
     weights in column order, ``rebalance`` and ``cost_bps``, only dates shared
@@ -143,9 +147,13 @@ def benchmark_statistics(
     if float(np.std(bench, ddof=1)) <= RETURN_NOISE_TOLERANCE:
         raise ValueError("Benchmark returns are constant, so beta is undefined.")
     bench_variance = float(np.var(bench, ddof=1))
+    excess = annualized_return(port) - annualized_return(bench)
+    tracking = annualized_volatility(port - bench)
+    tracks_exactly = float(np.std(port - bench, ddof=1)) <= RETURN_NOISE_TOLERANCE
     return BenchmarkStatistics(
-        excess_return=annualized_return(port) - annualized_return(bench),
+        excess_return=excess,
         beta=float(np.cov(port, bench, ddof=1)[0, 1]) / bench_variance,
         correlation=float(port.corr(bench)),
-        tracking_error=annualized_volatility(port - bench),
+        tracking_error=tracking,
+        information_ratio=float("nan") if tracks_exactly else excess / tracking,
     )
