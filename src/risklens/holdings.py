@@ -43,7 +43,7 @@ def parse_holdings_csv(content: bytes | str) -> tuple[str, pd.Series]:
             content = content.decode("utf-8-sig")  # Excel starts files with a byte-order mark
         except UnicodeDecodeError as exc:
             raise ValueError("The holdings file must be UTF-8 CSV text.") from exc
-    reader = csv.reader(io.StringIO(content))
+    reader = csv.reader(io.StringIO(content, newline=""))  # also reads old Mac "\r" endings
     try:
         rows = [(reader.line_num, row) for row in reader if any(cell.strip() for cell in row)]
     except csv.Error as exc:
