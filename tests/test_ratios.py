@@ -4,7 +4,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from risklens.analytics.metrics import TRADING_DAYS_PER_YEAR, sharpe_ratio, sortino_ratio
+from risklens.analytics.metrics import (
+    TRADING_DAYS_PER_YEAR,
+    calmar_ratio,
+    sharpe_ratio,
+    sortino_ratio,
+)
 
 DAYS = TRADING_DAYS_PER_YEAR
 
@@ -51,3 +56,24 @@ def test_sortino_is_nan_without_any_shortfall(values: list[float]) -> None:
 def test_sortino_rejects_invalid_input(returns: pd.Series, rate: float, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         sortino_ratio(returns, rate)
+
+
+def test_calmar_divides_compound_annual_growth_by_the_worst_drawdown() -> None:
+    # Wealth 1.01 -> 0.9898 (-2% from the peak) -> 1.0195 -> 1.0093 (-1%).
+    growth = (1.01 * 0.98 * 1.03 * 0.99) ** (DAYS / 4) - 1
+    assert calmar_ratio(RETURNS) == pytest.approx(growth / 0.02)
+
+
+def test_calmar_is_negative_when_the_portfolio_lost_money() -> None:
+    losing = dated([-0.05, 0.01, -0.02])
+    assert calmar_ratio(losing) < 0
+
+
+@pytest.mark.parametrize("values", [[0.01, 0.02, 0.0], [0.0, 0.0, 0.0]])
+def test_calmar_is_nan_without_a_drawdown(values: list[float]) -> None:
+    assert np.isnan(calmar_ratio(dated(values)))
+
+
+def test_calmar_needs_dated_returns() -> None:
+    with pytest.raises(ValueError, match="indexed by date"):
+        calmar_ratio(pd.Series([0.01, -0.02]))
