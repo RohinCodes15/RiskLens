@@ -39,6 +39,12 @@ class BenchmarkStatistics:
         information_ratio: excess_return / tracking_error, the annual excess
             return earned per unit of tracking error; NaN when tracking error
             is zero (the portfolio moves exactly with the benchmark).
+        upside_capture: the portfolio's geometric mean daily return on days
+            the benchmark rose, divided by the benchmark's on those days. 1.1
+            means 10% more of the benchmark's gains; NaN without up days.
+        downside_capture: the same ratio on days the benchmark fell. 0.8 means
+            20% less of the benchmark's losses (lower is better); NaN without
+            down days.
     """
 
     excess_return: float
@@ -46,6 +52,8 @@ class BenchmarkStatistics:
     correlation: float
     tracking_error: float
     information_ratio: float
+    upside_capture: float
+    downside_capture: float
 
 
 def _aligned_returns(
@@ -83,6 +91,15 @@ def _aligned_returns(
         )
     port = portfolio_returns(to_returns(assets.loc[shared]), weights, rebalance, cost_bps)
     return port, to_returns(bench.loc[shared]).rename("benchmark"), shared
+
+
+def _capture(port: pd.Series, bench: pd.Series, days: pd.Series) -> float:
+    """Portfolio / benchmark geometric mean daily return on ``days``; NaN without any."""
+    if not days.any():
+        return float("nan")
+    with np.errstate(divide="ignore"):  # a -100% day makes log1p -inf, a mean of -100%
+        means = [float(np.expm1(np.log1p(returns[days]).mean())) for returns in (port, bench)]
+    return means[0] / means[1]
 
 
 def compare_to_benchmark(
@@ -126,7 +143,7 @@ def benchmark_statistics(
     rebalance: str = "daily",
     cost_bps: float = 0.0,
 ) -> BenchmarkStatistics:
-    """Excess return, beta, correlation, tracking error, and information ratio against SPY.
+    """Excess return, beta, correlation, tracking error, information ratio, and capture vs. SPY.
 
     Inputs and date alignment match ``compare_to_benchmark``: adjusted prices,
     weights in column order, ``rebalance`` and ``cost_bps``, only dates shared
@@ -156,4 +173,7 @@ def benchmark_statistics(
         correlation=float(port.corr(bench)),
         tracking_error=tracking,
         information_ratio=float("nan") if tracks_exactly else excess / tracking,
+        # Days within float noise of zero are neither up nor down.
+        upside_capture=_capture(port, bench, bench > RETURN_NOISE_TOLERANCE),
+        downside_capture=_capture(port, bench, bench < -RETURN_NOISE_TOLERANCE),
     )
