@@ -17,6 +17,7 @@ from risklens.analytics.metrics import (
     VAR_CONFIDENCE_LEVELS,
     annualized_return,
     annualized_volatility,
+    calmar_ratio,
     cumulative_wealth,
     drawdown_series,
     historical_cvar,
@@ -26,6 +27,7 @@ from risklens.analytics.metrics import (
     rebalance_turnover,
     risk_contributions,
     sharpe_ratio,
+    sortino_ratio,
     tail_risk_summary,
 )
 from risklens.analytics.optimization import (
@@ -76,6 +78,7 @@ __all__ = [
     "annualized_return",
     "annualized_volatility",
     "benchmark_statistics",
+    "calmar_ratio",
     "compare_to_benchmark",
     "correlation_matrix",
     "cumulative_wealth",
@@ -102,6 +105,7 @@ __all__ = [
     "run_stress_tests",
     "sharpe_ratio",
     "simulate_portfolio",
+    "sortino_ratio",
     "stress_test",
     "tail_risk_summary",
 ]

@@ -13,10 +13,12 @@ from risklens.analytics.metrics import (
     TRADING_DAYS_PER_YEAR,
     annualized_return,
     annualized_volatility,
+    calmar_ratio,
     max_drawdown,
     portfolio_returns,
     rebalance_turnover,
     sharpe_ratio,
+    sortino_ratio,
 )
 from risklens.data import to_returns
 from risklens.validation import validate_prices, validate_risk_free_rate
@@ -35,6 +37,10 @@ class PortfolioMetrics:
         sharpe_ratio: (annualized return - annual risk-free rate) / volatility;
             NaN when volatility is zero.
         max_drawdown: worst peak-to-trough decline, as a negative fraction.
+        sortino_ratio: (annualized return - annual risk-free rate) / annualized
+            downside deviation; NaN when no day fell below the risk-free rate.
+        calmar_ratio: compound annual growth rate / |max drawdown|; NaN when
+            there was no drawdown.
         annual_turnover: one-way turnover per year (mean daily turnover x 252);
             0.5 means half the portfolio is bought and sold each year.
     """
@@ -44,6 +50,8 @@ class PortfolioMetrics:
     annualized_volatility: float
     sharpe_ratio: float
     max_drawdown: float
+    sortino_ratio: float
+    calmar_ratio: float
     annual_turnover: float
 
 
@@ -57,7 +65,8 @@ def analyze_portfolio(
     """Compute portfolio metrics from adjusted prices, one column per asset.
 
     ``weights`` follow the column order of ``prices`` and must sum to 1.
-    ``risk_free_rate`` is an annual fraction used only for the Sharpe ratio.
+    ``risk_free_rate`` is an annual fraction used only for the Sharpe and
+    Sortino ratios.
     ``rebalance`` sets how often holdings reset to ``weights`` (see
     ``portfolio_returns``); the default ``"daily"`` keeps them fixed.
     ``cost_bps`` is the trading cost in basis points per dollar traded on
@@ -79,5 +88,7 @@ def analyze_portfolio(
         annualized_volatility=annualized_volatility(daily),
         sharpe_ratio=sharpe_ratio(daily, rate),
         max_drawdown=max_drawdown(daily),
+        sortino_ratio=sortino_ratio(daily, rate),
+        calmar_ratio=calmar_ratio(daily),
         annual_turnover=float(turnover.mean()) * TRADING_DAYS_PER_YEAR,
     )
