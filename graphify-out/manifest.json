@@ -1,8 +1,8 @@
 {
   "app.py": {
-    "mtime": 1793681174.8798199,
-    "seen": 1793681289.55445,
-    "ast_hash": "62b01f1c08da2693278d4c42a825e551",
+    "mtime": 1793687754.2965283,
+    "seen": 1793687961.848727,
+    "ast_hash": "fe9fc7b29afb2aa6bebf5dae292f4791",
     "semantic_hash": ""
   },
   "pyproject.toml": {
@@ -162,15 +162,15 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1793575155.6350076,
-    "seen": 1793575217.755349,
-    "ast_hash": "301a8de372a7dc9b1fbc16ac06250270",
+    "mtime": 1793687871.879207,
+    "seen": 1793687961.848802,
+    "ast_hash": "0cfd984ed7d5cb992f6efb10f745b03b",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793681224.5598922,
-    "seen": 1793681289.554523,
-    "ast_hash": "da9cb9d71d9d28786f7e99ffb3ceae4d",
+    "mtime": 1793687931.1440196,
+    "seen": 1793687961.848803,
+    "ast_hash": "ff0a9165113e411294c85aca12447d33",
     "semantic_hash": ""
   },
   "src/risklens/analytics/optimization.py": {
@@ -321,6 +321,24 @@
     "mtime": 1793680804.6084924,
     "seen": 1793681289.5545201,
     "ast_hash": "f043d16505e740ef86919ab61c19e0cd",
+    "semantic_hash": ""
+  },
+  "src/risklens/holdings.py": {
+    "mtime": 1793687311.8156788,
+    "seen": 1793687961.848753,
+    "ast_hash": "418c91a9dde576f1ec27f62401337ea2",
+    "semantic_hash": ""
+  },
+  "tests/test_holdings.py": {
+    "mtime": 1793687322.969192,
+    "seen": 1793687961.848768,
+    "ast_hash": "312315d77eb3fc2dcac157adaaa37074",
+    "semantic_hash": ""
+  },
+  "tests/test_holdings_ui.py": {
+    "mtime": 1793687767.885126,
+    "seen": 1793687961.8487701,
+    "ast_hash": "8003f2d3837360c0dbf3a79baf0b491e",
     "semantic_hash": ""
   }
 }
