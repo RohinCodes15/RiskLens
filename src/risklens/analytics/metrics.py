@@ -195,6 +195,27 @@ def sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.0) -> float:
     return (annualized_return(returns) - rate) / vol
 
 
+def sortino_ratio(returns: pd.Series, risk_free_rate: float = 0.0) -> float:
+    """Annualized Sortino ratio; ``risk_free_rate`` is an annual fraction (0.04 == 4%).
+
+    (annualized return - risk-free rate) / annualized downside deviation.
+    Downside deviation is the root mean square of daily shortfalls below the
+    daily risk-free rate (``risk_free_rate / 252``) over every day, so days
+    above it add zero, times sqrt(252). Unlike the Sharpe ratio, gains above
+    the target do not count as risk.
+
+    Returns NaN when no day falls below the target. Raises ValueError for an
+    invalid rate (see ``validate_risk_free_rate``) or invalid returns.
+    """
+    rate = validate_risk_free_rate(risk_free_rate)
+    values = _validate_returns(returns)
+    shortfall = np.minimum(values - rate / TRADING_DAYS_PER_YEAR, 0.0)
+    daily_downside = float(np.sqrt(np.mean(shortfall**2)))
+    if daily_downside <= RETURN_NOISE_TOLERANCE:
+        return float("nan")
+    return (annualized_return(returns) - rate) / (daily_downside * np.sqrt(TRADING_DAYS_PER_YEAR))
+
+
 def historical_var(returns: pd.Series, confidence: float = DEFAULT_VAR_CONFIDENCE) -> float:
     """One-day historical Value at Risk, reported as a positive loss fraction.
 
