@@ -816,7 +816,11 @@ st.markdown(
 )
 
 analysis = st.session_state.get("analysis")
-if analysis is not None and list(analysis["prices"].columns) != tickers:
+if analysis is not None and (
+    list(analysis["prices"].columns) != tickers
+    # The CSV file and holdings type sit outside the form, so a change shows right away.
+    or analysis.get("holdings") != (holding_kind, tuple(amounts))
+):
     st.session_state.pop("analysis", None)
 
 if submitted:
@@ -863,6 +867,7 @@ if submitted:
                 "cost_bps": cost_bps,
                 "annual_turnover": result.annual_turnover,
                 "holding_kind": holding_kind,
+                "holdings": (holding_kind, tuple(amounts)),
                 "portfolio_value": portfolio_value,
             }
             if rebalance != "daily" or cost_bps > 0:
