@@ -181,6 +181,11 @@ def holding_inputs(tickers: list[str], kind: str) -> list[float]:
     return amounts
 
 
+def plain_text(text: str) -> str:
+    """Escape "$" in user-supplied text so Streamlit markdown does not read it as math."""
+    return text.replace("$", "\\$")
+
+
 def dollar_change(fraction: float, portfolio_value: float | None) -> str | None:
     """Signed whole-dollar change for a return fraction, or None without a portfolio value."""
     if portfolio_value is None or not isfinite(fraction):
@@ -731,12 +736,12 @@ with st.sidebar:
         try:
             imported = parse_holdings_csv(upload.getvalue())
         except ValueError as exc:
-            st.error(f"Could not import {upload.name}. {exc}")
+            st.error(plain_text(f"Could not import {upload.name}. {exc}"))
     if imported is not None:
         holding_kind, imported_amounts = imported
         tickers = list(imported_amounts.index)
         st.caption(
-            f"Using {len(tickers)} holdings from {upload.name}. "
+            f"Using {len(tickers)} holdings from {plain_text(upload.name)}. "
             "Remove the file to enter holdings by hand."
         )
     elif upload is not None:
@@ -751,7 +756,7 @@ with st.sidebar:
             tickers = validate_tickers(raw_tickers)
         except ValueError as exc:
             tickers = []
-            st.error(str(exc))
+            st.error(plain_text(str(exc)))
         holding_kind = HOLDING_INPUTS[st.radio("Enter holdings as", list(HOLDING_INPUTS))]
 
     with st.form("portfolio_request"):
