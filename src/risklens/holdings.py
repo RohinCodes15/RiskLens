@@ -16,8 +16,9 @@ import pandas as pd
 from risklens.validation import MAX_TICKERS, validate_prices, validate_tickers, validate_weights
 
 HOLDING_KINDS = ("shares", "value")  # share counts, or market values in dollars
-# Thousands separators such as "1,250.50"; "1,5" is rejected rather than read as 15.
-_THOUSANDS_PATTERN = re.compile(r"\d{1,3}(,\d{3})+(\.\d*)?")
+# Thousands separators such as "1,250.50". "1,5" and "0,500" are rejected rather
+# than read as 15 or 500, since they are likely decimal commas.
+_THOUSANDS_PATTERN = re.compile(r"[1-9]\d{0,2}(,\d{3})+(\.\d*)?")
 _MAX_HEADER_ECHO = 80  # characters of a bad header repeated in the error message
 
 
@@ -28,7 +29,8 @@ def parse_holdings_csv(content: bytes | str) -> tuple[str, pd.Series]:
     of ``shares`` or ``value``; that column's name is ``kind``. Other columns
     are ignored and blank lines are skipped. ``amounts`` holds share counts,
     or market values in dollars, indexed by upper-case ticker in file order.
-    Amounts may have a leading "$" and thousands separators ("$1,250.50").
+    Amounts may have thousands separators, and values a leading "$"
+    ("$1,250.50").
 
     Raises:
         ValueError: if the file is not UTF-8 CSV text, the header is wrong,
@@ -89,7 +91,9 @@ def _parse_row(ticker_text: str, amount_text: str, kind: str) -> tuple[str, floa
     if not ticker_text.strip():
         raise ValueError("Ticker is missing.")
     [ticker] = validate_tickers([ticker_text])
-    text = amount_text.strip().removeprefix("$")
+    text = amount_text.strip()
+    if kind == "value":
+        text = text.removeprefix("$")
     if not text:
         raise ValueError(f"{kind.capitalize()} is missing.")
     if _THOUSANDS_PATTERN.fullmatch(text):
