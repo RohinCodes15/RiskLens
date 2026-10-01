@@ -183,6 +183,8 @@ def test_portfolio_value_shows_drawdown_var_and_cvar_in_dollars(prices: pd.DataF
     assert deltas["Maximum drawdown"].startswith("-$")
     assert deltas["One-day VaR"] == usd(-tail["var"], 100_000.0)
     assert deltas["One-day CVaR"] == usd(-tail["cvar"], 100_000.0)
+    assert tail["var"] > 0 and deltas["One-day VaR"].startswith("-$")  # a loss shows as negative
+    assert deltas["One-day CVaR"].startswith("-$")
     assert "same changes on your $100,000.00 portfolio" in captions(app)
 
 
