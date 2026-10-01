@@ -333,6 +333,25 @@ def max_drawdown(returns: pd.Series) -> float:
     return float(drawdown_series(returns).min())
 
 
+def calmar_ratio(returns: pd.Series) -> float:
+    """Calmar ratio: compound annual growth rate / |maximum drawdown|.
+
+    Growth compounds the daily returns over ``len(returns) / 252`` years
+    (``final wealth ** (252 / n) - 1``), the usual Calmar convention, rather
+    than the arithmetic ``annualized_return``. 2.0 means the portfolio grew
+    twice as fast per year as its worst decline. Same input rules as
+    ``max_drawdown`` (dated returns).
+
+    Returns NaN when there was no drawdown.
+    """
+    drawdown = max_drawdown(returns)
+    if drawdown >= -RETURN_NOISE_TOLERANCE:
+        return float("nan")
+    wealth = float(np.prod(1.0 + returns.to_numpy(dtype=float)))
+    growth = wealth ** (TRADING_DAYS_PER_YEAR / len(returns)) - 1.0
+    return growth / -drawdown
+
+
 def risk_contributions(returns: pd.DataFrame, weights: Sequence[float]) -> pd.Series:
     """Each asset's share of annualized portfolio variance (fractions summing to 1).
 
