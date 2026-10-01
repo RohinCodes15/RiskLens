@@ -58,6 +58,7 @@ from risklens.analytics.stress import (
     run_stress_tests,
     stress_test,
 )
+from risklens.analytics.value_at_risk import VAR_METHODS, cornish_fisher_var, normal_var
 
 __all__ = [
     "HISTORICAL_SCENARIOS",
@@ -65,6 +66,7 @@ __all__ = [
     "ROLLING_WINDOWS",
     "TRADING_DAYS_PER_YEAR",
     "VAR_CONFIDENCE_LEVELS",
+    "VAR_METHODS",
     "BenchmarkStatistics",
     "EfficientFrontier",
     "MonteCarloResult",
@@ -81,6 +83,7 @@ __all__ = [
     "calmar_ratio",
     "compare_to_benchmark",
     "correlation_matrix",
+    "cornish_fisher_var",
     "cumulative_wealth",
     "custom_scenario",
     "drawdown_series",
@@ -94,6 +97,7 @@ __all__ = [
     "max_drawdown",
     "max_sharpe_portfolio",
     "min_volatility_portfolio",
+    "normal_var",
     "portfolio_returns",
     "rebalance_turnover",
     "risk_contributions",
