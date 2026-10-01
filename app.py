@@ -579,7 +579,7 @@ def render_stress_result(
     )
     st.plotly_chart(stress_fig, key="stress_chart")
     in_dollars = (
-        f" Dollar amounts apply the scenario to your ${portfolio_value:,.2f} portfolio today."
+        f" Dollar amounts apply the scenario to your ${portfolio_value:,.2f} portfolio."
         if portfolio_value is not None
         else ""
     )

@@ -205,4 +205,4 @@ def test_stress_results_show_dollar_changes(prices: pd.DataFrame) -> None:
     assert deltas["Scenario return"] == usd(expected.cumulative_return, 4000.0)
     assert deltas["Scenario maximum drawdown"] == usd(expected.max_drawdown, 4000.0)
     assert not deltas["Scenario annualized volatility"]
-    assert "apply the scenario to your $4,000.00 portfolio today" in captions(app)
+    assert "apply the scenario to your $4,000.00 portfolio." in captions(app)
