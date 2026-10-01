@@ -20,10 +20,16 @@ def test_reads_dollar_values_with_symbols_and_thousands_separators() -> None:
 
 
 def test_accepts_excel_bytes_extra_columns_and_blank_lines() -> None:
-    content = "﻿Account,Ticker,Shares\r\n\r\nIRA,brk-b,3\r\n,\r\nTaxable,AAPL,2\r\n"
+    content = "\ufeffTicker,Account,Shares\r\n\r\nbrk-b,IRA,3\r\n,\r\nAAPL,Taxable,2\r\n"
     kind, amounts = parse_holdings_csv(content.encode("utf-8"))
     assert kind == "shares"
     assert amounts.to_dict() == {"BRK-B": 3.0, "AAPL": 2.0}
+
+
+def test_reads_old_mac_line_endings() -> None:
+    kind, amounts = parse_holdings_csv(b"ticker,shares\rAAPL,10\rMSFT,4\r")
+    assert kind == "shares"
+    assert amounts.to_dict() == {"AAPL": 10.0, "MSFT": 4.0}
 
 
 @pytest.mark.parametrize(
@@ -61,9 +67,11 @@ def test_rejects_more_than_the_ticker_limit() -> None:
     [
         (",5", "Line 2: Ticker is missing."),
         ("AAPL", "Line 2: Shares is missing."),
-        ("AAPL,$", "Line 2: Shares is missing."),
+        ("AAPL,$", "Line 2: Shares must be a number; got '$'."),
         ("$$$,5", "Line 2: Invalid ticker symbol"),
         ("AAPL,ten", "Line 2: Shares must be a number; got 'ten'."),
+        ("AAPL,$10", "Line 2: Shares must be a number; got '$10'."),
+        ('AAPL,"0,500"', "Line 2: Shares must be a number; got '0,500'."),
         ('AAPL,"1,5"', "Line 2: Shares must be a number; got '1,5'."),
         ("AAPL,-3", "Line 2: Shares must be a finite number of zero or more; got '-3'."),
         ("AAPL,nan", "Line 2: Shares must be a finite number of zero or more"),
