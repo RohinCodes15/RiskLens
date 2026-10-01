@@ -218,3 +218,31 @@ def test_dollar_signs_from_files_and_tickers_are_escaped_for_markdown() -> None:
     app = app.file_uploader[0].set_value(None).run()
     app = app.text_input[0].set_value("$A, $B").run()
     assert [error.value for error in app.error] == ["Invalid ticker symbol(s): \\$A, \\$B."]
+
+
+def test_changing_the_file_or_holdings_type_clears_old_results() -> None:
+    app = upload(AppTest.from_file(APP_PATH).run(), "ticker,shares\nAAPL,10\nMSFT,4\n")
+    app.date_input[0].set_value(date(2026, 1, 1))
+    app = analyze(app)
+    assert app.metric
+    app = upload(app, "ticker,value\nAAPL,1\nMSFT,9\n", "other.csv")
+    assert not app.metric and "Using 2 holdings from other.csv." in captions(app)
+
+    app.date_input[0].set_value(date(2026, 1, 1))
+    app = analyze(app)
+    assert app.metric
+    app = app.file_uploader[0].set_value(None).run()
+    assert not app.metric
+
+    app.date_input[0].set_value(date(2026, 1, 1))
+    app = analyze(app)
+    widget(app.radio, "Enter holdings as").set_value("Shares").run()
+    assert not app.metric
+
+
+def test_results_survive_reruns_that_do_not_change_the_holdings() -> None:
+    app = AppTest.from_file(APP_PATH).run()
+    app.date_input[0].set_value(date(2026, 1, 1))
+    app = analyze(app)
+    widget(app.selectbox, "Tail risk confidence").select(0.99).run()
+    assert app.metric and not app.error
