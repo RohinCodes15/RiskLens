@@ -8,12 +8,18 @@ observed returns. This module fits two models to the same returns:
 * ``cornish_fisher_var``: that normal quantile adjusted for the sample's
   skewness and excess kurtosis, so lopsided or fat-tailed returns move it.
 
+``rolling_var`` re-estimates any of the three methods each day from the
+returns before it, giving the out-of-sample forecasts a backtest needs.
+
 Every VaR here is a one-day loss as a positive fraction (0.02 == 2%), the
 sign convention of ``historical_var``.
 """
 
+import numbers
+
 import numpy as np
 import pandas as pd
+from numpy.lib.stride_tricks import sliding_window_view
 from scipy.stats import norm
 
 from risklens.analytics.metrics import (
@@ -21,11 +27,13 @@ from risklens.analytics.metrics import (
     MIN_VOLATILITY_OBS,
     RETURN_NOISE_TOLERANCE,
     _validate_confidence,
+    _validate_dated_returns,
     _validate_returns,
 )
 
 VAR_METHODS = ("historical", "normal", "cornish_fisher")
 MIN_MOMENT_OBS = 4  # bias-corrected excess kurtosis needs four returns
+VAR_BACKTEST_WINDOWS = (63, 126, 252)  # about a quarter, half a year, and a year
 
 
 def _skew_kurtosis(rows: np.ndarray, mean: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -90,3 +98,49 @@ def cornish_fisher_var(returns: pd.Series, confidence: float = DEFAULT_VAR_CONFI
     _validate_confidence(confidence)
     values = _validate_returns(returns, MIN_MOMENT_OBS)
     return float(_var_rows(values[None, :], confidence, "cornish_fisher")[0])
+
+
+def _validate_rolling_inputs(
+    returns: pd.Series, window: object, confidence: float, method: str
+) -> int:
+    """Return ``window`` as an int after checking every ``rolling_var`` input."""
+    if method not in VAR_METHODS:
+        raise ValueError(f"method must be one of {', '.join(VAR_METHODS)}; got {method!r}.")
+    _validate_confidence(confidence)
+    if isinstance(window, (bool, np.bool_)) or not isinstance(window, numbers.Integral):
+        raise ValueError("window must be a whole number of trading days.")
+    if window < MIN_MOMENT_OBS:
+        raise ValueError(f"window must be at least {MIN_MOMENT_OBS} trading days; got {window}.")
+    _validate_dated_returns(returns)
+    if len(returns) <= window:
+        raise ValueError(
+            f"Need more than {window} daily returns to forecast VaR from a {window}-day "
+            f"window; got {len(returns)}."
+        )
+    return int(window)
+
+
+def rolling_var(
+    returns: pd.Series,
+    window: int,
+    confidence: float = DEFAULT_VAR_CONFIDENCE,
+    method: str = "historical",
+) -> pd.Series:
+    """Out-of-sample one-day VaR forecasts from the ``window`` returns before each day.
+
+    The value on a date uses only the ``window`` returns strictly before it,
+    the VaR known that morning, so a backtest never scores a forecast on the
+    data that produced it. Dates without a full earlier window are left out,
+    so the result starts at the ``window + 1``-th return date. ``method`` is
+    one of ``VAR_METHODS``; each forecast equals ``historical_var``,
+    ``normal_var``, or ``cornish_fisher_var`` on that window.
+
+    Raises:
+        ValueError: on an unknown method, a confidence outside (0, 1), a
+            window that is not a whole number of at least ``MIN_MOMENT_OBS``
+            days, returns that are not dated, sorted, unique, and finite, or
+            no more returns than ``window``.
+    """
+    w = _validate_rolling_inputs(returns, window, confidence, method)
+    earlier = sliding_window_view(returns.to_numpy(dtype=float)[:-1], w)
+    return pd.Series(_var_rows(earlier, confidence, method), index=returns.index[w:], name="var")

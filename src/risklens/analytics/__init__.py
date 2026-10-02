@@ -58,13 +58,20 @@ from risklens.analytics.stress import (
     run_stress_tests,
     stress_test,
 )
-from risklens.analytics.value_at_risk import VAR_METHODS, cornish_fisher_var, normal_var
+from risklens.analytics.value_at_risk import (
+    VAR_BACKTEST_WINDOWS,
+    VAR_METHODS,
+    cornish_fisher_var,
+    normal_var,
+    rolling_var,
+)
 
 __all__ = [
     "HISTORICAL_SCENARIOS",
     "REBALANCE_FREQUENCIES",
     "ROLLING_WINDOWS",
     "TRADING_DAYS_PER_YEAR",
+    "VAR_BACKTEST_WINDOWS",
     "VAR_CONFIDENCE_LEVELS",
     "VAR_METHODS",
     "BenchmarkStatistics",
@@ -105,6 +112,7 @@ __all__ = [
     "rolling_max_drawdown",
     "rolling_metrics",
     "rolling_sharpe",
+    "rolling_var",
     "rolling_volatility",
     "run_stress_tests",
     "sharpe_ratio",
