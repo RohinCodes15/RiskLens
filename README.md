@@ -153,7 +153,7 @@ analyze_portfolio(
 - `weights`: one weight per column (in column order), non-negative, summing
   to 1.
 - `risk_free_rate`: annual rate as a fraction. It only affects the Sharpe
-  ratio.
+  and Sortino ratios.
 - `rebalance`: how often holdings reset to `weights`; one of
   `REBALANCE_FREQUENCIES`.
 - `cost_bps`: trading cost in basis points per dollar traded on rebalance
@@ -169,6 +169,8 @@ analyze_portfolio(
 | `annualized_volatility` | sample daily standard deviation × √252 |
 | `sharpe_ratio` | (annualized return − risk-free rate) / volatility; NaN if volatility is zero |
 | `max_drawdown` | worst peak-to-trough decline (negative) |
+| `sortino_ratio` | (annualized return − risk-free rate) / annualized downside deviation; NaN without a day below the risk-free rate |
+| `calmar_ratio` | compound annual growth rate / \|max drawdown\|; NaN without a drawdown |
 | `annual_turnover` | one-way turnover per year: mean daily turnover × 252 (0.5 = half the portfolio traded) |
 
 Example:
@@ -196,7 +198,10 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `benchmark_statistics`, `rolling_volatility`, `rolling_sharpe`,
 `rolling_drawdown`, `rolling_max_drawdown`, `rolling_metrics`,
 `ROLLING_WINDOWS`, `estimate_inputs`, `min_volatility_portfolio`,
-`max_sharpe_portfolio`, `efficient_frontier`, `frontier_point_within_risk`, and
+`max_sharpe_portfolio`, `efficient_frontier`, `frontier_point_within_risk`,
+`sortino_ratio`, `calmar_ratio`, `normal_var`, `cornish_fisher_var`,
+`rolling_var`, `kupiec_test`, `var_backtest`, `VAR_METHODS`,
+`VAR_BACKTEST_WINDOWS`, `KUPIEC_SIGNIFICANCE`, and
 `TRADING_DAYS_PER_YEAR`, `REBALANCE_FREQUENCIES`,
 plus the frozen result types `PortfolioMetrics`, `BenchmarkStatistics`,
 `MonteCarloResult`, `StressScenario`, `StressResult`, `OptimizedPortfolio`,
