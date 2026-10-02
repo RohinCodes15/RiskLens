@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from risklens.analytics import analyze_portfolio
+from risklens.analytics import analyze_portfolio, cornish_fisher_var, normal_var
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
@@ -65,3 +65,34 @@ def test_ratio_cards_follow_rebalancing_and_costs(prices: pd.DataFrame) -> None:
     assert cards(app)["Calmar ratio"] == f"{expected.calmar_ratio:.2f}"
     labels = [card.label for card in app.metric]
     assert labels.index("Sortino ratio") == labels.index("Maximum drawdown") + 1
+
+
+def test_tail_risk_shows_normal_and_cornish_fisher_var_in_percent_and_dollars(
+    prices: pd.DataFrame,
+) -> None:
+    app = AppTest.from_file(APP_PATH).run()
+    widget(app.number_input, "Portfolio value ($)").set_value(50_000.0)
+    app.date_input[0].set_value(date(2025, 1, 1))
+    app = widget(app.button, "Analyze portfolio").click().run()
+    app = widget(app.selectbox, "Tail risk confidence").select(0.99).run()
+    assert not app.exception and not app.error
+    daily = analyze_portfolio(prices[["AAPL", "MSFT"]], [0.5, 0.5]).daily_returns
+    normal, modified = normal_var(daily, 0.99), cornish_fisher_var(daily, 0.99)
+    assert modified > normal > 0  # the fixture's returns have fat tails
+    assert cards(app)["Normal VaR"] == f"{normal:.2%}"
+    assert cards(app)["Cornish-Fisher VaR"] == f"{modified:.2%}"
+    deltas = {card.label: card.delta for card in app.metric}
+    assert deltas["Normal VaR"] == f"-${round(normal * 50_000):,}"
+    assert deltas["Cornish-Fisher VaR"] == f"-${round(modified * 50_000):,}"
+
+
+def test_cornish_fisher_var_is_na_with_fewer_than_four_returns(
+    prices: pd.DataFrame, download: MagicMock
+) -> None:
+    download.side_effect = lambda tickers, **_: pd.concat(
+        {"Close": prices[list(tickers)].iloc[:3]}, axis=1
+    )
+    app = analyze()
+    assert not app.exception and not app.error
+    assert cards(app)["Cornish-Fisher VaR"] == "N/A"
+    assert cards(app)["Normal VaR"] != "N/A"
