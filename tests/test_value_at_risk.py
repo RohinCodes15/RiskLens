@@ -9,11 +9,13 @@ import pytest
 
 from risklens.analytics import (
     KUPIEC_SIGNIFICANCE,
+    VAR_METHODS,
     cornish_fisher_var,
     historical_var,
     kupiec_test,
     normal_var,
     rolling_var,
+    var_backtest,
 )
 
 RETURNS = pd.Series(
@@ -182,3 +184,41 @@ def test_kupiec_rejects_invalid_counts(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         kupiec_test(breaches, days, confidence)
+
+
+def test_backtest_counts_losses_beyond_each_days_forecast() -> None:
+    returns = daily(300)
+    table = var_backtest(returns, 63, 0.95)
+    assert list(table.index) == list(VAR_METHODS)
+    assert list(table.columns) == [
+        "days",
+        "breaches",
+        "expected_breaches",
+        "breach_rate",
+        "statistic",
+        "p_value",
+    ]
+    for method in VAR_METHODS:
+        forecasts = rolling_var(returns, 63, 0.95, method)
+        breaches = sum(returns[day] < -var for day, var in forecasts.items())
+        row = table.loc[method]
+        assert row["days"] == 237 and row["breaches"] == breaches
+        assert row["expected_breaches"] == pytest.approx(237 * 0.05)
+        assert row["breach_rate"] == pytest.approx(breaches / 237)
+        assert (row["statistic"], row["p_value"]) == pytest.approx(kupiec_test(breaches, 237, 0.95))
+
+
+def test_normal_var_passes_on_normal_returns_but_fails_on_fat_tails() -> None:
+    rng = np.random.default_rng(4)
+    index = pd.bdate_range("2018-01-02", periods=2500)
+    normal = var_backtest(pd.Series(rng.normal(0, 0.01, 2500), index=index), 252, 0.99)
+    assert normal.loc["normal", "p_value"] >= KUPIEC_SIGNIFICANCE
+    fat = var_backtest(pd.Series(rng.standard_t(3, 2500) * 0.01, index=index), 252, 0.99)
+    assert fat.loc["normal", "p_value"] < KUPIEC_SIGNIFICANCE
+    assert fat.loc["normal", "breaches"] > fat.loc["normal", "expected_breaches"]
+    assert fat.loc["cornish_fisher", "breaches"] < fat.loc["normal", "breaches"]
+
+
+def test_backtest_needs_returns_after_the_window() -> None:
+    with pytest.raises(ValueError, match="more than 63 daily returns"):
+        var_backtest(daily(63), 63)
