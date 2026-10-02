@@ -187,3 +187,23 @@ def test_ratios_explain_why_they_are_missing_when_spy_is_flat(
         in note.value
         for note in app.info
     )
+
+
+def test_backtest_withholds_a_verdict_with_too_few_test_days(
+    prices: pd.DataFrame, download: MagicMock
+) -> None:
+    serve(download, prices.iloc[:65])  # 64 returns: one test day after a 63-day window
+    app = analyze()
+    app = widget(app.selectbox, "VaR estimation window").select(63).run()
+    assert not app.exception and not app.error
+    assert app.table[0].value["Result"].tolist() == ["Too few test days to judge"] * 3
+
+
+def test_backtest_warns_that_short_windows_leave_historical_var_few_tail_days() -> None:
+    app = analyze()
+    app = widget(app.selectbox, "Tail risk confidence").select(0.99).run()
+    notes = " ".join(caption.value for caption in app.caption)
+    assert "A 126-day window holds only about 1.3 days beyond the 99% cutoff" in notes
+    app = widget(app.selectbox, "Tail risk confidence").select(0.95).run()
+    notes = " ".join(caption.value for caption in app.caption)
+    assert "days beyond the" not in notes  # 126 x 5% = 6.3 tail days is enough
