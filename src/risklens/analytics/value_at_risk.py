@@ -57,6 +57,23 @@ def _skew_kurtosis(rows: np.ndarray, mean: np.ndarray) -> tuple[np.ndarray, np.n
     return np.where(flat, 0.0, skew), np.where(flat, 0.0, kurtosis)
 
 
+def _cornish_fisher_z(z: float, s: np.ndarray, k: np.ndarray) -> np.ndarray:
+    """Cornish-Fisher quantile for each skewness and kurtosis, or ``z`` where it is unusable.
+
+    The expansion only gives a lower-tail quantile while it rises from ``z``
+    to the median (t = 0) and stays below the mean. A large outlier can push
+    skewness and kurtosis past that range, where the 5% "quantile" lands near
+    the median; those rows fall back to the normal quantile.
+    """
+    adjusted = z + (z**2 - 1) * s / 6 + (z**3 - 3 * z) * k / 24 - (2 * z**3 - 5 * z) * s**2 / 36
+    # The expansion's slope is a t² + b t + c; on [z, 0] its minimum is at an end or the vertex.
+    a, b, c = k / 8 - s**2 / 6, s / 3, 1 - k / 8 + 5 * s**2 / 36
+    with np.errstate(divide="ignore", invalid="ignore"):
+        vertex = np.clip(np.where(a > 0, -b / (2 * a), z), z, 0.0)
+    lowest_slope = np.minimum.reduce([a * t**2 + b * t + c for t in (z, 0.0, vertex)])
+    return np.where((lowest_slope > 0) & (adjusted < 0), adjusted, z)
+
+
 def _var_rows(rows: np.ndarray, confidence: float, method: str) -> np.ndarray:
     """One-day VaR of each row of daily returns, as positive loss fractions."""
     if method == "historical":
@@ -64,8 +81,7 @@ def _var_rows(rows: np.ndarray, confidence: float, method: str) -> np.ndarray:
     mean = rows.mean(axis=1)
     z = norm.ppf(1 - confidence)
     if method == "cornish_fisher":
-        s, k = _skew_kurtosis(rows, mean)
-        z = z + (z**2 - 1) * s / 6 + (z**3 - 3 * z) * k / 24 - (2 * z**3 - 5 * z) * s**2 / 36
+        z = _cornish_fisher_z(z, *_skew_kurtosis(rows, mean))
     return -(mean + z * rows.std(axis=1, ddof=1))
 
 
@@ -91,9 +107,11 @@ def cornish_fisher_var(returns: pd.Series, confidence: float = DEFAULT_VAR_CONFI
     The Cornish-Fisher expansion replaces ``z`` in ``normal_var`` with
     ``z + (z²-1)S/6 + (z³-3z)K/24 - (2z³-5z)S²/36``, where ``S`` is the
     sample skewness and ``K`` the sample excess kurtosis (both bias-corrected,
-    as pandas computes them). Negative skew and fat tails raise the loss;
-    with ``S = K = 0`` it equals ``normal_var``. The expansion is an
-    approximation and can misbehave for extreme skewness or kurtosis.
+    as pandas computes them). Negative skew raises the loss; fat tails raise
+    it at 99% but can lower it at 95%. With ``S = K = 0`` it equals
+    ``normal_var``. Where the expansion stops rising between ``z`` and the
+    median, or lands above the mean (typically after a single huge outlier),
+    it is not a valid quantile and the result falls back to ``normal_var``.
 
     Raises:
         ValueError: if confidence is not in (0, 1), or returns are invalid or
