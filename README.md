@@ -34,20 +34,23 @@ There is no separate backend or database: the Streamlit app calls the
   daily rebalancing and no costs, and says so when that differs from your
   settings.
 - **Analyze portfolio** runs the analysis and keeps the result in the session.
-- Four risk metric cards: annualized return, annualized volatility, Sharpe
-  ratio (0% risk-free rate), and maximum drawdown. Non-finite values show
-  as "N/A".
+- Six risk metric cards: annualized return, annualized volatility, Sharpe
+  ratio (0% risk-free rate), maximum drawdown, Sortino ratio, and Calmar
+  ratio. Non-finite values show as "N/A".
 - Historical adjusted-price chart and historical drawdown chart (Plotly).
 - **Rolling risk**: rolling volatility, Sharpe ratio, or drawdown over a
   21-, 63-, or 126-trading-day window.
 - Diversification: HHI concentration, effective number of holdings, a risk
   attribution chart (each stock's share of portfolio variance next to its
   weight), and a daily-return correlation heatmap.
-- Portfolio vs. S&P 500 (SPY) growth chart with ending-return cards.
+- Portfolio vs. S&P 500 (SPY) growth chart with ending-return cards, plus
+  information ratio and up- and down-market capture cards.
 - **Tail Risk**: a 95%/99% confidence selector, one-day historical VaR and
-  CVaR cards (positive values are losses), a histogram of actual daily
-  returns with the VaR cutoff marked, and a warning when the sample is too
-  small for the selected tail.
+  CVaR cards next to normal and Cornish-Fisher VaR (positive values are
+  losses), a histogram of actual daily returns with the VaR cutoff marked, a
+  warning when the sample is too small for the selected tail, and a **VaR
+  backtest** table: each method's breaches over the days after a 63-, 126-,
+  or 252-day estimation window, with the Kupiec test's verdict.
 - **Simulated futures** tab: seeded Monte Carlo percentile fan chart.
 - **Historical scenarios** tab: 2008, 2020, 2022, or custom stress windows,
   with unavailable scenarios explained.
@@ -69,16 +72,20 @@ There is no separate backend or database: the Streamlit app calls the
   values converted to weights (see [Holdings input](#holdings-input)).
 - Portfolio returns rebalanced daily, monthly, quarterly, annually, or never
   (buy-and-hold); see [Rebalancing and trading costs](#rebalancing-and-trading-costs).
-- Risk metrics: annualized return and volatility, Sharpe ratio, cumulative
-  wealth, drawdown series, max drawdown, and per-asset risk contributions.
+- Risk metrics: annualized return and volatility, Sharpe, Sortino, and
+  Calmar ratios, cumulative wealth, drawdown series, max drawdown, and
+  per-asset risk contributions.
 - Tail risk: historical VaR and CVaR (Expected Shortfall) at 95% and 99%
-  (see [Historical VaR and CVaR](#historical-var-and-cvar)).
+  (see [Historical VaR and CVaR](#historical-var-and-cvar)), plus normal and
+  Cornish-Fisher VaR, rolling out-of-sample VaR, and a Kupiec backtest (see
+  [VaR models and backtesting](#var-models-and-backtesting)).
 - Dated rolling volatility, Sharpe ratio, and drawdown over 21-, 63-, and
   126-day windows (see [Rolling risk metrics](#rolling-risk-metrics)).
 - Long-only minimum-volatility and maximum-Sharpe portfolios and the
   efficient frontier (see [Portfolio optimization](#portfolio-optimization)).
 - Benchmark comparison against SPY (growth curves plus excess return, beta,
-  correlation, and tracking error) and concentration measures (Herfindahl
+  correlation, tracking error, information ratio, and up/down capture) and
+  concentration measures (Herfindahl
   index, effective number of holdings, correlation matrix).
 - Monte Carlo simulation of future wealth and historical stress testing
   (see [Simulation and stress testing](#simulation-and-stress-testing)).
