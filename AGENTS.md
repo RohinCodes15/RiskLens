@@ -15,9 +15,10 @@ src/risklens/
    data.py            tickers → price DataFrame (yfinance) → daily returns
    holdings.py        holdings CSV → ticker amounts; shares or dollars + latest prices → weights
    analytics/
-     metrics.py       returns + weights → portfolio returns → risk metrics, VaR/CVaR
+     metrics.py       returns + weights → portfolio returns → risk metrics, ratios, VaR/CVaR
+     value_at_risk.py daily returns → normal / Cornish-Fisher VaR, rolling VaR, Kupiec backtest
      engine.py        adjusted prices + weights → PortfolioMetrics
-     benchmark.py     portfolio vs. SPY growth and statistics
+     benchmark.py     portfolio vs. SPY growth, statistics, information ratio, capture
      concentration.py HHI, effective holdings, correlation matrix
      rolling.py       daily returns → dated rolling volatility, Sharpe, drawdown
      optimization.py  adjusted prices → long-only min-vol / max-Sharpe weights, efficient frontier
