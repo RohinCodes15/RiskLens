@@ -10,7 +10,13 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from risklens.analytics import analyze_portfolio, cornish_fisher_var, normal_var, var_backtest
+from risklens.analytics import (
+    analyze_portfolio,
+    benchmark_statistics,
+    cornish_fisher_var,
+    normal_var,
+    var_backtest,
+)
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
@@ -151,3 +157,33 @@ def test_backtest_explains_when_the_period_is_shorter_than_the_window(
     )
     app = widget(app.selectbox, "VaR estimation window").select(63).run()
     assert app.table[0].value["Days tested"].tolist() == [36] * 3
+
+
+def test_spy_section_shows_information_ratio_and_capture(prices: pd.DataFrame) -> None:
+    app = analyze("Quarterly", 10.0)
+    assert not app.exception and not app.error
+    expected = benchmark_statistics(
+        prices[["AAPL", "MSFT"]],
+        [0.5, 0.5],
+        prices["SPY"],
+        rebalance="quarterly",
+        cost_bps=10.0,
+    )
+    assert cards(app)["Information ratio"] == f"{expected.information_ratio:.2f}"
+    assert cards(app)["Upside capture"] == f"{expected.upside_capture:.0%}"
+    assert cards(app)["Downside capture"] == f"{expected.downside_capture:.0%}"
+
+
+def test_ratios_explain_why_they_are_missing_when_spy_is_flat(
+    prices: pd.DataFrame, download: MagicMock
+) -> None:
+    serve(download, prices.assign(SPY=450.0))
+    app = analyze()
+    assert not app.exception and not app.error
+    assert app.get("plotly_chart")  # the SPY growth chart still shows
+    assert "Information ratio" not in cards(app)
+    assert any(
+        "Information ratio and capture are unavailable. Benchmark returns are constant"
+        in note.value
+        for note in app.info
+    )
