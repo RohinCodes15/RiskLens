@@ -9,8 +9,9 @@ observed returns. This module fits two models to the same returns:
   skewness and excess kurtosis, so lopsided or fat-tailed returns move it.
 
 ``rolling_var`` re-estimates any of the three methods each day from the
-returns before it, giving the out-of-sample forecasts a backtest needs, and
-``kupiec_test`` checks whether a forecast's breach count is plausible.
+returns before it, giving the out-of-sample forecasts a backtest needs;
+``kupiec_test`` checks whether a breach count is plausible, and
+``var_backtest`` runs both for every method.
 
 Every VaR here is a one-day loss as a positive fraction (0.02 == 2%), the
 sign convention of ``historical_var``.
@@ -182,3 +183,41 @@ def kupiec_test(breaches: int, days: int, confidence: float) -> tuple[float, flo
     log_ratio = xlogy(n - x, 1 - p) + xlogy(x, p) - xlogy(n - x, 1 - rate) - xlogy(x, rate)
     statistic = max(float(-2 * log_ratio), 0.0)  # rounding leaves about -1e-16 when rate == p
     return statistic, float(chi2.sf(statistic, df=1))
+
+
+def var_backtest(
+    returns: pd.Series, window: int, confidence: float = DEFAULT_VAR_CONFIDENCE
+) -> pd.DataFrame:
+    """Backtest every VaR method on the days after its estimation window.
+
+    For each method in ``VAR_METHODS``, compares each day's return with that
+    day's ``rolling_var`` forecast. A breach is a loss larger than the
+    forecast (``return < -VaR``). Every method is tested on the same days.
+
+    Returns:
+        DataFrame indexed by method with columns ``days`` (days tested),
+        ``breaches``, ``expected_breaches`` (``days * (1 - confidence)``),
+        ``breach_rate`` (breaches / days), and the Kupiec ``statistic`` and
+        ``p_value`` (see ``kupiec_test``).
+
+    Raises:
+        ValueError: on the same inputs as ``rolling_var``.
+    """
+    rows = []
+    for method in VAR_METHODS:
+        forecasts = rolling_var(returns, window, confidence, method)
+        tested = returns.to_numpy(dtype=float)[-len(forecasts) :]
+        breaches = int(np.sum(tested < -forecasts.to_numpy()))
+        statistic, p_value = kupiec_test(breaches, len(forecasts), confidence)
+        rows.append(
+            {
+                "method": method,
+                "days": len(forecasts),
+                "breaches": breaches,
+                "expected_breaches": len(forecasts) * (1 - confidence),
+                "breach_rate": breaches / len(forecasts),
+                "statistic": statistic,
+                "p_value": p_value,
+            }
+        )
+    return pd.DataFrame(rows).set_index("method")

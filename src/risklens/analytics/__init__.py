@@ -66,6 +66,7 @@ from risklens.analytics.value_at_risk import (
     kupiec_test,
     normal_var,
     rolling_var,
+    var_backtest,
 )
 
 __all__ = [
@@ -124,4 +125,5 @@ __all__ = [
     "sortino_ratio",
     "stress_test",
     "tail_risk_summary",
+    "var_backtest",
 ]
