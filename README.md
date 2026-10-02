@@ -401,8 +401,11 @@ of `historical_var`: one-day losses as positive fractions.
   skewness and K the sample excess kurtosis (bias-corrected, as
   `pandas.Series.skew` and `.kurt` compute them). Needs 4 returns. Negative
   skew raises the loss. Fat tails raise it at 99% but can lower it at 95%,
-  where the (z³ − 3z) term is positive. The expansion is an approximation
-  and can misbehave for extreme skewness or kurtosis.
+  where the (z³ − 3z) term is positive. The expansion is only a valid
+  quantile while it rises from z to the median and stays below the mean;
+  outside that range, typically after one huge outlier such as a +25% or
+  −40% day, it falls back to `normal_var` instead of reporting a near-zero
+  loss.
 - Constant returns give both models minus that return.
 
 **Backtest.** `rolling_var` forecasts each day's VaR from the `window`
@@ -411,8 +414,9 @@ on; `method` is one of `VAR_METHODS` (`"historical"`, `"normal"`,
 `"cornish_fisher"`). A breach is a day whose return is below −VaR.
 `var_backtest` counts breaches for every method over the same days and
 returns, indexed by method, `days`, `breaches`, `expected_breaches`
-(days × (1 − confidence)), `breach_rate`, and the Kupiec `statistic` and
-`p_value`.
+(days × (1 − confidence)), `breach_rate`, the Kupiec `statistic` and
+`p_value`, and `sufficient_sample`, False when fewer than one breach is
+expected (the dashboard then shows "Too few test days to judge").
 
 **Kupiec test.** `kupiec_test` is the proportion-of-failures likelihood
 ratio −2 ln[(1 − p)^(n−x) p^x / ((1 − x/n)^(n−x) (x/n)^x)] with p = 1 −
@@ -424,7 +428,9 @@ at 99% expect only 2.55 breaches.
 
 The dashboard backtests with a 63-, 126-, or 252-day window
 (`VAR_BACKTEST_WINDOWS`, default 126, so a one-year period still leaves
-about 125 test days) at the Tail Risk confidence level.
+about 125 test days) at the Tail Risk confidence level. A window with
+under five days beyond the cutoff (every window at 99%) leaves historical
+VaR noisy and prone to too many breaches, and the dashboard says so.
 
 ## Rolling risk metrics
 
