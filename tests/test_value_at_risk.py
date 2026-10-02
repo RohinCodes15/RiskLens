@@ -197,6 +197,7 @@ def test_backtest_counts_losses_beyond_each_days_forecast() -> None:
         "breach_rate",
         "statistic",
         "p_value",
+        "sufficient_sample",
     ]
     for method in VAR_METHODS:
         forecasts = rolling_var(returns, 63, 0.95, method)
@@ -246,3 +247,11 @@ def test_cornish_fisher_falls_back_to_normal_var_after_a_huge_outlier(shock: flo
 def test_cornish_fisher_keeps_its_adjustment_for_an_ordinary_bad_day() -> None:
     returns = with_outlier(-0.10)
     assert cornish_fisher_var(returns, 0.95) != pytest.approx(normal_var(returns, 0.95))
+
+
+def test_backtest_flags_too_few_test_days_for_a_verdict() -> None:
+    returns = daily(300)
+    assert var_backtest(returns, 63, 0.95)["sufficient_sample"].all()  # 237 days, 11.9 expected
+    short = var_backtest(returns.iloc[:64], 63, 0.95)  # one test day, 0.05 breaches expected
+    assert not short["sufficient_sample"].any()
+    assert not var_backtest(returns, 252, 0.99)["sufficient_sample"].any()  # 47 days, 0.47
