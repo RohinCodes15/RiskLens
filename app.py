@@ -16,6 +16,7 @@ from risklens.analytics import (
     EfficientFrontier,
     OptimizedPortfolio,
     analyze_portfolio,
+    benchmark_statistics,
     compare_to_benchmark,
     cornish_fisher_var,
     correlation_matrix,
@@ -151,6 +152,45 @@ def render_tail_risk(analysis: dict) -> None:
         "CVaR measures average loss in the worst historical tail beyond the marked return cutoff. Historical estimates can understate future losses; VaR is not a maximum possible loss."
     )
     render_var_backtest(daily, confidence)
+
+
+def render_benchmark_ratios(analysis: dict) -> None:
+    """Information ratio and up/down capture against SPY on the shared daily returns."""
+    stats = analysis.get("benchmark_stats")
+    if stats is None:
+        reason = analysis.get("benchmark_error", "Select Analyze portfolio to compute them.")
+        st.info(f"Information ratio and capture are unavailable. {reason}")
+        return
+    ratios = (
+        (
+            "Information ratio",
+            stats.information_ratio,
+            ".2f",
+            "Annual return above SPY ÷ tracking error: excess return per unit of risk taken "
+            "relative to SPY. N/A when the portfolio tracks SPY exactly.",
+        ),
+        (
+            "Upside capture",
+            stats.upside_capture,
+            ".0%",
+            "Geometric mean daily return on days SPY rose, as a share of SPY's. Above 100% "
+            "means the portfolio gained more than SPY on those days.",
+        ),
+        (
+            "Downside capture",
+            stats.downside_capture,
+            ".0%",
+            "Geometric mean daily return on days SPY fell, as a share of SPY's. Below 100% "
+            "means it lost less than SPY on those days; lower is better.",
+        ),
+    )
+    for column, (label, value, spec, help_text) in zip(st.columns(3), ratios, strict=True):
+        with column.container(border=True):
+            st.metric(label, format(value, spec) if isfinite(value) else "N/A", help=help_text)
+    st.caption(
+        "From daily returns on the shared dates, net of the selected rebalancing and trading "
+        "costs. Capture compares average returns on SPY's up days and down days separately."
+    )
 
 
 VAR_METHOD_LABELS = {
@@ -981,6 +1021,13 @@ if submitted:
                     rebalance=rebalance,
                     cost_bps=cost_bps,
                 )
+                st.session_state["analysis"]["benchmark_stats"] = benchmark_statistics(
+                    prices,
+                    weights,
+                    benchmark_prices,
+                    rebalance=rebalance,
+                    cost_bps=cost_bps,
+                )
             except (ValueError, DataFetchError, NotImplementedError) as exc:
                 st.session_state["analysis"]["benchmark_error"] = str(exc)
     except NotImplementedError:
@@ -1250,6 +1297,7 @@ else:
         st.caption(
             "Ending returns are cumulative over this shared period, not annualized. The portfolio follows the selected rebalancing on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns."
         )
+        render_benchmark_ratios(analysis)
 
     render_tail_risk(analysis)
     simulation_tab, stress_tab = st.tabs(["Simulated futures", "Historical scenarios"])
