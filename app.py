@@ -203,6 +203,8 @@ DEFAULT_BACKTEST_WINDOW = 126  # half a year, so the default one-year period has
 
 def backtest_result(row: pd.Series) -> str:
     """Plain-language Kupiec verdict for one VaR method's backtest row."""
+    if not row["sufficient_sample"]:
+        return "Too few test days to judge"
     if row["p_value"] >= KUPIEC_SIGNIFICANCE:
         return "Plausible"
     if row["breaches"] > row["expected_breaches"]:
