@@ -10,7 +10,9 @@ import streamlit as st
 
 from risklens.analytics import (
     HISTORICAL_SCENARIOS,
+    KUPIEC_SIGNIFICANCE,
     ROLLING_WINDOWS,
+    VAR_BACKTEST_WINDOWS,
     EfficientFrontier,
     OptimizedPortfolio,
     analyze_portfolio,
@@ -33,6 +35,7 @@ from risklens.analytics import (
     simulate_portfolio,
     stress_test,
     tail_risk_summary,
+    var_backtest,
 )
 from risklens.analytics.simulation import (
     DEFAULT_SEED,
@@ -146,6 +149,70 @@ def render_tail_risk(analysis: dict) -> None:
     st.plotly_chart(histogram, key="tail_risk_histogram", width="stretch")
     st.caption(
         "CVaR measures average loss in the worst historical tail beyond the marked return cutoff. Historical estimates can understate future losses; VaR is not a maximum possible loss."
+    )
+    render_var_backtest(daily, confidence)
+
+
+VAR_METHOD_LABELS = {
+    "historical": "Historical",
+    "normal": "Normal",
+    "cornish_fisher": "Cornish-Fisher",
+}
+DEFAULT_BACKTEST_WINDOW = 126  # half a year, so the default one-year period has test days
+
+
+def backtest_result(row: pd.Series) -> str:
+    """Plain-language Kupiec verdict for one VaR method's backtest row."""
+    if row["p_value"] >= KUPIEC_SIGNIFICANCE:
+        return "Plausible"
+    if row["breaches"] > row["expected_breaches"]:
+        return "Too many breaches: VaR too low"
+    return "Too few breaches: VaR too high"
+
+
+def render_var_backtest(daily: pd.Series, confidence: float) -> None:
+    """Score each VaR method on the days after its estimation window."""
+    st.markdown("**VaR backtest**")
+    window = st.selectbox(
+        "VaR estimation window",
+        VAR_BACKTEST_WINDOWS,
+        index=VAR_BACKTEST_WINDOWS.index(DEFAULT_BACKTEST_WINDOW),
+        format_func=lambda days: f"{days} trading days",
+        help="Each day's VaR is estimated from this many earlier returns, then compared "
+        "with that day's actual return.",
+    )
+    if len(daily) <= window:
+        st.info(
+            f"A {window}-day backtest needs more than {window} daily returns; this period "
+            f"has {len(daily):,}. Choose an earlier start date or a shorter window."
+        )
+        return
+    try:
+        backtest = var_backtest(daily, window, confidence)
+    except ValueError as exc:
+        st.warning(f"The VaR backtest is unavailable. {exc}")
+        return
+    table = pd.DataFrame(
+        {
+            "Days tested": backtest["days"],
+            "Breaches": backtest["breaches"],
+            "Expected": backtest["expected_breaches"],
+            "Breach rate": backtest["breach_rate"],
+            "Kupiec p-value": backtest["p_value"],
+            "Result": backtest.apply(backtest_result, axis=1),
+        }
+    ).rename(index=VAR_METHOD_LABELS)
+    st.table(
+        table.rename_axis("VaR method").style.format(
+            {"Expected": "{:.1f}", "Breach rate": "{:.2%}", "Kupiec p-value": "{:.3f}"}
+        )
+    )
+    st.caption(
+        f"A breach is a day whose loss exceeded that day's {confidence:.0%} VaR, estimated "
+        f"only from the {window} returns before it. A correct VaR is breached on about "
+        f"{1 - confidence:.0%} of days; the Kupiec test flags breach counts that are "
+        f"implausibly high or low (p-value below {KUPIEC_SIGNIFICANCE:.0%}). With few test "
+        "days the test has little power, especially at 99%."
     )
 
 
