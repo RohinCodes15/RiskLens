@@ -1,8 +1,8 @@
 {
   "app.py": {
-    "mtime": 1793687754.2965283,
-    "seen": 1793687961.848727,
-    "ast_hash": "fe9fc7b29afb2aa6bebf5dae292f4791",
+    "mtime": 1793691460.5554261,
+    "seen": 1793691475.35475,
+    "ast_hash": "b62b8f8eb3f866b0c28f497ee32268cd",
     "semantic_hash": ""
   },
   "pyproject.toml": {
@@ -18,15 +18,15 @@
     "semantic_hash": ""
   },
   "src/risklens/analytics/__init__.py": {
-    "mtime": 1793680583.6427457,
-    "seen": 1793681289.554463,
-    "ast_hash": "6dace580eebbaf742670b036410b1216",
+    "mtime": 1793689451.6724665,
+    "seen": 1793691475.354764,
+    "ast_hash": "cef02a9059a49d54c1c76fed235a3f96",
     "semantic_hash": ""
   },
   "src/risklens/analytics/benchmark.py": {
-    "mtime": 1793680638.776581,
-    "seen": 1793681289.554465,
-    "ast_hash": "0aedd234c5fdb06dc5181d1f273ba18d",
+    "mtime": 1793689178.5206614,
+    "seen": 1793691475.354765,
+    "ast_hash": "f0894ecf8aa3dab457b5457f753cffb8",
     "semantic_hash": ""
   },
   "src/risklens/analytics/concentration.py": {
@@ -36,15 +36,15 @@
     "semantic_hash": ""
   },
   "src/risklens/analytics/engine.py": {
-    "mtime": 1793680613.198934,
-    "seen": 1793681289.554467,
-    "ast_hash": "03ff06396fe0be3953ab804123313d94",
+    "mtime": 1793688567.6132874,
+    "seen": 1793691475.3547678,
+    "ast_hash": "5a4df53f38d1c086ac9093952eb520df",
     "semantic_hash": ""
   },
   "src/risklens/analytics/metrics.py": {
-    "mtime": 1793680568.9400778,
-    "seen": 1793681289.554469,
-    "ast_hash": "8159748351fab83b4692fdc9ea73fca2",
+    "mtime": 1793688524.4027696,
+    "seen": 1793691475.354769,
+    "ast_hash": "a19aa02c39a75c393eab552129a3075f",
     "semantic_hash": ""
   },
   "src/risklens/analytics/simulation.py": {
@@ -132,9 +132,9 @@
     "semantic_hash": ""
   },
   "tests/test_smoke.py": {
-    "mtime": 1793680966.959902,
-    "seen": 1793681289.554508,
-    "ast_hash": "4509db7302f9575ce76f0601dd10b8c5",
+    "mtime": 1793689607.9717894,
+    "seen": 1793691475.354817,
+    "ast_hash": "34e5948f0a280b23918d580c0d381dff",
     "semantic_hash": ""
   },
   "tests/test_stress.py": {
@@ -162,15 +162,15 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1793687871.879207,
-    "seen": 1793687961.848802,
-    "ast_hash": "0cfd984ed7d5cb992f6efb10f745b03b",
+    "mtime": 1793690192.5054765,
+    "seen": 1793691475.354832,
+    "ast_hash": "0ddf3871809f03196477bcf4e5692f92",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793687931.1440196,
-    "seen": 1793687961.848803,
-    "ast_hash": "ff0a9165113e411294c85aca12447d33",
+    "mtime": 1793691473.2858517,
+    "seen": 1793691475.354833,
+    "ast_hash": "f425e58b61ababb81fbb78d95ad39188",
     "semantic_hash": ""
   },
   "src/risklens/analytics/optimization.py": {
@@ -324,21 +324,51 @@
     "semantic_hash": ""
   },
   "src/risklens/holdings.py": {
-    "mtime": 1793687311.8156788,
-    "seen": 1793687961.848753,
-    "ast_hash": "418c91a9dde576f1ec27f62401337ea2",
+    "mtime": 1793688835.2524447,
+    "seen": 1793691475.3547788,
+    "ast_hash": "440748358077c0a1c7da321be6e5578f",
     "semantic_hash": ""
   },
   "tests/test_holdings.py": {
-    "mtime": 1793687322.969192,
-    "seen": 1793687961.848768,
-    "ast_hash": "312315d77eb3fc2dcac157adaaa37074",
+    "mtime": 1793688813.8801498,
+    "seen": 1793691475.354796,
+    "ast_hash": "eccb6086aa9735e1bbc07ce74c52eeca",
     "semantic_hash": ""
   },
   "tests/test_holdings_ui.py": {
-    "mtime": 1793687767.885126,
-    "seen": 1793687961.8487701,
-    "ast_hash": "8003f2d3837360c0dbf3a79baf0b491e",
+    "mtime": 1793689006.44964,
+    "seen": 1793691475.3547971,
+    "ast_hash": "0eb5933ad88bdd58063427fcb5ec559b",
+    "semantic_hash": ""
+  },
+  "src/risklens/analytics/value_at_risk.py": {
+    "mtime": 1793691338.4256876,
+    "seen": 1793691475.3547761,
+    "ast_hash": "15fed310371833bf67a56b99dee8f37f",
+    "semantic_hash": ""
+  },
+  "tests/test_benchmark_ratios.py": {
+    "mtime": 1793689179.7513218,
+    "seen": 1793691475.354784,
+    "ast_hash": "34154e89d064d1cd0da6b6a53e1ecb4f",
+    "semantic_hash": ""
+  },
+  "tests/test_ratios.py": {
+    "mtime": 1793688585.373236,
+    "seen": 1793691475.3548028,
+    "ast_hash": "0b609008edfaf8d3a8de081d9fbea890",
+    "semantic_hash": ""
+  },
+  "tests/test_risk_metrics_ui.py": {
+    "mtime": 1793691381.381834,
+    "seen": 1793691475.3548071,
+    "ast_hash": "8c76518e3ca85e69eeb99b4b79744af0",
+    "semantic_hash": ""
+  },
+  "tests/test_value_at_risk.py": {
+    "mtime": 1793691338.4262154,
+    "seen": 1793691475.3548312,
+    "ast_hash": "cbd80e9d3191b1300e6dc5c92227d386",
     "semantic_hash": ""
   }
 }
