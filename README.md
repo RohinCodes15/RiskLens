@@ -319,6 +319,31 @@ net of costs. `PortfolioMetrics.annual_turnover` reports mean daily
 turnover × 252. Optimization, risk contributions, and Monte Carlo still
 assume constant weights without costs.
 
+## Risk-adjusted ratios
+
+```python
+sortino_ratio(returns, risk_free_rate=0.0) -> float
+calmar_ratio(returns) -> float
+benchmark_statistics(...).information_ratio / .upside_capture / .downside_capture
+```
+
+All take simple daily returns (fractions); `analyze_portfolio` reports the
+first two and `benchmark_statistics` the rest.
+
+| Ratio | Definition | Reads as |
+|-------|------------|----------|
+| Sortino | (mean daily return × 252 − risk-free rate) / (√(mean of squared daily shortfalls below risk-free ÷ 252) × √252), counting every day, so up days add zero shortfall | Sharpe with only losses counted as risk; NaN without a down day |
+| Calmar | compound annual growth (final wealth^(252 / days) − 1) / \|max drawdown\| | yearly growth per unit of worst decline; NaN without a drawdown |
+| Information ratio | (portfolio − SPY annualized return) / tracking error | excess return per unit of risk relative to SPY; NaN when the portfolio tracks SPY exactly |
+| Upside capture | geometric mean daily return on days SPY rose ÷ SPY's on those days | above 1.0: gained more than SPY on up days |
+| Downside capture | the same on days SPY fell | below 1.0: lost less than SPY on down days (lower is better); negative: gained while SPY fell |
+
+Calmar compounds growth, the usual convention, unlike the arithmetic
+annualized return used elsewhere. Capture follows Morningstar's
+geometric-mean method on daily data; days when SPY moved less than 1e-12
+count as neither up nor down, and a ratio is NaN when there are no such days.
+Every figure is net of the chosen rebalancing and trading costs.
+
 ## Historical VaR and CVaR
 
 ```python
