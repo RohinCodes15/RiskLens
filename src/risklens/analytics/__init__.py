@@ -59,15 +59,18 @@ from risklens.analytics.stress import (
     stress_test,
 )
 from risklens.analytics.value_at_risk import (
+    KUPIEC_SIGNIFICANCE,
     VAR_BACKTEST_WINDOWS,
     VAR_METHODS,
     cornish_fisher_var,
+    kupiec_test,
     normal_var,
     rolling_var,
 )
 
 __all__ = [
     "HISTORICAL_SCENARIOS",
+    "KUPIEC_SIGNIFICANCE",
     "REBALANCE_FREQUENCIES",
     "ROLLING_WINDOWS",
     "TRADING_DAYS_PER_YEAR",
@@ -101,6 +104,7 @@ __all__ = [
     "herfindahl_index",
     "historical_cvar",
     "historical_var",
+    "kupiec_test",
     "max_drawdown",
     "max_sharpe_portfolio",
     "min_volatility_portfolio",

@@ -9,7 +9,8 @@ observed returns. This module fits two models to the same returns:
   skewness and excess kurtosis, so lopsided or fat-tailed returns move it.
 
 ``rolling_var`` re-estimates any of the three methods each day from the
-returns before it, giving the out-of-sample forecasts a backtest needs.
+returns before it, giving the out-of-sample forecasts a backtest needs, and
+``kupiec_test`` checks whether a forecast's breach count is plausible.
 
 Every VaR here is a one-day loss as a positive fraction (0.02 == 2%), the
 sign convention of ``historical_var``.
@@ -20,7 +21,8 @@ import numbers
 import numpy as np
 import pandas as pd
 from numpy.lib.stride_tricks import sliding_window_view
-from scipy.stats import norm
+from scipy.special import xlogy
+from scipy.stats import chi2, norm
 
 from risklens.analytics.metrics import (
     DEFAULT_VAR_CONFIDENCE,
@@ -34,6 +36,7 @@ from risklens.analytics.metrics import (
 VAR_METHODS = ("historical", "normal", "cornish_fisher")
 MIN_MOMENT_OBS = 4  # bias-corrected excess kurtosis needs four returns
 VAR_BACKTEST_WINDOWS = (63, 126, 252)  # about a quarter, half a year, and a year
+KUPIEC_SIGNIFICANCE = 0.05  # a p-value below 5% rejects the VaR model
 
 
 def _skew_kurtosis(rows: np.ndarray, mean: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -144,3 +147,38 @@ def rolling_var(
     w = _validate_rolling_inputs(returns, window, confidence, method)
     earlier = sliding_window_view(returns.to_numpy(dtype=float)[:-1], w)
     return pd.Series(_var_rows(earlier, confidence, method), index=returns.index[w:], name="var")
+
+
+def _whole_number(value: object, name: str) -> int:
+    """Return ``value`` as an int, rejecting booleans and non-integers."""
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, numbers.Integral):
+        raise ValueError(f"{name} must be a whole number.")
+    return int(value)
+
+
+def kupiec_test(breaches: int, days: int, confidence: float) -> tuple[float, float]:
+    """Kupiec proportion-of-failures test of a VaR breach count.
+
+    If the VaR is right, losses exceed it on a fraction ``p = 1 - confidence``
+    of days. With ``x`` breaches in ``n`` days, the likelihood ratio
+    ``-2 ln[(1-p)^(n-x) p^x / ((1-x/n)^(n-x) (x/n)^x)]`` then follows a
+    chi-square distribution with one degree of freedom. Returns
+    ``(statistic, p_value)``. A p-value below ``KUPIEC_SIGNIFICANCE`` rejects
+    the VaR: too many breaches mean it understates losses, too few that it
+    overstates them.
+
+    Raises:
+        ValueError: if ``days`` is not a whole number of at least 1,
+            ``breaches`` is not a whole number from 0 to ``days``, or
+            confidence is not in (0, 1).
+    """
+    _validate_confidence(confidence)
+    n, x = _whole_number(days, "days"), _whole_number(breaches, "breaches")
+    if n < 1:
+        raise ValueError(f"days must be at least 1; got {n}.")
+    if not 0 <= x <= n:
+        raise ValueError(f"breaches must be between 0 and {n}; got {x}.")
+    p, rate = 1 - confidence, x / n
+    log_ratio = xlogy(n - x, 1 - p) + xlogy(x, p) - xlogy(n - x, 1 - rate) - xlogy(x, rate)
+    statistic = max(float(-2 * log_ratio), 0.0)  # rounding leaves about -1e-16 when rate == p
+    return statistic, float(chi2.sf(statistic, df=1))
