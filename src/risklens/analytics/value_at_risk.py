@@ -215,8 +215,11 @@ def var_backtest(
     Returns:
         DataFrame indexed by method with columns ``days`` (days tested),
         ``breaches``, ``expected_breaches`` (``days * (1 - confidence)``),
-        ``breach_rate`` (breaches / days), and the Kupiec ``statistic`` and
-        ``p_value`` (see ``kupiec_test``).
+        ``breach_rate`` (breaches / days), the Kupiec ``statistic`` and
+        ``p_value`` (see ``kupiec_test``), and ``sufficient_sample``. That
+        flag is False when fewer than one breach is expected, too few test
+        days for the Kupiec verdict to mean much (the ``tail_risk_summary``
+        rule).
 
     Raises:
         ValueError: on the same inputs as ``rolling_var``.
@@ -227,15 +230,17 @@ def var_backtest(
         tested = returns.to_numpy(dtype=float)[-len(forecasts) :]
         breaches = int(np.sum(tested < -forecasts.to_numpy()))
         statistic, p_value = kupiec_test(breaches, len(forecasts), confidence)
+        expected = len(forecasts) * (1 - confidence)
         rows.append(
             {
                 "method": method,
                 "days": len(forecasts),
                 "breaches": breaches,
-                "expected_breaches": len(forecasts) * (1 - confidence),
+                "expected_breaches": expected,
                 "breach_rate": breaches / len(forecasts),
                 "statistic": statistic,
                 "p_value": p_value,
+                "sufficient_sample": expected >= 1 - RETURN_NOISE_TOLERANCE,
             }
         )
     return pd.DataFrame(rows).set_index("method")
