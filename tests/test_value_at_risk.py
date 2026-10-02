@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from risklens.analytics import cornish_fisher_var, historical_var, normal_var
+from risklens.analytics import cornish_fisher_var, historical_var, normal_var, rolling_var
 
 RETURNS = pd.Series(
     [0.012, -0.021, 0.004, 0.017, -0.035, 0.009, -0.006, 0.002, 0.011, -0.014],
@@ -64,3 +64,54 @@ def test_models_reject_invalid_input(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         model(returns, confidence)
+
+
+def daily(count: int, seed: int = 3) -> pd.Series:
+    values = np.random.default_rng(seed).standard_t(4, count) * 0.01
+    return pd.Series(values, index=pd.bdate_range("2025-01-02", periods=count))
+
+
+@pytest.mark.parametrize(
+    ("method", "model"),
+    [
+        ("historical", historical_var),
+        ("normal", normal_var),
+        ("cornish_fisher", cornish_fisher_var),
+    ],
+)
+def test_each_forecast_is_the_model_on_the_window_before_that_day(
+    method: str, model: object
+) -> None:
+    returns = daily(80)
+    forecasts = rolling_var(returns, 20, 0.95, method)
+    assert forecasts.index.equals(returns.index[20:])
+    for position in (20, 47, 79):
+        expected = model(returns.iloc[position - 20 : position], 0.95)
+        assert forecasts[returns.index[position]] == pytest.approx(expected)
+
+
+def test_a_days_own_return_never_changes_its_forecast() -> None:
+    returns = daily(40)
+    shocked = returns.copy()
+    shocked.iloc[30] = -0.5
+    before, after = rolling_var(returns, 10), rolling_var(shocked, 10)
+    pd.testing.assert_series_equal(before.loc[: returns.index[30]], after.loc[: returns.index[30]])
+    assert after[returns.index[31]] > before[returns.index[31]]
+
+
+@pytest.mark.parametrize(
+    ("returns", "window", "method", "message"),
+    [
+        (daily(30), 10, "garch", "method must be one of"),
+        (daily(30), 3, "normal", "at least 4"),
+        (daily(30), 10.5, "normal", "whole number"),
+        (daily(30), True, "normal", "whole number"),
+        (daily(10), 10, "normal", "more than 10 daily returns"),
+        (daily(30).reset_index(drop=True), 10, "normal", "indexed by date"),
+    ],
+)
+def test_rolling_var_rejects_invalid_input(
+    returns: pd.Series, window: object, method: str, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        rolling_var(returns, window, 0.95, method)
