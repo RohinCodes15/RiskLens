@@ -15,6 +15,7 @@ from risklens.analytics import (
     OptimizedPortfolio,
     analyze_portfolio,
     compare_to_benchmark,
+    cornish_fisher_var,
     correlation_matrix,
     cumulative_wealth,
     custom_scenario,
@@ -25,6 +26,7 @@ from risklens.analytics import (
     herfindahl_index,
     max_sharpe_portfolio,
     min_volatility_portfolio,
+    normal_var,
     portfolio_returns,
     risk_contributions,
     rolling_metrics,
@@ -50,6 +52,14 @@ from risklens.holdings import holdings_to_weights, parse_holdings_csv
 from risklens.validation import MAX_COST_BPS, validate_tickers, validate_weights
 
 
+def model_var(model: object, daily: pd.Series, confidence: float) -> float:
+    """A VaR model's one-day loss, or NaN when the history is too short to fit it."""
+    try:
+        return model(daily, confidence)
+    except ValueError:  # the returns were already validated; only the sample size can fail
+        return float("nan")
+
+
 def render_tail_risk(analysis: dict) -> None:
     """Show backend one-day loss fractions and observed daily return fractions."""
     st.divider()
@@ -70,28 +80,43 @@ def render_tail_risk(analysis: dict) -> None:
         st.warning(f"Tail risk is unavailable. {exc}")
         return
     portfolio_value = analysis.get("portfolio_value")
-    var_column, cvar_column = st.columns(2)
-    with var_column.container(border=True):
-        st.metric(
+    estimates = (
+        (
             "One-day VaR",
-            f"{summary['var']:.2%}",
-            delta=dollar_change(-summary["var"], portfolio_value),
-            help="Historical Value at Risk: positive values represent losses; negative values mean the threshold was a gain.",
-        )
-    with cvar_column.container(border=True):
-        st.metric(
+            summary["var"],
+            "Historical Value at Risk: positive values represent losses; negative values mean the threshold was a gain.",
+        ),
+        (
             "One-day CVaR",
-            f"{summary['cvar']:.2%}",
-            delta=dollar_change(-summary["cvar"], portfolio_value),
-            help="Conditional VaR / Expected Shortfall: average loss among observations at or below the VaR return cutoff, including ties.",
-        )
+            summary["cvar"],
+            "Conditional VaR / Expected Shortfall: average loss among observations at or below the VaR return cutoff, including ties.",
+        ),
+        (
+            "Normal VaR",
+            model_var(normal_var, daily, confidence),
+            "Parametric VaR: the one-day loss at this confidence if daily returns were normal with this history's mean and volatility.",
+        ),
+        (
+            "Cornish-Fisher VaR",
+            model_var(cornish_fisher_var, daily, confidence),
+            "Normal VaR adjusted for this history's skewness and fat tails. Above Normal VaR when big losses were more common than a normal curve predicts; N/A with fewer than 4 returns.",
+        ),
+    )
+    for column, (label, loss, help_text) in zip(st.columns(4), estimates, strict=True):
+        with column.container(border=True):
+            st.metric(
+                label,
+                f"{loss:.2%}" if isfinite(loss) else "N/A",
+                delta=dollar_change(-loss, portfolio_value),
+                help=help_text,
+            )
     in_dollars = (
         f" Dollar amounts are the same changes on your ${portfolio_value:,.2f} portfolio."
         if portfolio_value is not None
         else ""
     )
     st.caption(
-        f"{confidence:.0%} confidence · {len(daily):,} observed daily returns. Positive card values mean losses; negative values mean gains. Figures are one-day estimates, not annualized.{in_dollars}"
+        f"{confidence:.0%} confidence · {len(daily):,} observed daily returns. Positive card values mean losses; negative values mean gains. Figures are one-day estimates, not annualized. Historical VaR and CVaR read the observed returns; Normal and Cornish-Fisher VaR fit a distribution to them.{in_dollars}"
     )
     if not summary["sufficient_sample"]:
         st.warning(
