@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from risklens.analytics import analyze_portfolio, cornish_fisher_var, normal_var
+from risklens.analytics import analyze_portfolio, cornish_fisher_var, normal_var, var_backtest
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
@@ -96,3 +96,58 @@ def test_cornish_fisher_var_is_na_with_fewer_than_four_returns(
     assert not app.exception and not app.error
     assert cards(app)["Cornish-Fisher VaR"] == "N/A"
     assert cards(app)["Normal VaR"] != "N/A"
+
+
+def serve(download: MagicMock, prices: pd.DataFrame) -> None:
+    download.side_effect = lambda tickers, **_: pd.concat({"Close": prices[list(tickers)]}, axis=1)
+
+
+def test_backtest_table_matches_var_backtest_for_the_chosen_window(prices: pd.DataFrame) -> None:
+    app = analyze()
+    assert widget(app.selectbox, "VaR estimation window").value == 126
+    app = widget(app.selectbox, "VaR estimation window").select(63).run()
+    assert not app.exception and not app.error
+    daily = analyze_portfolio(prices[["AAPL", "MSFT"]], [0.5, 0.5]).daily_returns
+    expected = var_backtest(daily, 63, 0.95)
+    table = app.table[0].value
+    assert list(table.index) == ["Historical", "Normal", "Cornish-Fisher"]
+    assert table["Days tested"].tolist() == expected["days"].tolist() == [236] * 3
+    assert table["Breaches"].tolist() == expected["breaches"].tolist()
+    np.testing.assert_allclose(table["Expected"], expected["expected_breaches"])
+    np.testing.assert_allclose(table["Breach rate"], expected["breach_rate"])
+    np.testing.assert_allclose(table["Kupiec p-value"], expected["p_value"])
+
+
+@pytest.mark.parametrize(
+    ("calm_first", "result"),
+    [(True, "Too many breaches: VaR too low"), (False, "Too few breaches: VaR too high")],
+)
+def test_backtest_flags_var_that_was_too_low_or_too_high(
+    download: MagicMock, calm_first: bool, result: str
+) -> None:
+    rng = np.random.default_rng(8)
+    calm, wild = rng.normal(0, 0.002, (150, 3)), rng.normal(0, 0.03, (150, 3))
+    returns = np.vstack([calm, wild] if calm_first else [wild, calm])
+    index = pd.bdate_range("2025-01-02", periods=300, name="Date")
+    serve(
+        download,
+        pd.DataFrame(100 * np.cumprod(1 + returns, axis=0), index, ["AAPL", "MSFT", "SPY"]),
+    )
+    app = analyze()
+    # Only historical and normal VaR are pinned: at 95%, Cornish-Fisher shrinks its
+    # VaR when kurtosis is high, so windows mixing both regimes can still pass.
+    assert app.table[0].value["Result"].tolist()[:2] == [result] * 2
+
+
+def test_backtest_explains_when_the_period_is_shorter_than_the_window(
+    prices: pd.DataFrame, download: MagicMock
+) -> None:
+    serve(download, prices.iloc[:100])
+    app = analyze()
+    assert not app.table
+    assert any(
+        "A 126-day backtest needs more than 126 daily returns; this period has 99." in note.value
+        for note in app.info
+    )
+    app = widget(app.selectbox, "VaR estimation window").select(63).run()
+    assert app.table[0].value["Days tested"].tolist() == [36] * 3
