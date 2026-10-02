@@ -103,7 +103,7 @@ def render_tail_risk(analysis: dict) -> None:
         (
             "Cornish-Fisher VaR",
             model_var(cornish_fisher_var, daily, confidence),
-            "Normal VaR adjusted for this history's skewness and fat tails. Above Normal VaR when big losses were more common than a normal curve predicts; N/A with fewer than 4 returns.",
+            "Normal VaR adjusted for this history's skewness and kurtosis (Cornish-Fisher). Negative skew raises it; fat tails raise it at 99% but can lower it at 95%. Equals Normal VaR when one extreme day puts the adjustment outside its valid range; N/A with fewer than 4 returns.",
         ),
     )
     for column, (label, loss, help_text) in zip(st.columns(4), estimates, strict=True):
@@ -199,6 +199,8 @@ VAR_METHOD_LABELS = {
     "cornish_fisher": "Cornish-Fisher",
 }
 DEFAULT_BACKTEST_WINDOW = 126  # half a year, so the default one-year period has test days
+# Below this many expected tail days per window, historical VaR is mostly noise.
+MIN_WINDOW_TAIL_DAYS = 5
 
 
 def backtest_result(row: pd.Series) -> str:
@@ -256,6 +258,13 @@ def render_var_backtest(daily: pd.Series, confidence: float) -> None:
         f"implausibly high or low (p-value below {KUPIEC_SIGNIFICANCE:.0%}). With few test "
         "days the test has little power, especially at 99%."
     )
+    tail_days = window * (1 - confidence)
+    if tail_days < MIN_WINDOW_TAIL_DAYS:
+        st.caption(
+            f"A {window}-day window holds only about {tail_days:.1f} days beyond the "
+            f"{confidence:.0%} cutoff, so historical VaR from it is noisy and tends to be "
+            "breached too often. A longer window gives it a fairer test."
+        )
 
 
 REBALANCE_CHOICES = {
