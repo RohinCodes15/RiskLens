@@ -125,7 +125,7 @@ streamlit run app.py
 
 ```bash
 pytest                                                # full suite, no network (yfinance is mocked)
-pytest tests/test_smoke.py tests/test_tail_risk_ui.py tests/test_risk_ui.py tests/test_holdings_ui.py  # dashboard tests only
+pytest tests/test_smoke.py tests/test_tail_risk_ui.py tests/test_risk_ui.py tests/test_holdings_ui.py tests/test_risk_metrics_ui.py  # dashboard tests only
 pytest --cov                                          # with branch coverage of src/risklens
 ruff check .                                          # lint
 ruff format --check .                                 # formatting
@@ -726,16 +726,19 @@ src/risklens/
   holdings.py             Holdings CSV parsing; shares or dollar values to weights
   analytics/
     engine.py             analyze_portfolio and PortfolioMetrics
-    metrics.py            Return-based metrics (volatility, Sharpe, VaR/CVaR, drawdown, ...)
+    metrics.py            Return-based metrics (volatility, Sharpe, Sortino, Calmar,
+                          VaR/CVaR, drawdown, ...)
+    value_at_risk.py      Normal and Cornish-Fisher VaR, rolling VaR, Kupiec backtest
     rolling.py            Dated rolling volatility, Sharpe, and drawdown
     optimization.py       Long-only min-volatility and max-Sharpe weights (SciPy)
-    benchmark.py          Portfolio vs. SPY growth and benchmark statistics
+    benchmark.py          Portfolio vs. SPY growth, statistics, information ratio, capture
     concentration.py      Herfindahl index, effective holdings, correlation
     simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio)
     stress.py             Historical stress windows (stress_test, custom_scenario)
 tests/                    pytest suite (network-free); test_smoke.py,
-                          test_tail_risk_ui.py, test_risk_ui.py, and
-                          test_holdings_ui.py drive the dashboard with AppTest
+                          test_tail_risk_ui.py, test_risk_ui.py,
+                          test_holdings_ui.py, and test_risk_metrics_ui.py
+                          drive the dashboard with AppTest
 benchmarks/               Reproducible benchmarks (simulation_memory.py: Monte
                           Carlo peak memory at 10,000 paths × 1,260 days)
 pyproject.toml            Package metadata, dependencies, pytest and Ruff config
