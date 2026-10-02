@@ -379,6 +379,53 @@ returns give VaR equal to CVaR, both equal to minus that return.
 They assume the sample's tail is representative, ignore volatility
 clustering, and are not scaled to longer horizons.
 
+## VaR models and backtesting
+
+```python
+normal_var(returns, confidence=0.95) -> float
+cornish_fisher_var(returns, confidence=0.95) -> float
+rolling_var(returns, window, confidence=0.95, method="historical") -> pd.Series
+kupiec_test(breaches, days, confidence) -> tuple[float, float]
+var_backtest(returns, window, confidence=0.95) -> pd.DataFrame
+```
+
+These live in `risklens.analytics.value_at_risk` and use the sign convention
+of `historical_var`: one-day losses as positive fractions.
+
+**Models.**
+- `normal_var` = −(mean + z × standard deviation), where z is the standard
+  normal quantile at 1 − confidence (−1.645 at 95%, −2.326 at 99%) and the
+  standard deviation is the sample one (ddof=1). Needs 2 returns.
+- `cornish_fisher_var` replaces z with
+  z + (z² − 1)S/6 + (z³ − 3z)K/24 − (2z³ − 5z)S²/36, where S is the sample
+  skewness and K the sample excess kurtosis (bias-corrected, as
+  `pandas.Series.skew` and `.kurt` compute them). Needs 4 returns. Negative
+  skew raises the loss. Fat tails raise it at 99% but can lower it at 95%,
+  where the (z³ − 3z) term is positive. The expansion is an approximation
+  and can misbehave for extreme skewness or kurtosis.
+- Constant returns give both models minus that return.
+
+**Backtest.** `rolling_var` forecasts each day's VaR from the `window`
+returns strictly before it, so a forecast never sees the day it is scored
+on; `method` is one of `VAR_METHODS` (`"historical"`, `"normal"`,
+`"cornish_fisher"`). A breach is a day whose return is below −VaR.
+`var_backtest` counts breaches for every method over the same days and
+returns, indexed by method, `days`, `breaches`, `expected_breaches`
+(days × (1 − confidence)), `breach_rate`, and the Kupiec `statistic` and
+`p_value`.
+
+**Kupiec test.** `kupiec_test` is the proportion-of-failures likelihood
+ratio −2 ln[(1 − p)^(n−x) p^x / ((1 − x/n)^(n−x) (x/n)^x)] with p = 1 −
+confidence, x breaches, and n days, compared with a chi-square distribution
+with one degree of freedom. A p-value below `KUPIEC_SIGNIFICANCE` (5%)
+rejects the VaR: too many breaches mean it understated losses, too few that
+it overstated them. With few test days the test has little power: 255 days
+at 99% expect only 2.55 breaches.
+
+The dashboard backtests with a 63-, 126-, or 252-day window
+(`VAR_BACKTEST_WINDOWS`, default 126, so a one-year period still leaves
+about 125 test days) at the Tail Risk confidence level.
+
 ## Rolling risk metrics
 
 ```python
