@@ -83,19 +83,23 @@ def test_analyze_matches_engine_and_drawdown(prices: pd.DataFrame, download: Mag
         app.number_input[1].set_value(40.0)
         submit(app)
         assert not app.exception and not app.error
-        assert [card.label for card in app.metric][:6] == [
+        assert [card.label for card in app.metric][:8] == [
             "Annualized return",
             "Annualized volatility",
             "Sharpe ratio",
             "Maximum drawdown",
+            "Sortino ratio",
+            "Calmar ratio",
             "HHI concentration",
             "Effective number of holdings",
         ]
-        assert [card.value for card in app.metric][:6] == [
+        assert [card.value for card in app.metric][:8] == [
             f"{expected.annualized_return:.2%}",
             f"{expected.annualized_volatility:.2%}",
             f"{expected.sharpe_ratio:.2f}",
             f"{expected.max_drawdown:.2%}",
+            f"{expected.sortino_ratio:.2f}",
+            f"{expected.calmar_ratio:.2f}",
             f"{herfindahl_index([0.6, 0.4]):.3f}",
             f"{effective_holdings([0.6, 0.4]):.2f}",
         ]
@@ -180,11 +184,13 @@ def test_constant_prices_show_undefined_sharpe(download: MagicMock, prices: pd.D
     app = AppTest.from_file(APP_PATH).run()
     submit(app)
     assert not app.exception and not app.error
-    assert [card.value for card in app.metric][:6] == [
+    assert [card.value for card in app.metric][:8] == [
         "0.00%",
         "0.00%",
         "N/A",
         "0.00%",
+        "N/A",
+        "N/A",
         "0.500",
         "2.00",
     ]
@@ -202,7 +208,7 @@ def test_single_stock_shows_full_concentration_without_heatmap(
     app.text_input[0].set_value("AAPL").run()
     submit(app)
     assert not app.exception and not app.error
-    assert [card.value for card in app.metric][4:6] == ["1.000", "1.00"]
+    assert [card.value for card in app.metric][6:8] == ["1.000", "1.00"]
     assert "correlation_heatmap" not in [chart.key for chart in app.get("plotly_chart")]
     assert any("single-stock portfolio" in note.value for note in app.info)
 

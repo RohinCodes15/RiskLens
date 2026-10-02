@@ -852,6 +852,8 @@ if submitted:
                 result.annualized_volatility,
                 result.sharpe_ratio,
                 result.max_drawdown,
+                result.sortino_ratio,
+                result.calmar_ratio,
             )
             if not all(isfinite(value) for value in (metrics[0], metrics[1], metrics[3])):
                 raise ValueError(
@@ -939,10 +941,23 @@ else:
             "Worst peak-to-trough decline, including initial wealth; negative means loss.",
             ".2%",
         ),
+        (
+            "Sortino ratio",
+            "Annualized return / annualized downside deviation (shortfalls below 0% "
+            "over every day). Like Sharpe, but only losses count as risk; N/A without "
+            "a down day.",
+            ".2f",
+        ),
+        (
+            "Calmar ratio",
+            "Compound annual growth rate / |maximum drawdown|: yearly growth per unit of "
+            "worst decline; N/A without a drawdown.",
+            ".2f",
+        ),
     )
-    deltas = (None, None, None, dollar_change(analysis["metrics"][3], portfolio_value))
+    deltas = (None, None, None, dollar_change(analysis["metrics"][3], portfolio_value), None, None)
     for column, (label, help_text, spec), value, delta in zip(
-        st.columns(4),
+        [*st.columns(3), *st.columns(3)],
         descriptions,
         analysis["metrics"],
         deltas,
