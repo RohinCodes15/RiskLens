@@ -1,12 +1,20 @@
 """Normal and Cornish-Fisher VaR, rolling VaR forecasts, and VaR backtests."""
 
+import math
 import statistics
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from risklens.analytics import cornish_fisher_var, historical_var, normal_var, rolling_var
+from risklens.analytics import (
+    KUPIEC_SIGNIFICANCE,
+    cornish_fisher_var,
+    historical_var,
+    kupiec_test,
+    normal_var,
+    rolling_var,
+)
 
 RETURNS = pd.Series(
     [0.012, -0.021, 0.004, 0.017, -0.035, 0.009, -0.006, 0.002, 0.011, -0.014],
@@ -115,3 +123,62 @@ def test_rolling_var_rejects_invalid_input(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         rolling_var(returns, window, 0.95, method)
+
+
+def chi_square_one_tail(statistic: float) -> float:
+    """P(chi-square with 1 degree of freedom > statistic), without scipy."""
+    return math.erfc(math.sqrt(statistic / 2))
+
+
+def test_kupiec_statistic_and_p_value_match_the_likelihood_ratio_by_hand() -> None:
+    # 10 breaches in 250 days against a 1% VaR (2.5 expected).
+    by_hand = -2 * (
+        240 * math.log(0.99) + 10 * math.log(0.01) - 240 * math.log(0.96) - 10 * math.log(0.04)
+    )
+    statistic, p_value = kupiec_test(10, 250, 0.99)
+    assert statistic == pytest.approx(by_hand)
+    assert p_value == pytest.approx(chi_square_one_tail(by_hand))
+    assert p_value < KUPIEC_SIGNIFICANCE
+
+
+@pytest.mark.parametrize(
+    ("breaches", "statistic"),
+    [(0, -2 * 255 * math.log(0.99)), (255, -2 * 255 * math.log(0.01))],
+)
+def test_kupiec_handles_no_breaches_and_all_breaches(breaches: int, statistic: float) -> None:
+    assert kupiec_test(breaches, 255, 0.99)[0] == pytest.approx(statistic)
+
+
+def test_kupiec_accepts_exactly_the_expected_breach_rate() -> None:
+    assert kupiec_test(5, 100, 0.95) == pytest.approx((0.0, 1.0))
+
+
+@pytest.mark.parametrize(
+    ("confidence", "days", "accepted"),
+    [(0.95, 255, (7, 20)), (0.99, 1000, (5, 16)), (0.95, 1000, (38, 64)), (0.90, 510, (39, 64))],
+)
+def test_kupiec_accepts_the_published_breach_ranges(
+    confidence: float, days: int, accepted: tuple[int, int]
+) -> None:
+    # Non-rejection regions at 5% significance from Kupiec (1995) as tabulated
+    # in Jorion, "Value at Risk".
+    passing = [x for x in range(days + 1) if kupiec_test(x, days, confidence)[1] >= 0.05]
+    assert passing == list(range(accepted[0], accepted[1] + 1))
+
+
+@pytest.mark.parametrize(
+    ("breaches", "days", "confidence", "message"),
+    [
+        (1, 0, 0.95, "days must be at least 1"),
+        (5, 4, 0.95, "between 0 and 4"),
+        (-1, 4, 0.95, "between 0 and 4"),
+        (1.5, 4, 0.95, "breaches must be a whole number"),
+        (1, True, 0.95, "days must be a whole number"),
+        (1, 4, 1.5, "between 0 and 1"),
+    ],
+)
+def test_kupiec_rejects_invalid_counts(
+    breaches: object, days: object, confidence: float, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        kupiec_test(breaches, days, confidence)
