@@ -40,3 +40,23 @@ def history() -> pd.DataFrame:
          "MSFT": [200.0, 190.0, 180.0, 195.0, 170.0, 160.0]},
         index=pd.DatetimeIndex([*dates, scenario.end]),
     )
+
+
+def test_late_listing_names_only_the_stock_with_insufficient_history(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """An older stock must not inherit the newer stock's first observed date."""
+    history.loc[history.index[:2], "MSFT"] = np.nan
+    raw = pd.concat({"Close": history}, axis=1)
+    with patch("yfinance.download", return_value=raw), patch(
+        "risklens.analytics.stress_test", wraps=stress_test,
+    ) as engine:
+        click_button(app, "Run historical stress test")
+    assert not app.exception and not app.error
+    pd.testing.assert_frame_equal(engine.call_args.args[0], history)
+    message = next(note.value for note in app.warning if "Scenario unavailable" in note.value)
+    assert f"MSFT history starts {history.index[2].date()}" in message
+    assert "Insufficient history" in message and "AAPL history starts" not in message
+    assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
+    assert not any(card.label == "Scenario return" for card in app.metric)
+    assert app.metric[0].label == "Annualized return"
