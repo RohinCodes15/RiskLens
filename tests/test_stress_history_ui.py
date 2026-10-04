@@ -76,3 +76,32 @@ def test_stock_without_crisis_prices_has_an_accurate_unavailable_message(
     assert not any("AAPL history starts" in note.value for note in app.warning)
     assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
     assert app.metric[0].label == "Annualized return"
+
+
+@pytest.mark.parametrize("missing_day", [False, True])
+def test_valid_stress_history_matches_backend_and_omits_missing_dates(
+    app: AppTest, history: pd.DataFrame, missing_day: bool,
+) -> None:
+    """Valid replays use only complete dates, never fill a missing stock price."""
+    if missing_day:
+        history.loc[history.index[2], "MSFT"] = np.nan
+    scenario = HISTORICAL_SCENARIOS[1]
+    expected = stress_test(history, [0.5, 0.5], scenario)
+    assert expected.available
+    with patch("yfinance.download", return_value=pd.concat({"Close": history}, axis=1)) as download:
+        click_button(app, "Run historical stress test")
+    assert not app.exception and not app.error
+    assert not any("Scenario unavailable" in note.value for note in app.warning)
+    assert download.call_args.args[0] == ["AAPL", "MSFT"]
+    assert download.call_args.kwargs["auto_adjust"] is True
+    assert download.call_args.kwargs["start"] == scenario.start.date()
+    assert download.call_args.kwargs["end"] == (scenario.end + pd.Timedelta(days=1)).date()
+    cards = {card.label: card.value for card in app.metric}
+    assert cards["Scenario return"] == f"{expected.cumulative_return:.2%}"
+    assert cards["Scenario maximum drawdown"] == f"{expected.max_drawdown:.2%}"
+    assert cards["Scenario annualized volatility"] == f"{expected.annualized_volatility:.2%}"
+    complete = history.dropna()
+    wealth = cumulative_wealth(portfolio_returns(to_returns(complete), [0.5, 0.5]))
+    trace = chart_spec(app, "stress_chart")["data"][0]
+    assert pd.to_datetime(trace["x"]).tolist() == complete.index.tolist()
+    np.testing.assert_allclose(chart_values(trace["y"]), wealth.reindex(complete.index, fill_value=1.0))
