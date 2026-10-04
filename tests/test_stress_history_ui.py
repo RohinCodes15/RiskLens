@@ -60,3 +60,19 @@ def test_late_listing_names_only_the_stock_with_insufficient_history(
     assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
     assert not any(card.label == "Scenario return" for card in app.metric)
     assert app.metric[0].label == "Annualized return"
+
+
+@pytest.mark.parametrize("omitted_column", [False, True])
+def test_stock_without_crisis_prices_has_an_accurate_unavailable_message(
+    app: AppTest, history: pd.DataFrame, omitted_column: bool,
+) -> None:
+    """A stock listed after the crisis has no prices, not a shared start date."""
+    history["MSFT"] = np.nan
+    raw = pd.concat({"Close": history.drop(columns="MSFT") if omitted_column else history}, axis=1)
+    with patch("yfinance.download", return_value=raw):
+        click_button(app, "Run historical stress test")
+    assert not app.exception and not app.error
+    assert any("MSFT has no price data" in note.value for note in app.warning)
+    assert not any("AAPL history starts" in note.value for note in app.warning)
+    assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
+    assert app.metric[0].label == "Annualized return"
