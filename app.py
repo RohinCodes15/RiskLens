@@ -42,6 +42,7 @@ from risklens.analytics.simulation import (
 from risklens.data import (
     DataFetchError,
     fetch_benchmark_prices,
+    fetch_price_history,
     fetch_prices,
     to_returns,
 )
@@ -399,7 +400,7 @@ def render_stress_test(analysis: dict) -> None:
         analysis.pop("stress_error", None)
         try:
             with st.spinner("Loading scenario prices and replaying historical returns…"):
-                history = fetch_prices(
+                history = fetch_price_history(
                     list(analysis["prices"].columns),
                     scenario.start.date(),
                     scenario.end.date() + timedelta(days=1),
