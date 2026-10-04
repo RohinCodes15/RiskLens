@@ -142,3 +142,14 @@ def test_every_late_listed_stock_is_named_with_its_own_start(
     message = unavailable(app)
     assert f"AAPL history starts {history.index[2].date()}" in message
     assert f"MSFT history starts {history.index[3].date()}" in message
+
+
+def test_too_few_common_dates_is_unavailable_without_filling_prices(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """Covering stocks with only two shared dates must not be forward-filled."""
+    history.loc[history.index[1:5], "MSFT"] = np.nan
+    replay(app, history)
+    assert not app.exception and not app.error
+    assert "Need 3 common price dates in the window; got 2." in unavailable(app)
+    assert not any(card.label == "Scenario return" for card in app.metric)
