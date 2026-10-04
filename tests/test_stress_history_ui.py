@@ -105,3 +105,40 @@ def test_valid_stress_history_matches_backend_and_omits_missing_dates(
     trace = chart_spec(app, "stress_chart")["data"][0]
     assert pd.to_datetime(trace["x"]).tolist() == complete.index.tolist()
     np.testing.assert_allclose(chart_values(trace["y"]), wealth.reindex(complete.index, fill_value=1.0))
+
+
+def replay(app: AppTest, history: pd.DataFrame) -> AppTest:
+    """Run the selected scenario against mocked adjusted Close prices."""
+    with patch("yfinance.download", return_value=pd.concat({"Close": history}, axis=1)):
+        return click_button(app, "Run historical stress test")
+
+
+def unavailable(app: AppTest) -> str:
+    """Return the one scenario-unavailable warning shown by the stress section."""
+    return next(note.value for note in app.warning if "Scenario unavailable" in note.value)
+
+
+def test_delisted_stock_names_its_last_price_before_the_crisis_end(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """A stock whose prices stop early is blamed with its own last date."""
+    history.loc[history.index[-2:], "AAPL"] = np.nan
+    replay(app, history)
+    assert not app.exception and not app.error
+    message = unavailable(app)
+    assert f"AAPL history ends {history.index[3].date()}" in message
+    assert "MSFT history" not in message
+    assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
+
+
+def test_every_late_listed_stock_is_named_with_its_own_start(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """Two late listings report two different first dates, never a shared one."""
+    history.loc[history.index[:2], "AAPL"] = np.nan
+    history.loc[history.index[:3], "MSFT"] = np.nan
+    replay(app, history)
+    assert not app.exception and not app.error
+    message = unavailable(app)
+    assert f"AAPL history starts {history.index[2].date()}" in message
+    assert f"MSFT history starts {history.index[3].date()}" in message
