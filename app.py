@@ -39,7 +39,12 @@ from risklens.analytics.simulation import (
     MIN_HORIZON_DAYS,
     MIN_PATHS,
 )
-from risklens.data import DataFetchError, fetch_benchmark_prices, fetch_prices, to_returns
+from risklens.data import (
+    DataFetchError,
+    fetch_benchmark_prices,
+    fetch_prices,
+    to_returns,
+)
 from risklens.validation import validate_tickers, validate_weights
 
 
