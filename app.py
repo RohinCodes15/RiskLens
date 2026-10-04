@@ -408,7 +408,7 @@ def render_stress_test(analysis: dict) -> None:
                 result = stress_test(history, analysis["weights"], scenario)
                 curve = None
                 if result.available:
-                    window = history.loc[result.first_date : result.last_date]
+                    window = history.loc[result.first_date : result.last_date].dropna(how="any")
                     daily = portfolio_returns(to_returns(window), analysis["weights"])
                     curve = cumulative_wealth(daily).reindex(window.index, fill_value=1.0)
                 analysis["stress"] = (request, result, curve)
