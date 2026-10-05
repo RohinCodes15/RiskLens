@@ -153,3 +153,21 @@ def test_too_few_common_dates_is_unavailable_without_filling_prices(
     assert not app.exception and not app.error
     assert "Need 3 common price dates in the window; got 2." in unavailable(app)
     assert not any(card.label == "Scenario return" for card in app.metric)
+
+
+@pytest.mark.parametrize(
+    ("download", "reason"),
+    [
+        ({"side_effect": RuntimeError("timeout")}, "Price download failed: timeout"),
+        ({"return_value": pd.DataFrame()}, "No price data returned for the requested range."),
+    ],
+)
+def test_download_problems_show_a_warning_and_keep_the_analysis(
+    app: AppTest, download: dict, reason: str,
+) -> None:
+    """Fetch errors stay inside the stress section instead of crashing the page."""
+    with patch("yfinance.download", **download):
+        click_button(app, "Run historical stress test")
+    assert not app.exception and not app.error
+    assert unavailable(app) == f"Scenario unavailable: {reason}"
+    assert app.metric[0].label == "Annualized return"
