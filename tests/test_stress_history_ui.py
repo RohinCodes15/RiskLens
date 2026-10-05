@@ -290,3 +290,15 @@ def test_switching_scenarios_hides_a_previous_download_error(app: AppTest) -> No
     assert not app.exception and not app.error
     assert not any("Scenario unavailable" in note.value for note in app.warning)
     assert any("Run the selected scenario" in note.value for note in app.info)
+
+
+def test_insufficient_history_suggests_a_later_custom_start(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """An unavailable replay explains how to choose a window that can run."""
+    history.loc[history.index[:2], "MSFT"] = np.nan
+    replay(app, history)
+    assert not app.exception and not app.error
+    assert "Insufficient history" in unavailable(app)
+    assert any("Try a later custom start date" in caption.value for caption in app.caption)
+    assert not any(caption.value.startswith("Actual price dates") for caption in app.caption)
