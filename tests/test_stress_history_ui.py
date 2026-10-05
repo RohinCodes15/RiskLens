@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 from test_risk_ui import analyzed_app, select
-from test_smoke import chart_spec, chart_values, click_button
+from test_smoke import APP_PATH, chart_spec, chart_values, click_button
 
 from risklens.analytics import (
     HISTORICAL_SCENARIOS,
@@ -229,3 +229,25 @@ def test_selected_scenario_waits_for_a_run_before_downloading(app: AppTest) -> N
     assert any(caption.value == window for caption in app.caption)
     assert any("Run the selected scenario" in note.value for note in app.info)
     assert not any(card.label == "Scenario return" for card in app.metric)
+
+
+def test_replay_uses_the_analyzed_custom_weights(history: pd.DataFrame) -> None:
+    """A 70/30 portfolio is replayed with 70/30 weights, not equal weights."""
+    current = pd.DataFrame(
+        {"AAPL": [100.0, 90.0, 108.0, 105.0], "MSFT": [200.0, 210.0, 189.0, 205.0]},
+        index=pd.bdate_range("2026-01-05", periods=4),
+    )
+    with patch("yfinance.download", return_value=pd.concat({"Close": current}, axis=1)):
+        app = AppTest.from_file(APP_PATH).run()
+        app.text_input[0].set_value("AAPL, MSFT").run()
+        for label, value in [("AAPL weight (%)", 70.0), ("MSFT weight (%)", 30.0)]:
+            next(widget for widget in app.number_input if widget.label == label).set_value(value)
+        click_button(app, "Analyze portfolio")
+    select(app, "Historical scenario", HISTORICAL_SCENARIOS[1].name)
+    replay(app, history)
+    assert not app.exception and not app.error
+    np.testing.assert_allclose(app.session_state["analysis"]["weights"], [0.7, 0.3])
+    expected = stress_test(history, [0.7, 0.3], HISTORICAL_SCENARIOS[1])
+    cards = {card.label: card.value for card in app.metric}
+    assert cards["Scenario return"] == f"{expected.cumulative_return:.2%}"
+    assert cards["Scenario maximum drawdown"] == f"{expected.max_drawdown:.2%}"
