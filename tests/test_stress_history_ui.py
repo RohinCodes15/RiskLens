@@ -12,6 +12,7 @@ from test_smoke import chart_spec, chart_values, click_button
 from risklens.analytics import (
     HISTORICAL_SCENARIOS,
     cumulative_wealth,
+    custom_scenario,
     portfolio_returns,
     stress_test,
 )
@@ -171,3 +172,20 @@ def test_download_problems_show_a_warning_and_keep_the_analysis(
     assert not app.exception and not app.error
     assert unavailable(app) == f"Scenario unavailable: {reason}"
     assert app.metric[0].label == "Annualized return"
+
+
+def test_custom_window_after_a_late_listing_replays_successfully(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """Starting a custom range on the listing date makes the replay available."""
+    history.loc[history.index[:2], "MSFT"] = np.nan
+    start, end = history.index[2].date(), history.index[-1].date()
+    select(app, "Historical scenario", "Custom date range")
+    for label, value in [("Scenario start date", start), ("Scenario end date (inclusive)", end)]:
+        next(widget for widget in app.date_input if widget.label == label).set_value(value).run()
+    replay(app, history)
+    assert not app.exception and not app.error
+    assert not any("Scenario unavailable" in note.value for note in app.warning)
+    expected = stress_test(history, [0.5, 0.5], custom_scenario(start, end))
+    cards = {card.label: card.value for card in app.metric}
+    assert cards["Scenario return"] == f"{expected.cumulative_return:.2%}"
