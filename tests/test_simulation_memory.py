@@ -75,3 +75,11 @@ def test_same_seed_matches_the_copying_implementation_exactly(
         simulate_portfolio(returns, horizon_days, n_paths, seed),
         copying_simulation(returns, horizon_days, n_paths, seed),
     )
+
+
+def test_largest_supported_run_matches_the_copying_implementation(returns: pd.Series) -> None:
+    """10,000 paths x 1,260 days keeps identical bands and terminal returns."""
+    assert_identical(
+        simulate_portfolio(returns, MAX_HORIZON_DAYS, MAX_PATHS, 42),
+        copying_simulation(returns, MAX_HORIZON_DAYS, MAX_PATHS, 42),
+    )
