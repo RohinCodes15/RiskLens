@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "tests/test_stress_history_ui.py": {
-    "mtime": 1793572751.1612191,
-    "seen": 1793572788.395485,
-    "ast_hash": "677c30846512cc9b15504294b0b499fa",
+    "mtime": 1793573058.3398535,
+    "seen": 1793573113.530011,
+    "ast_hash": "8fadd75f4b02842ffa60b398a45bb2b5",
     "semantic_hash": ""
   }
 }
