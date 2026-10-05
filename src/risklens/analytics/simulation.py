@@ -144,9 +144,12 @@ def simulate_portfolio(
     growth = rng.normal(mu, sigma, size=(n_paths, horizon_days))
     np.cumsum(growth, axis=1, out=growth)
     np.exp(growth, out=growth)
-    wealth = np.hstack([np.ones((n_paths, 1)), growth])
-    bands = np.percentile(wealth, PERCENTILES, axis=0)
-    terminal_returns = wealth[:, -1] - 1.0
+    terminal_returns = growth[:, -1] - 1.0
+    # Every path starts at wealth 1.0, and any percentile of all-1.0 values is
+    # exactly 1.0, so the start row is added to the small band table rather than
+    # copying every path into a wider array.
+    bands = np.percentile(growth, PERCENTILES, axis=0)
+    bands = np.hstack([np.ones((len(PERCENTILES), 1)), bands])
     return MonteCarloResult(
         percentile_paths=pd.DataFrame(bands.T, index=dates, columns=PERCENTILE_LABELS),
         terminal_returns=terminal_returns,
