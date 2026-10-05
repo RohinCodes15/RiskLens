@@ -390,6 +390,22 @@ the same time of day. `terminal_returns` holds each path's ending wealth
 below. `horizon_days` must be 1–1,260, `n_paths` 1,000–10,000, and `seed`
 0 to 2³²−1. Anything else raises `ValueError`.
 
+**Memory.** One `n_paths × horizon_days` float64 array holds every path. It
+is transformed in place (draws → cumulative log wealth → wealth) and
+partitioned in place for the percentiles; the all-1.0 start row is added to
+the small band table instead of to every path. Peak traced memory for
+10,000 × 1,260 measured with `python benchmarks/simulation_memory.py`:
+
+| Version | Peak traced memory | Full arrays |
+|---------|--------------------|-------------|
+| Before (separate draw, cumsum, exp, `hstack` and percentile copies) | 403.7 MB | 4.00 |
+| After (one buffer reused in place) | 101.2 MB | 1.00 |
+
+Results are bit-identical for the same seed; nothing about the output
+changed. The one remaining array is unavoidable without changing results:
+percentiles need every path on each date, and the seeded generator draws
+path by path, so generating dates in chunks would give different numbers.
+
 **Assumptions and limitations.**
 - Returns are treated as i.i.d. and normal in log space, so the model has no
   volatility clustering, regime changes or fat tails. Real crashes can be
