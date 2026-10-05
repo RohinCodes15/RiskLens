@@ -22,6 +22,13 @@ Assumptions and limitations, so read results as scenarios, not forecasts:
     - Percentile paths are computed day by day across all paths. The median
       path is not one simulated path.
 
+Memory: the ``n_paths x horizon_days`` float64 path array (about 101 MB at
+10,000 x 1,260) is allocated once, transformed in place, and partitioned in
+place for the percentiles. That one array is the minimum without changing
+results: percentiles need every path on each date, and the seeded generator
+draws path by path, so producing dates in chunks would give different
+numbers for the same seed.
+
 No look-ahead: parameters come only from the returns passed in, and every
 simulated date is strictly after the last of them. Pass only history up to
 the date you want the simulation to start.
