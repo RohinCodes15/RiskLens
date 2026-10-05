@@ -61,3 +61,17 @@ def assert_identical(actual: MonteCarloResult, expected: MonteCarloResult) -> No
         expected.daily_mean,
         expected.daily_volatility,
     )
+
+
+@pytest.mark.parametrize(
+    ("horizon_days", "n_paths", "seed"),
+    [(1, 1_000, 0), (5, 1_000, 7), (252, 1_000, 42), (300, 2_500, 2**32 - 1)],
+)
+def test_same_seed_matches_the_copying_implementation_exactly(
+    returns: pd.Series, horizon_days: int, n_paths: int, seed: int
+) -> None:
+    """In-place cumsum/exp and in-place percentiles change no output bit."""
+    assert_identical(
+        simulate_portfolio(returns, horizon_days, n_paths, seed),
+        copying_simulation(returns, horizon_days, n_paths, seed),
+    )
