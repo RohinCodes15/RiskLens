@@ -202,3 +202,17 @@ def test_switching_scenarios_hides_the_previous_replay(
     assert any("Run the selected scenario" in note.value for note in app.info)
     assert not any(card.label == "Scenario return" for card in app.metric)
     assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
+
+
+def test_rerun_with_full_history_clears_the_unavailable_warning(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """A later successful replay replaces an earlier insufficient-history result."""
+    late = history.copy()
+    late["MSFT"] = np.nan
+    replay(app, late)
+    assert "MSFT has no price data" in unavailable(app)
+    replay(app, history)
+    assert not app.exception and not app.error
+    assert not any("Scenario unavailable" in note.value for note in app.warning)
+    assert "stress_chart" in [chart.key for chart in app.get("plotly_chart")]
