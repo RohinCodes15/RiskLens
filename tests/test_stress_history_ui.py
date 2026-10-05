@@ -216,3 +216,16 @@ def test_rerun_with_full_history_clears_the_unavailable_warning(
     assert not app.exception and not app.error
     assert not any("Scenario unavailable" in note.value for note in app.warning)
     assert "stress_chart" in [chart.key for chart in app.get("plotly_chart")]
+
+
+def test_selected_scenario_waits_for_a_run_before_downloading(app: AppTest) -> None:
+    """Choosing a crisis shows its requested window and prompt, not a result."""
+    scenario = HISTORICAL_SCENARIOS[1]
+    with patch("yfinance.download") as download:
+        select(app, "Historical scenario", scenario.name)
+    download.assert_not_called()
+    assert not app.exception and not app.error
+    window = f"Requested window: {scenario.start:%b %d, %Y} – {scenario.end:%b %d, %Y} (inclusive)."
+    assert any(caption.value == window for caption in app.caption)
+    assert any("Run the selected scenario" in note.value for note in app.info)
+    assert not any(card.label == "Scenario return" for card in app.metric)
