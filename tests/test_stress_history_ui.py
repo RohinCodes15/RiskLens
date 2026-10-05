@@ -251,3 +251,19 @@ def test_replay_uses_the_analyzed_custom_weights(history: pd.DataFrame) -> None:
     cards = {card.label: card.value for card in app.metric}
     assert cards["Scenario return"] == f"{expected.cumulative_return:.2%}"
     assert cards["Scenario maximum drawdown"] == f"{expected.max_drawdown:.2%}"
+
+
+def test_actual_price_dates_caption_counts_only_complete_returns(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """The caption reports backend first/last dates and returns after a gap."""
+    history.loc[history.index[2], "AAPL"] = np.nan
+    expected = stress_test(history, [0.5, 0.5], HISTORICAL_SCENARIOS[1])
+    replay(app, history)
+    assert not app.exception and not app.error
+    caption = (
+        f"Actual price dates: {expected.first_date:%b %d, %Y} – {expected.last_date:%b %d, %Y}"
+        f" · {expected.n_returns:,} return observations."
+    )
+    assert any(note.value == caption for note in app.caption)
+    assert expected.n_returns == len(history.dropna()) - 1
