@@ -279,3 +279,14 @@ def test_stress_chart_starts_at_one_and_names_the_scenario(
     assert chart_values(spec["data"][0]["y"])[0] == pytest.approx(1.0)
     assert pd.Timestamp(spec["data"][0]["x"][0]) == history.index[0]
     assert spec["layout"]["title"]["text"] == f"Hypothetical replay · {HISTORICAL_SCENARIOS[1].name}"
+
+
+def test_switching_scenarios_hides_a_previous_download_error(app: AppTest) -> None:
+    """A failed fetch for one crisis is not reported under another crisis."""
+    with patch("yfinance.download", side_effect=RuntimeError("timeout")):
+        click_button(app, "Run historical stress test")
+    assert "timeout" in unavailable(app)
+    select(app, "Historical scenario", HISTORICAL_SCENARIOS[0].name)
+    assert not app.exception and not app.error
+    assert not any("Scenario unavailable" in note.value for note in app.warning)
+    assert any("Run the selected scenario" in note.value for note in app.info)
