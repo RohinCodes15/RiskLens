@@ -92,3 +92,16 @@ def test_zero_volatility_history_matches_the_copying_implementation(daily: float
     result = simulate_portfolio(constant, 50, 1_000, 3)
     assert_identical(result, copying_simulation(constant, 50, 1_000, 3))
     assert (result.percentile_paths.iloc[0] == 1.0).all()
+
+
+def test_peak_memory_stays_near_one_path_buffer(returns: pd.Series) -> None:
+    """The largest run allocates about one full array, not four."""
+    simulate_portfolio(returns, 1, 1_000)  # warm imports outside the measurement
+    tracemalloc.start()
+    try:
+        simulate_portfolio(returns, MAX_HORIZON_DAYS, MAX_PATHS)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    one_array = MAX_PATHS * MAX_HORIZON_DAYS * BYTES_PER_FLOAT
+    assert peak < MAX_PEAK_ARRAYS * one_array
