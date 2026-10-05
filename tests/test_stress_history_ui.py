@@ -267,3 +267,15 @@ def test_actual_price_dates_caption_counts_only_complete_returns(
     )
     assert any(note.value == caption for note in app.caption)
     assert expected.n_returns == len(history.dropna()) - 1
+
+
+def test_stress_chart_starts_at_one_and_names_the_scenario(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """Wealth is normalized to 1.0 on the first actual price date."""
+    replay(app, history)
+    assert not app.exception and not app.error
+    spec = chart_spec(app, "stress_chart")
+    assert chart_values(spec["data"][0]["y"])[0] == pytest.approx(1.0)
+    assert pd.Timestamp(spec["data"][0]["x"][0]) == history.index[0]
+    assert spec["layout"]["title"]["text"] == f"Hypothetical replay · {HISTORICAL_SCENARIOS[1].name}"
