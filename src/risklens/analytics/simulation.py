@@ -147,8 +147,10 @@ def simulate_portfolio(
     terminal_returns = growth[:, -1] - 1.0
     # Every path starts at wealth 1.0, and any percentile of all-1.0 values is
     # exactly 1.0, so the start row is added to the small band table rather than
-    # copying every path into a wider array.
-    bands = np.percentile(growth, PERCENTILES, axis=0)
+    # copying every path into a wider array. overwrite_input lets NumPy
+    # partition the buffer in place instead of copying it; the order statistics,
+    # and so the bands, are unchanged. terminal_returns was already copied out.
+    bands = np.percentile(growth, PERCENTILES, axis=0, overwrite_input=True)
     bands = np.hstack([np.ones((len(PERCENTILES), 1)), bands])
     return MonteCarloResult(
         percentile_paths=pd.DataFrame(bands.T, index=dates, columns=PERCENTILE_LABELS),
