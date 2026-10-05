@@ -83,3 +83,12 @@ def test_largest_supported_run_matches_the_copying_implementation(returns: pd.Se
         simulate_portfolio(returns, MAX_HORIZON_DAYS, MAX_PATHS, 42),
         copying_simulation(returns, MAX_HORIZON_DAYS, MAX_PATHS, 42),
     )
+
+
+@pytest.mark.parametrize("daily", [0.001, -0.002])
+def test_zero_volatility_history_matches_the_copying_implementation(daily: float) -> None:
+    """A deterministic curve is unchanged, including its exact 1.0 start row."""
+    constant = pd.Series(daily, index=pd.bdate_range("2024-01-01", periods=30))
+    result = simulate_portfolio(constant, 50, 1_000, 3)
+    assert_identical(result, copying_simulation(constant, 50, 1_000, 3))
+    assert (result.percentile_paths.iloc[0] == 1.0).all()
