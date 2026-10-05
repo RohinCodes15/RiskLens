@@ -105,3 +105,11 @@ def test_peak_memory_stays_near_one_path_buffer(returns: pd.Series) -> None:
         tracemalloc.stop()
     one_array = MAX_PATHS * MAX_HORIZON_DAYS * BYTES_PER_FLOAT
     assert peak < MAX_PEAK_ARRAYS * one_array
+
+
+def test_terminal_returns_survive_the_in_place_percentile_partition(returns: pd.Series) -> None:
+    """Terminal returns are their own array, so partitioning cannot reorder them."""
+    result = simulate_portfolio(returns, 63, 1_000, 11)
+    assert result.terminal_returns.flags.owndata
+    terminal_bands = np.percentile(result.terminal_returns + 1.0, PERCENTILES)
+    np.testing.assert_array_equal(result.percentile_paths.iloc[-1].to_numpy(), terminal_bands)
