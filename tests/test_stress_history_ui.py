@@ -189,3 +189,16 @@ def test_custom_window_after_a_late_listing_replays_successfully(
     expected = stress_test(history, [0.5, 0.5], custom_scenario(start, end))
     cards = {card.label: card.value for card in app.metric}
     assert cards["Scenario return"] == f"{expected.cumulative_return:.2%}"
+
+
+def test_switching_scenarios_hides_the_previous_replay(
+    app: AppTest, history: pd.DataFrame,
+) -> None:
+    """A finished replay is never shown under a different scenario's name."""
+    replay(app, history)
+    assert any(card.label == "Scenario return" for card in app.metric)
+    select(app, "Historical scenario", HISTORICAL_SCENARIOS[0].name)
+    assert not app.exception and not app.error
+    assert any("Run the selected scenario" in note.value for note in app.info)
+    assert not any(card.label == "Scenario return" for card in app.metric)
+    assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
