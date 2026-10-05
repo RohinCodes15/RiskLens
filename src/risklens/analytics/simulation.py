@@ -139,8 +139,11 @@ def simulate_portfolio(
     seed = _validate_int(seed, "seed", 0, 2**32 - 1)
     dates = _future_dates(daily_returns.index[-1], horizon_days)
     rng = np.random.default_rng(seed)
-    daily_log_returns = rng.normal(mu, sigma, size=(n_paths, horizon_days))
-    growth = np.exp(np.cumsum(daily_log_returns, axis=1))
+    # One (n_paths, horizon_days) buffer is reused in place: daily log returns,
+    # then cumulative log wealth, then wealth. No second full array is made.
+    growth = rng.normal(mu, sigma, size=(n_paths, horizon_days))
+    np.cumsum(growth, axis=1, out=growth)
+    np.exp(growth, out=growth)
     wealth = np.hstack([np.ones((n_paths, 1)), growth])
     bands = np.percentile(wealth, PERCENTILES, axis=0)
     terminal_returns = wealth[:, -1] - 1.0
