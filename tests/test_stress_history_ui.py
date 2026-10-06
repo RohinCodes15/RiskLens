@@ -211,7 +211,8 @@ def test_custom_window_after_a_late_listing_replays_successfully(
 
 
 def test_switching_scenarios_hides_the_previous_replay(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """A finished replay is never shown under a different scenario's name."""
     replay(app, history)
