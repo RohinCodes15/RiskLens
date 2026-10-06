@@ -37,21 +37,28 @@ def history() -> pd.DataFrame:
     scenario = HISTORICAL_SCENARIOS[1]
     dates = [scenario.start + pd.offsets.BDay(n) for n in [0, 1, 6, 7, 8]]
     return pd.DataFrame(
-        {"AAPL": [100.0, 90.0, 95.0, 80.0, 85.0, 75.0],
-         "MSFT": [200.0, 190.0, 180.0, 195.0, 170.0, 160.0]},
+        {
+            "AAPL": [100.0, 90.0, 95.0, 80.0, 85.0, 75.0],
+            "MSFT": [200.0, 190.0, 180.0, 195.0, 170.0, 160.0],
+        },
         index=pd.DatetimeIndex([*dates, scenario.end]),
     )
 
 
 def test_late_listing_names_only_the_stock_with_insufficient_history(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """An older stock must not inherit the newer stock's first observed date."""
     history.loc[history.index[:2], "MSFT"] = np.nan
     raw = pd.concat({"Close": history}, axis=1)
-    with patch("yfinance.download", return_value=raw), patch(
-        "risklens.analytics.stress_test", wraps=stress_test,
-    ) as engine:
+    with (
+        patch("yfinance.download", return_value=raw),
+        patch(
+            "risklens.analytics.stress_test",
+            wraps=stress_test,
+        ) as engine,
+    ):
         click_button(app, "Run historical stress test")
     assert not app.exception and not app.error
     pd.testing.assert_frame_equal(engine.call_args.args[0], history)
