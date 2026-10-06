@@ -133,7 +133,8 @@ def unavailable(app: AppTest) -> str:
 
 
 def test_delisted_stock_names_its_last_price_before_the_crisis_end(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """A stock whose prices stop early is blamed with its own last date."""
     history.loc[history.index[-2:], "AAPL"] = np.nan
