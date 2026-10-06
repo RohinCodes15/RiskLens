@@ -292,7 +292,8 @@ def test_actual_price_dates_caption_counts_only_complete_returns(
 
 
 def test_stress_chart_starts_at_one_and_names_the_scenario(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """Wealth is normalized to 1.0 on the first actual price date."""
     replay(app, history)
