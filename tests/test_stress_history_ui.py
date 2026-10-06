@@ -161,7 +161,8 @@ def test_every_late_listed_stock_is_named_with_its_own_start(
 
 
 def test_too_few_common_dates_is_unavailable_without_filling_prices(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """Covering stocks with only two shared dates must not be forward-filled."""
     history.loc[history.index[1:5], "MSFT"] = np.nan
