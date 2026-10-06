@@ -44,7 +44,7 @@ Rules of the layering:
 
 | Area | Owner |
 |------|-------|
-| `pyproject.toml`, `README.md`, `.gitignore`, `AGENTS.md` | Claude |
+| `pyproject.toml`, `README.md`, `.gitignore`, `AGENTS.md`, `benchmarks/` | Claude |
 | `src/risklens/` (data, validation, risk analytics) | Claude |
 | `app.py`, any `ui/` or chart/visualization modules | Codex |
 | `tests/` | Codex |
