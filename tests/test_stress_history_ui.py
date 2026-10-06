@@ -193,7 +193,8 @@ def test_download_problems_show_a_warning_and_keep_the_analysis(
 
 
 def test_custom_window_after_a_late_listing_replays_successfully(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """Starting a custom range on the listing date makes the replay available."""
     history.loc[history.index[:2], "MSFT"] = np.nan
