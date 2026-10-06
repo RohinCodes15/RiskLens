@@ -90,7 +90,9 @@ def test_stock_without_crisis_prices_has_an_accurate_unavailable_message(
 
 @pytest.mark.parametrize("missing_day", [False, True])
 def test_valid_stress_history_matches_backend_and_omits_missing_dates(
-    app: AppTest, history: pd.DataFrame, missing_day: bool,
+    app: AppTest,
+    history: pd.DataFrame,
+    missing_day: bool,
 ) -> None:
     """Valid replays use only complete dates, never fill a missing stock price."""
     if missing_day:
