@@ -98,6 +98,7 @@ pytest                                                # full suite, no network (
 pytest tests/test_smoke.py tests/test_tail_risk_ui.py tests/test_risk_ui.py  # dashboard tests only
 ruff check .                                          # lint
 ruff format --check .                                 # formatting
+python benchmarks/simulation_memory.py                # Monte Carlo peak memory (not run by pytest)
 ```
 
 Every test is expected to pass. pytest runs with `--strict-markers` and
@@ -522,6 +523,8 @@ src/risklens/
 tests/                    pytest suite (network-free); test_smoke.py,
                           test_tail_risk_ui.py, and test_risk_ui.py drive the
                           dashboard with AppTest
+benchmarks/               Reproducible benchmarks (simulation_memory.py: Monte
+                          Carlo peak memory at 10,000 paths × 1,260 days)
 pyproject.toml            Package metadata, dependencies, pytest and Ruff config
 AGENTS.md                 Architecture, ownership, and coding rules
 LICENSE                   MIT license
