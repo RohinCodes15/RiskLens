@@ -116,7 +116,9 @@ def test_valid_stress_history_matches_backend_and_omits_missing_dates(
     wealth = cumulative_wealth(portfolio_returns(to_returns(complete), [0.5, 0.5]))
     trace = chart_spec(app, "stress_chart")["data"][0]
     assert pd.to_datetime(trace["x"]).tolist() == complete.index.tolist()
-    np.testing.assert_allclose(chart_values(trace["y"]), wealth.reindex(complete.index, fill_value=1.0))
+    np.testing.assert_allclose(
+        chart_values(trace["y"]), wealth.reindex(complete.index, fill_value=1.0)
+    )
 
 
 def replay(app: AppTest, history: pd.DataFrame) -> AppTest:
