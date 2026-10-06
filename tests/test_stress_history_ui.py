@@ -72,7 +72,9 @@ def test_late_listing_names_only_the_stock_with_insufficient_history(
 
 @pytest.mark.parametrize("omitted_column", [False, True])
 def test_stock_without_crisis_prices_has_an_accurate_unavailable_message(
-    app: AppTest, history: pd.DataFrame, omitted_column: bool,
+    app: AppTest,
+    history: pd.DataFrame,
+    omitted_column: bool,
 ) -> None:
     """A stock listed after the crisis has no prices, not a shared start date."""
     history["MSFT"] = np.nan
