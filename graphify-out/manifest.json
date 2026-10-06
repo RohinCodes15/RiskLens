@@ -48,9 +48,9 @@
     "semantic_hash": ""
   },
   "src/risklens/analytics/simulation.py": {
-    "mtime": 1793479418.9517856,
-    "seen": 1793479456.123352,
-    "ast_hash": "8a51f746c8f7a3dcccc682ea20498b62",
+    "mtime": 1793575124.2241607,
+    "seen": 1793575217.7553122,
+    "ast_hash": "091034cb8fab271a8b04cf13c679547b",
     "semantic_hash": ""
   },
   "src/risklens/analytics/stress.py": {
@@ -162,15 +162,15 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1793548208.0903249,
-    "seen": 1793548256.752216,
-    "ast_hash": "9da593df118df893e18fce7733e60b0c",
+    "mtime": 1793575155.6350076,
+    "seen": 1793575217.755349,
+    "ast_hash": "301a8de372a7dc9b1fbc16ac06250270",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793548218.8479748,
-    "seen": 1793548256.752217,
-    "ast_hash": "71f460c2bf2dfb84f8240bb3d65ebb68",
+    "mtime": 1793575155.5744996,
+    "seen": 1793575217.75535,
+    "ast_hash": "7e6b19ef153458c0b0767d298733c585",
     "semantic_hash": ""
   },
   "src/risklens/analytics/optimization.py": {
@@ -237,6 +237,24 @@
     "mtime": 1793574463.6666687,
     "seen": 1793574503.958556,
     "ast_hash": "316ee6061929ef5b04b0541e29f71968",
+    "semantic_hash": ""
+  },
+  "benchmarks/simulation_memory.py": {
+    "mtime": 1793574696.8872461,
+    "seen": 1793575217.7552938,
+    "ast_hash": "9faa1cec2a1f774966647640a644dd02",
+    "semantic_hash": ""
+  },
+  "tests/test_simulation_memory.py": {
+    "mtime": 1793575147.1424584,
+    "seen": 1793575217.7553349,
+    "ast_hash": "72bbf0330668a389ff96cfe5cca94ff0",
+    "semantic_hash": ""
+  },
+  "tests/test_stress_dropped_days.py": {
+    "mtime": 1793575152.9072978,
+    "seen": 1793575217.75534,
+    "ast_hash": "4b6d0ec0ea78759819029ce0f23603ac",
     "semantic_hash": ""
   }
 }
