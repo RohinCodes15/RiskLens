@@ -225,7 +225,8 @@ def test_switching_scenarios_hides_the_previous_replay(
 
 
 def test_rerun_with_full_history_clears_the_unavailable_warning(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """A later successful replay replaces an earlier insufficient-history result."""
     late = history.copy()
