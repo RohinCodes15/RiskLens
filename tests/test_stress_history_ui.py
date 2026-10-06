@@ -180,7 +180,9 @@ def test_too_few_common_dates_is_unavailable_without_filling_prices(
     ],
 )
 def test_download_problems_show_a_warning_and_keep_the_analysis(
-    app: AppTest, download: dict, reason: str,
+    app: AppTest,
+    download: dict,
+    reason: str,
 ) -> None:
     """Fetch errors stay inside the stress section instead of crashing the page."""
     with patch("yfinance.download", **download):
