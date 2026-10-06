@@ -1,7 +1,7 @@
 # Graph Report - RiskLens  (2026-11-01)
 
 ## Corpus Check
-- 42 files · ~114,156 words
+- 42 files · ~114,164 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 2 file(s) not represented in the graph (top: (none) 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `aba20610`
+- Built from commit: `d3d6c7b4`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

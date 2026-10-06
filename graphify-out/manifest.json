@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "tests/test_risk_ui.py": {
-    "mtime": 1793547613.2834294,
-    "seen": 1793548256.7522008,
-    "ast_hash": "196e7048ec8fdcc44eaeae2a76b07bd0",
+    "mtime": 1793580020.2309115,
+    "seen": 1793580145.159206,
+    "ast_hash": "9e7f70d484e2086bc3330ea45bdaee16",
     "semantic_hash": ""
   },
   "tests/test_stress_history.py": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "tests/test_stress_history_ui.py": {
-    "mtime": 1793574463.6666687,
-    "seen": 1793574503.958556,
-    "ast_hash": "316ee6061929ef5b04b0541e29f71968",
+    "mtime": 1793580055.2709076,
+    "seen": 1793580145.1592178,
+    "ast_hash": "a4f0bcb9b866da0332a0e921eeaafab4",
     "semantic_hash": ""
   },
   "benchmarks/simulation_memory.py": {
