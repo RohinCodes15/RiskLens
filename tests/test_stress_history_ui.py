@@ -301,7 +301,9 @@ def test_stress_chart_starts_at_one_and_names_the_scenario(
     spec = chart_spec(app, "stress_chart")
     assert chart_values(spec["data"][0]["y"])[0] == pytest.approx(1.0)
     assert pd.Timestamp(spec["data"][0]["x"][0]) == history.index[0]
-    assert spec["layout"]["title"]["text"] == f"Hypothetical replay · {HISTORICAL_SCENARIOS[1].name}"
+    assert (
+        spec["layout"]["title"]["text"] == f"Hypothetical replay · {HISTORICAL_SCENARIOS[1].name}"
+    )
 
 
 def test_switching_scenarios_hides_a_previous_download_error(app: AppTest) -> None:
