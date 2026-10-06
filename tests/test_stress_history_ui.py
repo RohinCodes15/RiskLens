@@ -147,7 +147,8 @@ def test_delisted_stock_names_its_last_price_before_the_crisis_end(
 
 
 def test_every_late_listed_stock_is_named_with_its_own_start(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """Two late listings report two different first dates, never a shared one."""
     history.loc[history.index[:2], "AAPL"] = np.nan
