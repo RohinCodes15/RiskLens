@@ -467,8 +467,11 @@ indexes are matched by calendar date.
 
 **Limitations.**
 - Results are hypothetical, using today's weights and daily rebalancing.
-- A dropped day makes the next return span two trading days, which slightly
-  understates volatility.
+- A dropped day is not a dropped return: the next return spans both trading
+  days and still counts as one daily observation, so `n_returns` falls by one
+  per dropped day. A two-day return has about twice the variance of a one-day
+  return, so on average `annualized_volatility` is slightly overstated, not
+  understated.
 - Within the one-weekday edge allowance, the window can start or end one
   trading day inside the requested dates.
 - Survivorship: only tickers that still have data can be tested.
