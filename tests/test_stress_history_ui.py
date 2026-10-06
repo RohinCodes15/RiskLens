@@ -318,7 +318,8 @@ def test_switching_scenarios_hides_a_previous_download_error(app: AppTest) -> No
 
 
 def test_insufficient_history_suggests_a_later_custom_start(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """An unavailable replay explains how to choose a window that can run."""
     history.loc[history.index[:2], "MSFT"] = np.nan
