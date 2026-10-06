@@ -186,8 +186,7 @@ def test_negative_returns_keep_minimum_volatility_and_frontier() -> None:
     app = click_button(analyzed_app(prices), "Optimize portfolio")
     assert not app.exception and not app.error
     assert any(
-        "Maximum Sharpe" in note.value and "risk-free rate" in note.value
-        for note in app.warning
+        "Maximum Sharpe" in note.value and "risk-free rate" in note.value for note in app.warning
     )
     table = app.dataframe[0].value
     assert list(table.columns) == ["Current", "Minimum volatility"]
