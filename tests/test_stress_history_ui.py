@@ -275,7 +275,8 @@ def test_replay_uses_the_analyzed_custom_weights(history: pd.DataFrame) -> None:
 
 
 def test_actual_price_dates_caption_counts_only_complete_returns(
-    app: AppTest, history: pd.DataFrame,
+    app: AppTest,
+    history: pd.DataFrame,
 ) -> None:
     """The caption reports backend first/last dates and returns after a gap."""
     history.loc[history.index[2], "AAPL"] = np.nan
