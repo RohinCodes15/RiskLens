@@ -33,6 +33,14 @@ pythonpath = ["src"]
 addopts = "-ra --strict-markers"  # list skip/xfail reasons; reject unknown markers
 xfail_strict = true  # an expected failure that starts passing must be cleaned up
 
+[tool.coverage.run]
+source = ["risklens"]  # measure the library, not app.py or the tests
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
