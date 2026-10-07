@@ -160,3 +160,13 @@ def test_hedging_asset_has_negative_risk_contribution() -> None:
     assert result["hedge"] < 0  # it lowers portfolio variance
     assert result["stock"] > 1  # so the stock carries more than all of it
     assert result.sum() == pytest.approx(1.0)
+
+
+def test_zero_weight_asset_contributes_no_risk() -> None:
+    rng = np.random.default_rng(6)
+    returns = pd.DataFrame(rng.normal(0, 0.01, (60, 3)), columns=["A", "B", "C"])
+
+    result = risk_contributions(returns, [0.5, 0.0, 0.5])
+
+    assert result["B"] == 0.0
+    assert result[["A", "C"]].sum() == pytest.approx(1.0)
