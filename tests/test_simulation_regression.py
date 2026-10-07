@@ -51,3 +51,22 @@ def test_break_even_paths_are_not_counted_as_losses() -> None:
 
     np.testing.assert_array_equal(result.terminal_returns, 0.0)
     assert result.loss_probability == 0.0
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        (
+            pd.Series(
+                [0.01, 0.02, 0.03], index=pd.to_datetime(["2024-01-02"] * 2 + ["2024-01-03"])
+            ),
+            "sorted and unique",
+        ),
+        (history([0.01, -1.5, 0.02]), "-100%"),
+    ],
+)
+def test_duplicate_dates_and_worse_than_total_loss_are_rejected(
+    raw: pd.Series, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        simulate_portfolio(raw)
