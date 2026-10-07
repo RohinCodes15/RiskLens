@@ -47,3 +47,18 @@ def test_reordering_assets_with_their_weights_changes_nothing() -> None:
     assert swapped.max_drawdown == pytest.approx(original.max_drawdown, abs=1e-15)
     assert swapped.annualized_volatility == pytest.approx(original.annualized_volatility)
     assert swapped.n_returns == original.n_returns
+
+
+def test_every_short_asset_is_named_in_column_order() -> None:
+    history = prices().assign(C=[np.nan] * 5)
+    history.loc[:"2024-01-04", "A"] = np.nan
+    history.loc["2024-01-05":, "B"] = np.nan  # two missing weekdays; one would be a holiday
+
+    result = stress_test(history, [0.4, 0.4, 0.2], WINDOW)
+
+    assert not result.available
+    assert result.reason == (
+        "Insufficient history: A history starts 2024-01-05, after the scenario start "
+        "2024-01-03; B history ends 2024-01-04, before the scenario end 2024-01-08; "
+        "C has no price data."
+    )
