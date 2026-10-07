@@ -70,3 +70,8 @@ def test_duplicate_dates_and_worse_than_total_loss_are_rejected(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         simulate_portfolio(raw)
+
+
+def test_seed_above_the_32_bit_range_is_rejected() -> None:
+    with pytest.raises(ValueError, match="seed must be between"):
+        simulate_portfolio(noisy(), seed=2**32)
