@@ -133,3 +133,17 @@ def test_risk_contributions_reject_bad_returns(returns: pd.DataFrame, message: s
 def test_risk_contributions_reject_non_dataframe_returns() -> None:
     with pytest.raises(ValueError, match="DataFrame"):
         risk_contributions(np.full((5, 1), 0.01), [1.0])  # type: ignore[arg-type]
+
+
+def test_risk_contributions_match_euler_decomposition() -> None:
+    returns = pd.DataFrame(
+        {"A": [0.01, -0.02, 0.015, 0.0, -0.005], "B": [0.002, 0.004, -0.001, 0.003, 0.001]}
+    )
+    weights = np.array([0.6, 0.4])
+    cov = np.cov(returns.to_numpy(), rowvar=False, ddof=1) * 252
+    variance = weights @ cov @ weights
+    expected = weights * (cov @ weights) / variance  # w_i (Σw)_i / w'Σw
+
+    result = risk_contributions(returns, weights.tolist())
+
+    np.testing.assert_allclose(result.to_numpy(), expected, rtol=1e-12)
