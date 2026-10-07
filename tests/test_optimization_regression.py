@@ -6,6 +6,7 @@ import pytest
 from test_optimization import five_assets, make_prices
 
 from risklens.analytics import (
+    efficient_frontier,
     estimate_inputs,
     max_sharpe_portfolio,
     min_volatility_portfolio,
@@ -54,3 +55,13 @@ def test_max_sharpe_satisfies_kkt_conditions(risk_free_rate: float) -> None:
     weights = max_sharpe_portfolio(prices, risk_free_rate).weights.to_numpy()
 
     assert_kkt(weights, covariance.to_numpy(), expected.to_numpy() - risk_free_rate)
+
+
+def test_max_sharpe_is_at_least_every_frontier_point() -> None:
+    prices = five_assets()
+    best = max_sharpe_portfolio(prices, risk_free_rate=0.02)
+    frontier = efficient_frontier(prices, n_points=100, risk_free_rate=0.02)
+
+    frontier_best = frontier.points["sharpe_ratio"].max()
+    assert best.sharpe_ratio >= frontier_best - 1e-9
+    assert best.sharpe_ratio == pytest.approx(frontier_best, rel=1e-3)
