@@ -65,3 +65,12 @@ def test_max_sharpe_is_at_least_every_frontier_point() -> None:
     frontier_best = frontier.points["sharpe_ratio"].max()
     assert best.sharpe_ratio >= frontier_best - 1e-9
     assert best.sharpe_ratio == pytest.approx(frontier_best, rel=1e-3)
+
+
+def test_first_frontier_point_holds_the_min_volatility_weights() -> None:
+    prices = five_assets()
+
+    frontier = efficient_frontier(prices)
+
+    lowest = min_volatility_portfolio(prices).weights
+    np.testing.assert_allclose(frontier.weights.iloc[0], lowest, atol=1e-5)
