@@ -32,3 +32,15 @@ def test_percentile_bands_match_lognormal_quantiles(day: int) -> None:
         # Standard error of a sample quantile, in log-wealth units.
         se = np.sqrt(p * (1 - p) / N_PATHS) / norm.pdf(z) * sigma * np.sqrt(day)
         assert np.log(band[label]) == pytest.approx(expected_log_wealth, abs=5 * se)
+
+
+def test_friday_history_continues_on_the_next_consecutive_weekdays() -> None:
+    returns = history([0.01, -0.005, 0.002], start="2024-03-27")  # Wed to Fri Mar 29
+
+    result = simulate_portfolio(returns, horizon_days=6)
+
+    expected = pd.DatetimeIndex(
+        ["2024-03-29", "2024-04-01", "2024-04-02", "2024-04-03", "2024-04-04", "2024-04-05"]
+        + ["2024-04-08"]
+    )
+    pd.testing.assert_index_equal(result.percentile_paths.index, expected, check_names=False)
