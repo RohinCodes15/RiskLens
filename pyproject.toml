@@ -18,7 +18,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.13"]  # 0.13 dropped UP038, matching current Ruff
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",  # `pytest --cov` coverage reports
+    "ruff>=0.13",  # 0.13 dropped UP038, matching current Ruff
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/risklens"]
