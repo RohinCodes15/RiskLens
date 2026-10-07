@@ -3,10 +3,11 @@
 import numpy as np
 import pandas as pd
 import pytest
-from test_optimization import make_prices
+from test_optimization import five_assets, make_prices
 
 from risklens.analytics import (
     estimate_inputs,
+    max_sharpe_portfolio,
     min_volatility_portfolio,
 )
 
@@ -43,3 +44,13 @@ def test_min_volatility_satisfies_kkt_with_a_binding_long_only_bound() -> None:
     assert weights[2] == pytest.approx(0.0, abs=ACTIVE_WEIGHT)
     assert (weights[:2] > 0.1).all()
     assert_kkt(weights, covariance.to_numpy(), np.ones(3))
+
+
+@pytest.mark.parametrize("risk_free_rate", [0.0, 0.05])
+def test_max_sharpe_satisfies_kkt_conditions(risk_free_rate: float) -> None:
+    prices = five_assets()
+    expected, covariance, _ = estimate_inputs(prices)
+
+    weights = max_sharpe_portfolio(prices, risk_free_rate).weights.to_numpy()
+
+    assert_kkt(weights, covariance.to_numpy(), expected.to_numpy() - risk_free_rate)
