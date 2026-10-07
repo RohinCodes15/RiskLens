@@ -75,7 +75,7 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-`[dev]` adds pytest and Ruff. Leave it off (`pip install -e .`) to install
+`[dev]` adds pytest, pytest-cov, and Ruff. Leave it off (`pip install -e .`) to install
 just the app.
 
 Dependency floors in `pyproject.toml` are tested: the full suite passes on
@@ -96,6 +96,7 @@ streamlit run app.py
 ```bash
 pytest                                                # full suite, no network (yfinance is mocked)
 pytest tests/test_smoke.py tests/test_tail_risk_ui.py tests/test_risk_ui.py  # dashboard tests only
+pytest --cov                                          # with branch coverage of src/risklens
 ruff check .                                          # lint
 ruff format --check .                                 # formatting
 python benchmarks/simulation_memory.py                # Monte Carlo peak memory (not run by pytest)
