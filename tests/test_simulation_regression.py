@@ -44,3 +44,10 @@ def test_friday_history_continues_on_the_next_consecutive_weekdays() -> None:
         + ["2024-04-08"]
     )
     pd.testing.assert_index_equal(result.percentile_paths.index, expected, check_names=False)
+
+
+def test_break_even_paths_are_not_counted_as_losses() -> None:
+    result = simulate_portfolio(history([0.0] * 20), horizon_days=10)
+
+    np.testing.assert_array_equal(result.terminal_returns, 0.0)
+    assert result.loss_probability == 0.0
