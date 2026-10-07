@@ -37,3 +37,13 @@ def test_single_asset_return_is_its_price_ratio(weights: list[float], ratio: flo
     result = stress_test(prices(), weights, WINDOW)
 
     assert result.cumulative_return == pytest.approx(ratio - 1.0)
+
+
+def test_reordering_assets_with_their_weights_changes_nothing() -> None:
+    original = stress_test(prices(), [0.3, 0.7], WINDOW)
+    swapped = stress_test(prices()[["B", "A"]], [0.7, 0.3], WINDOW)
+
+    assert swapped.cumulative_return == pytest.approx(original.cumulative_return, abs=1e-15)
+    assert swapped.max_drawdown == pytest.approx(original.max_drawdown, abs=1e-15)
+    assert swapped.annualized_volatility == pytest.approx(original.annualized_volatility)
+    assert swapped.n_returns == original.n_returns
