@@ -128,3 +128,8 @@ def test_risk_contributions_sum_to_one_and_follow_columns() -> None:
 def test_risk_contributions_reject_bad_returns(returns: pd.DataFrame, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         risk_contributions(returns, [1.0])
+
+
+def test_risk_contributions_reject_non_dataframe_returns() -> None:
+    with pytest.raises(ValueError, match="DataFrame"):
+        risk_contributions(np.full((5, 1), 0.01), [1.0])  # type: ignore[arg-type]
