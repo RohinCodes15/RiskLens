@@ -30,3 +30,10 @@ def test_drawdown_is_peak_to_trough_inside_the_window() -> None:
     # The 200 close before the window is not a peak; 120 -> 90 is.
     assert result.cumulative_return == pytest.approx(0.30)
     assert result.max_drawdown == pytest.approx(-0.25)
+
+
+@pytest.mark.parametrize(("weights", "ratio"), [([1.0, 0.0], 99 / 100), ([0.0, 1.0], 44 / 50)])
+def test_single_asset_return_is_its_price_ratio(weights: list[float], ratio: float) -> None:
+    result = stress_test(prices(), weights, WINDOW)
+
+    assert result.cumulative_return == pytest.approx(ratio - 1.0)
