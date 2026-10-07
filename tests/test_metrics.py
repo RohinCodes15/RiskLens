@@ -147,3 +147,16 @@ def test_risk_contributions_match_euler_decomposition() -> None:
     result = risk_contributions(returns, weights.tolist())
 
     np.testing.assert_allclose(result.to_numpy(), expected, rtol=1e-12)
+
+
+def test_hedging_asset_has_negative_risk_contribution() -> None:
+    rng = np.random.default_rng(5)
+    stock = rng.normal(0, 0.02, 250)
+    hedge = -0.5 * stock + rng.normal(0, 0.002, 250)  # moves against the stock
+    returns = pd.DataFrame({"stock": stock, "hedge": hedge})
+
+    result = risk_contributions(returns, [0.8, 0.2])
+
+    assert result["hedge"] < 0  # it lowers portfolio variance
+    assert result["stock"] > 1  # so the stock carries more than all of it
+    assert result.sum() == pytest.approx(1.0)
