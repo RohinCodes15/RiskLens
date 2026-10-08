@@ -43,3 +43,12 @@ def test_all_weight_on_one_asset_gives_that_assets_metrics() -> None:
     assert result.annualized_volatility == pytest.approx(annualized_volatility(own))
     assert result.sharpe_ratio == pytest.approx(sharpe_ratio(own, 0.02))
     assert result.max_drawdown == pytest.approx(max_drawdown(own))
+
+
+def test_splitting_an_asset_across_identical_columns_changes_nothing() -> None:
+    prices = two_assets()
+    split = prices.assign(A2=prices["A"])
+
+    assert_same_metrics(
+        analyze_portfolio(split, [0.3, 0.4, 0.3]), analyze_portfolio(prices, [0.6, 0.4])
+    )
