@@ -1,11 +1,14 @@
 """Optimality certificates and invariances for the long-only optimizers."""
 
+from collections.abc import Callable
+
 import numpy as np
 import pandas as pd
 import pytest
 from test_optimization import five_assets, make_prices
 
 from risklens.analytics import (
+    OptimizedPortfolio,
     efficient_frontier,
     estimate_inputs,
     max_sharpe_portfolio,
@@ -86,3 +89,14 @@ def test_risk_free_rate_changes_only_the_frontier_sharpe_column() -> None:
     pd.testing.assert_frame_equal(shifted.points[cols], base.points[cols])
     excess = (base.points["expected_return"] - 0.03) / base.points["volatility"]
     np.testing.assert_allclose(shifted.points["sharpe_ratio"], excess)
+
+
+@pytest.mark.parametrize("optimizer", [min_volatility_portfolio, max_sharpe_portfolio])
+def test_rescaling_one_price_column_leaves_weights_unchanged(
+    optimizer: Callable[[pd.DataFrame], OptimizedPortfolio],
+) -> None:
+    prices = five_assets()
+    rescaled = prices.assign(A1=prices["A1"] * 37.0)  # e.g. a different price level
+
+    original = optimizer(prices).weights
+    np.testing.assert_allclose(optimizer(rescaled).weights, original, atol=1e-8)
