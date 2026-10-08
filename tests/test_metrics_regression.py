@@ -9,6 +9,7 @@ import pytest
 from risklens.analytics import (
     historical_cvar,
     historical_var,
+    sharpe_ratio,
 )
 
 N_DAYS = 500
@@ -55,3 +56,9 @@ def test_tail_risk_scales_with_exposure(measure: TailMeasure) -> None:
     returns = noisy()
 
     assert measure(returns * 2.0) == pytest.approx(2.0 * measure(returns))
+
+
+def test_sharpe_ratio_ignores_leverage_at_a_zero_risk_free_rate() -> None:
+    returns = noisy()
+
+    assert sharpe_ratio(returns * 3.0) == pytest.approx(sharpe_ratio(returns))
