@@ -38,3 +38,13 @@ def test_tail_risk_ignores_the_order_of_returns(measure: TailMeasure) -> None:
 
     # Exact up to float summation order in the tail mean.
     assert measure(shuffled) == pytest.approx(measure(returns), rel=1e-12)
+
+
+@pytest.mark.parametrize("measure", [historical_var, historical_cvar])
+def test_tail_risk_rises_with_confidence(measure: TailMeasure) -> None:
+    returns = noisy()
+
+    levels = [measure(returns, c) for c in (0.90, 0.95, 0.975, 0.99)]
+
+    assert levels == sorted(levels)
+    assert levels[0] < levels[-1]
