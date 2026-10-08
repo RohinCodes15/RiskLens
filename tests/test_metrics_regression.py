@@ -9,8 +9,11 @@ import pytest
 from risklens.analytics import (
     annualized_return,
     annualized_volatility,
+    cumulative_wealth,
+    drawdown_series,
     historical_cvar,
     historical_var,
+    max_drawdown,
     portfolio_returns,
     sharpe_ratio,
 )
@@ -77,3 +80,11 @@ def test_portfolio_return_is_weighted_but_volatility_is_diversified() -> None:
     asset_vols = [annualized_volatility(assets[c]) for c in assets]
     assert annualized_return(portfolio) == pytest.approx(np.dot(weights, asset_returns))
     assert annualized_volatility(portfolio) < np.dot(weights, asset_vols)
+
+
+def test_total_loss_day_wipes_out_wealth_for_good() -> None:
+    returns = dated([0.10, -1.0, 0.50])
+
+    np.testing.assert_allclose(cumulative_wealth(returns), [1.1, 0.0, 0.0])
+    np.testing.assert_allclose(drawdown_series(returns), [0.0, -1.0, -1.0])
+    assert max_drawdown(returns) == -1.0
