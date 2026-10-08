@@ -48,3 +48,10 @@ def test_tail_risk_rises_with_confidence(measure: TailMeasure) -> None:
 
     assert levels == sorted(levels)
     assert levels[0] < levels[-1]
+
+
+@pytest.mark.parametrize("measure", [historical_var, historical_cvar])
+def test_tail_risk_scales_with_exposure(measure: TailMeasure) -> None:
+    returns = noisy()
+
+    assert measure(returns * 2.0) == pytest.approx(2.0 * measure(returns))
