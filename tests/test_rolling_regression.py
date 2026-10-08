@@ -2,8 +2,9 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
-from risklens.analytics.rolling import rolling_max_drawdown, rolling_volatility
+from risklens.analytics.rolling import rolling_max_drawdown, rolling_sharpe, rolling_volatility
 
 WINDOW = 21
 N_DAYS = 120
@@ -36,3 +37,17 @@ def test_max_drawdown_holds_the_drop_for_exactly_one_window() -> None:
 
     np.testing.assert_allclose(worst[windows_containing_shock()], -0.05)
     assert (worst[full & ~windows_containing_shock()] == 0.0).all()
+
+
+def test_rolling_sharpe_ignores_leverage_at_a_zero_risk_free_rate() -> None:
+    returns = pd.Series(
+        np.random.default_rng(2).normal(0.0005, 0.01, N_DAYS),
+        index=pd.bdate_range("2024-01-02", periods=N_DAYS),
+    )
+
+    base = rolling_sharpe(returns, WINDOW)
+
+    pd.testing.assert_series_equal(rolling_sharpe(returns * 2.0, WINDOW), base)
+    assert rolling_sharpe(returns * 2.0, WINDOW, 0.03).iloc[-1] != pytest.approx(
+        rolling_sharpe(returns, WINDOW, 0.03).iloc[-1]
+    )
