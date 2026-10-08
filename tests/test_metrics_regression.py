@@ -7,8 +7,11 @@ import pandas as pd
 import pytest
 
 from risklens.analytics import (
+    annualized_return,
+    annualized_volatility,
     historical_cvar,
     historical_var,
+    portfolio_returns,
     sharpe_ratio,
 )
 
@@ -62,3 +65,15 @@ def test_sharpe_ratio_ignores_leverage_at_a_zero_risk_free_rate() -> None:
     returns = noisy()
 
     assert sharpe_ratio(returns * 3.0) == pytest.approx(sharpe_ratio(returns))
+
+
+def test_portfolio_return_is_weighted_but_volatility_is_diversified() -> None:
+    assets = three_assets()
+    weights = [0.5, 0.3, 0.2]
+
+    portfolio = portfolio_returns(assets, weights)
+
+    asset_returns = [annualized_return(assets[c]) for c in assets]
+    asset_vols = [annualized_volatility(assets[c]) for c in assets]
+    assert annualized_return(portfolio) == pytest.approx(np.dot(weights, asset_returns))
+    assert annualized_volatility(portfolio) < np.dot(weights, asset_vols)
