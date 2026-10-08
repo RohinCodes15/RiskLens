@@ -74,3 +74,15 @@ def test_first_frontier_point_holds_the_min_volatility_weights() -> None:
 
     lowest = min_volatility_portfolio(prices).weights
     np.testing.assert_allclose(frontier.weights.iloc[0], lowest, atol=1e-5)
+
+
+def test_risk_free_rate_changes_only_the_frontier_sharpe_column() -> None:
+    prices = five_assets()
+    base = efficient_frontier(prices, n_points=10)
+    shifted = efficient_frontier(prices, n_points=10, risk_free_rate=0.03)
+
+    pd.testing.assert_frame_equal(shifted.weights, base.weights)
+    cols = ["expected_return", "volatility"]
+    pd.testing.assert_frame_equal(shifted.points[cols], base.points[cols])
+    excess = (base.points["expected_return"] - 0.03) / base.points["volatility"]
+    np.testing.assert_allclose(shifted.points["sharpe_ratio"], excess)
