@@ -15,6 +15,7 @@ from risklens.analytics import (
     historical_var,
     max_drawdown,
     portfolio_returns,
+    risk_contributions,
     sharpe_ratio,
 )
 
@@ -88,3 +89,12 @@ def test_total_loss_day_wipes_out_wealth_for_good() -> None:
     np.testing.assert_allclose(cumulative_wealth(returns), [1.1, 0.0, 0.0])
     np.testing.assert_allclose(drawdown_series(returns), [0.0, -1.0, -1.0])
     assert max_drawdown(returns) == -1.0
+
+
+def test_risk_contributions_ignore_the_scale_of_returns() -> None:
+    assets = three_assets()
+    weights = [0.5, 0.3, 0.2]
+
+    scaled = risk_contributions(assets * 3.0, weights)
+
+    pd.testing.assert_series_equal(scaled, risk_contributions(assets, weights))
