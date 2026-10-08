@@ -52,3 +52,12 @@ def test_splitting_an_asset_across_identical_columns_changes_nothing() -> None:
     assert_same_metrics(
         analyze_portfolio(split, [0.3, 0.4, 0.3]), analyze_portfolio(prices, [0.6, 0.4])
     )
+
+
+def test_price_level_of_an_asset_does_not_change_metrics() -> None:
+    prices = two_assets()
+    rescaled = prices.assign(B=prices["B"] * 1_000.0)
+
+    assert_same_metrics(
+        analyze_portfolio(rescaled, [0.5, 0.5]), analyze_portfolio(prices, [0.5, 0.5])
+    )
