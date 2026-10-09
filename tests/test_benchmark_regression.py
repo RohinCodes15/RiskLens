@@ -52,3 +52,15 @@ def test_flat_portfolio_has_zero_beta_and_undefined_correlation() -> None:
     assert np.isnan(result.correlation)
     assert result.tracking_error == pytest.approx(BENCH_VOL)
     assert result.excess_return == pytest.approx(-BENCH_ANNUAL)
+
+
+def test_benchmark_price_level_does_not_change_statistics() -> None:
+    assets = prices_from(np.random.default_rng(6).normal(0.0003, 0.012, 60)).to_frame("A")
+
+    base = benchmark_statistics(assets, [1.0], SPY)
+    rescaled = benchmark_statistics(assets, [1.0], SPY * 0.1)
+
+    assert rescaled.beta == pytest.approx(base.beta)
+    assert rescaled.correlation == pytest.approx(base.correlation)
+    assert rescaled.tracking_error == pytest.approx(base.tracking_error)
+    assert rescaled.excess_return == pytest.approx(base.excess_return)
