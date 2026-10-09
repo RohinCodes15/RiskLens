@@ -41,3 +41,14 @@ def test_half_benchmark_half_cash_has_beta_one_half() -> None:
     assert result.correlation == pytest.approx(1.0)
     assert result.tracking_error == pytest.approx(0.5 * BENCH_VOL)
     assert result.excess_return == pytest.approx(-0.5 * BENCH_ANNUAL)
+
+
+def test_flat_portfolio_has_zero_beta_and_undefined_correlation() -> None:
+    assets = pd.DataFrame({"CASH": 100.0}, index=DATES)
+
+    result = benchmark_statistics(assets, [1.0], SPY)
+
+    assert result.beta == pytest.approx(0.0, abs=1e-15)
+    assert np.isnan(result.correlation)
+    assert result.tracking_error == pytest.approx(BENCH_VOL)
+    assert result.excess_return == pytest.approx(-BENCH_ANNUAL)
