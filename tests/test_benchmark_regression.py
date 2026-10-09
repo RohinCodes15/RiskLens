@@ -30,3 +30,14 @@ def test_scaled_benchmark_returns_give_that_beta(leverage: float) -> None:
     assert result.correlation == pytest.approx(np.sign(leverage))
     assert result.tracking_error == pytest.approx(abs(leverage - 1.0) * BENCH_VOL)
     assert result.excess_return == pytest.approx((leverage - 1.0) * BENCH_ANNUAL)
+
+
+def test_half_benchmark_half_cash_has_beta_one_half() -> None:
+    assets = pd.DataFrame({"SPY": SPY, "CASH": 100.0}, index=DATES)
+
+    result = benchmark_statistics(assets, [0.5, 0.5], SPY)
+
+    assert result.beta == pytest.approx(0.5)
+    assert result.correlation == pytest.approx(1.0)
+    assert result.tracking_error == pytest.approx(0.5 * BENCH_VOL)
+    assert result.excess_return == pytest.approx(-0.5 * BENCH_ANNUAL)
