@@ -19,6 +19,8 @@ MIN_VOLATILITY_OBS = 2  # sample std (ddof=1) needs two returns
 # A daily-return standard deviation at or below this is float rounding (returns
 # from constant-growth prices carry ~1e-16 noise), not real volatility.
 RETURN_NOISE_TOLERANCE = 1e-12
+REBALANCE_FREQUENCIES = ("daily", "monthly", "quarterly", "annual", "never")
+_PERIOD_CODES = {"monthly": "M", "quarterly": "Q", "annual": "Y"}
 
 
 def _as_float_values(returns: pd.Series | pd.DataFrame) -> np.ndarray:
