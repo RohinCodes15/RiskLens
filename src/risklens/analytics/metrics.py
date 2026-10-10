@@ -64,6 +64,19 @@ def _rebalance_periods(index: pd.Index, rebalance: str) -> np.ndarray:
     return pd.factorize(naive.to_period(_PERIOD_CODES[rebalance]))[0]
 
 
+def _drifted_returns(values: np.ndarray, w: np.ndarray, periods: np.ndarray) -> np.ndarray:
+    """Portfolio returns when holdings drift with prices and reset at each new period."""
+    out = np.empty(len(values))
+    starts = np.flatnonzero(np.diff(periods, prepend=-1))
+    for start, stop in zip(starts, [*starts[1:], len(values)], strict=True):
+        wealth = np.cumprod(1.0 + values[start:stop], axis=0) @ w
+        previous = np.concatenate(([w.sum()], wealth[:-1]))
+        # After a -100% portfolio day nothing is left to gain or lose.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            out[start:stop] = np.where(previous > 0, wealth / previous - 1.0, 0.0)
+    return out
+
+
 def portfolio_returns(returns: pd.DataFrame, weights: Sequence[float]) -> pd.Series:
     """Daily portfolio returns for a fixed-weight (daily rebalanced) portfolio.
 
