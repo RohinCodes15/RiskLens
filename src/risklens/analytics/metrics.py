@@ -77,12 +77,25 @@ def _drifted_returns(values: np.ndarray, w: np.ndarray, periods: np.ndarray) -> 
     return out
 
 
-def portfolio_returns(returns: pd.DataFrame, weights: Sequence[float]) -> pd.Series:
-    """Daily portfolio returns for a fixed-weight (daily rebalanced) portfolio.
+def portfolio_returns(
+    returns: pd.DataFrame, weights: Sequence[float], rebalance: str = "daily"
+) -> pd.Series:
+    """Daily returns of a portfolio rebalanced to ``weights`` at a fixed frequency.
+
+    ``rebalance`` is one of ``REBALANCE_FREQUENCIES``:
+
+    * ``"daily"``: weights reset every day, so each return is ``returns @ weights``.
+    * ``"monthly"``, ``"quarterly"``, ``"annual"``: holdings drift with prices
+      and reset to ``weights`` on the first return date of each calendar
+      month, quarter, or year. Needs a sorted, unique ``DatetimeIndex``.
+    * ``"never"``: buy-and-hold; weights are only the starting allocation.
+
+    The first return date always starts at ``weights``. No trading costs.
 
     Raises:
         ValueError: if ``returns`` is not a non-empty DataFrame of finite
-            returns >= -100%, or the weights are invalid.
+            returns >= -100%, the weights are invalid, ``rebalance`` is
+            unknown, or a calendar frequency gets undated or unsorted returns.
     """
     if not isinstance(returns, pd.DataFrame):
         raise ValueError("returns must be a pandas DataFrame.")
@@ -90,7 +103,9 @@ def portfolio_returns(returns: pd.DataFrame, weights: Sequence[float]) -> pd.Ser
         raise ValueError("No returns provided.")
     w = validate_weights(weights, returns.shape[1])
     values = _as_float_values(returns)
-    return pd.Series(values @ w, index=returns.index, name="portfolio")
+    periods = _rebalance_periods(returns.index, rebalance)
+    daily = values @ w if rebalance == "daily" else _drifted_returns(values, w, periods)
+    return pd.Series(daily, index=returns.index, name="portfolio")
 
 
 def annualized_return(returns: pd.Series) -> float:
