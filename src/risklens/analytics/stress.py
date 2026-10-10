@@ -5,7 +5,7 @@ Method:
        actual adjusted close. Prices are never forward-filled, backfilled, or
        interpolated, so a day one asset did not trade is dropped for all.
     2. Turn those prices into simple daily returns and combine them with the
-       given fixed weights (daily rebalanced) via ``portfolio_returns``.
+       given weights at the chosen rebalance frequency via ``portfolio_returns``.
     3. Report cumulative return, max drawdown, and annualized volatility with
        the existing metric functions.
 
