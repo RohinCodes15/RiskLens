@@ -47,6 +47,23 @@ def _validate_returns(returns: pd.Series, min_obs: int = 1) -> np.ndarray:
     return _as_float_values(returns)
 
 
+def _rebalance_periods(index: pd.Index, rebalance: str) -> np.ndarray:
+    """Period label per return row; weights reset to target on each label's first row."""
+    if rebalance not in REBALANCE_FREQUENCIES:
+        options = ", ".join(REBALANCE_FREQUENCIES)
+        raise ValueError(f"rebalance must be one of: {options}; got {rebalance!r}.")
+    if rebalance == "daily":
+        return np.arange(len(index))
+    if rebalance == "never":
+        return np.zeros(len(index), dtype=int)
+    if not isinstance(index, pd.DatetimeIndex):
+        raise ValueError(f"{rebalance.capitalize()} rebalancing needs returns indexed by date.")
+    if not (index.is_monotonic_increasing and index.is_unique):
+        raise ValueError("Return dates must be sorted and unique.")
+    naive = index.tz_localize(None) if index.tz is not None else index
+    return pd.factorize(naive.to_period(_PERIOD_CODES[rebalance]))[0]
+
+
 def portfolio_returns(returns: pd.DataFrame, weights: Sequence[float]) -> pd.Series:
     """Daily portfolio returns for a fixed-weight (daily rebalanced) portfolio.
 
