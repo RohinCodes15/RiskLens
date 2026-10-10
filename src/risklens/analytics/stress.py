@@ -197,9 +197,15 @@ def _window(prices: pd.DataFrame, scenario: StressScenario) -> pd.DataFrame:
 
 
 def stress_test(
-    prices: pd.DataFrame, weights: Sequence[float], scenario: StressScenario
+    prices: pd.DataFrame,
+    weights: Sequence[float],
+    scenario: StressScenario,
+    rebalance: str = "daily",
 ) -> StressResult:
-    """Realized fixed-weight portfolio results over one historical window.
+    """Realized portfolio results over one historical window.
+
+    The portfolio starts the window at ``weights`` and resets to them at the
+    ``rebalance`` frequency (see ``portfolio_returns``), daily by default.
 
     ``prices`` are adjusted closes, one column per asset in ``weights`` order;
     NaN marks dates an asset has no observation (for example before listing).
@@ -222,7 +228,7 @@ def stress_test(
     if len(window) < MIN_WINDOW_PRICES:
         reason = f"Need {MIN_WINDOW_PRICES} common price dates in the window; got {len(window)}."
         return StressResult(scenario, False, reason)
-    daily = portfolio_returns(to_returns(window), w)
+    daily = portfolio_returns(to_returns(window), w, rebalance)
     return StressResult(
         scenario=scenario,
         available=True,
