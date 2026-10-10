@@ -48,6 +48,7 @@ def _aligned_returns(
     asset_prices: pd.DataFrame,
     weights: Sequence[float],
     benchmark_prices: pd.Series,
+    rebalance: str,
 ) -> tuple[pd.Series, pd.Series, pd.DatetimeIndex]:
     """Daily portfolio and benchmark returns on the dates both have prices.
 
@@ -75,7 +76,7 @@ def _aligned_returns(
         raise ValueError(
             f"Need at least {MIN_ALIGNED_PRICES} shared price dates with the benchmark."
         )
-    port = portfolio_returns(to_returns(assets.loc[shared]), weights)
+    port = portfolio_returns(to_returns(assets.loc[shared]), weights, rebalance)
     return port, to_returns(bench.loc[shared]).rename("benchmark"), shared
 
 
@@ -83,6 +84,7 @@ def compare_to_benchmark(
     asset_prices: pd.DataFrame,
     weights: Sequence[float],
     benchmark_prices: pd.Series,
+    rebalance: str = "daily",
 ) -> pd.DataFrame:
     """Normalized growth of the portfolio and the benchmark from a common 1.0.
 
@@ -90,7 +92,8 @@ def compare_to_benchmark(
     order, and ``benchmark_prices`` is the SPY price series. Only dates where
     every asset and the benchmark have a price are used. The first shared
     date is the base date where both curves equal 1.0; 1.10 later means up
-    10% since then. The portfolio is rebalanced daily to fixed weights.
+    10% since then. The portfolio resets to ``weights`` at the ``rebalance``
+    frequency (see ``portfolio_returns``), daily by default.
 
     Returns:
         DataFrame indexed by date with columns ``portfolio`` and ``benchmark``.
@@ -99,7 +102,7 @@ def compare_to_benchmark(
         ValueError: if fewer than 2 dates are shared, weights are invalid,
             or prices produce impossible returns.
     """
-    port, bench, shared = _aligned_returns(asset_prices, weights, benchmark_prices)
+    port, bench, shared = _aligned_returns(asset_prices, weights, benchmark_prices, rebalance)
     curves = pd.DataFrame(
         {"portfolio": cumulative_wealth(port), "benchmark": cumulative_wealth(bench)}
     )
@@ -111,18 +114,20 @@ def benchmark_statistics(
     asset_prices: pd.DataFrame,
     weights: Sequence[float],
     benchmark_prices: pd.Series,
+    rebalance: str = "daily",
 ) -> BenchmarkStatistics:
     """Excess return, beta, correlation, and tracking error against SPY.
 
     Inputs and date alignment match ``compare_to_benchmark``: adjusted prices,
-    weights in column order, only dates shared by every asset and SPY.
+    weights in column order, ``rebalance``, only dates shared by every asset
+    and SPY.
 
     Raises:
         ValueError: on the same inputs as ``compare_to_benchmark``, fewer
             than ``MIN_STATISTIC_RETURNS`` shared daily returns, or constant
             benchmark returns (beta is undefined).
     """
-    port, bench, _ = _aligned_returns(asset_prices, weights, benchmark_prices)
+    port, bench, _ = _aligned_returns(asset_prices, weights, benchmark_prices, rebalance)
     if len(port) < MIN_STATISTIC_RETURNS:
         raise ValueError(
             f"Need at least {MIN_STATISTIC_RETURNS} shared daily returns for benchmark statistics."
