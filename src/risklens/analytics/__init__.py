@@ -12,6 +12,7 @@ from risklens.analytics.concentration import (
 )
 from risklens.analytics.engine import PortfolioMetrics, analyze_portfolio
 from risklens.analytics.metrics import (
+    REBALANCE_FREQUENCIES,
     TRADING_DAYS_PER_YEAR,
     VAR_CONFIDENCE_LEVELS,
     annualized_return,
@@ -57,6 +58,7 @@ from risklens.analytics.stress import (
 
 __all__ = [
     "HISTORICAL_SCENARIOS",
+    "REBALANCE_FREQUENCIES",
     "ROLLING_WINDOWS",
     "TRADING_DAYS_PER_YEAR",
     "VAR_CONFIDENCE_LEVELS",
