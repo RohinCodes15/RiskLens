@@ -187,6 +187,27 @@ the two return the same prices.
 Errors: `ValueError` for bad input, `risklens.data.DataFetchError` for
 download problems.
 
+## Rebalancing
+
+```python
+portfolio_returns(returns, weights, rebalance="daily") -> pd.Series
+```
+
+`rebalance` is one of `REBALANCE_FREQUENCIES`:
+
+| Value | Behavior |
+|-------|----------|
+| `"daily"` (default) | weights reset every day; each return is `returns @ weights` |
+| `"monthly"`, `"quarterly"`, `"annual"` | holdings drift with prices and reset to `weights` on the first return date of each calendar month, quarter, or year |
+| `"never"` | buy-and-hold: `weights` is only the starting allocation |
+
+The first return date always starts at `weights`. Calendar frequencies need
+returns on a sorted, unique `DatetimeIndex` (time zones are fine). No
+trading costs are charged. `analyze_portfolio`, `compare_to_benchmark`,
+`benchmark_statistics`, `stress_test`, and `run_stress_tests` take the same
+`rebalance` argument and pass it through. Optimization, risk contributions,
+and Monte Carlo still assume constant weights.
+
 ## Historical VaR and CVaR
 
 ```python
