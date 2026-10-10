@@ -47,6 +47,8 @@ There is no separate backend or database: the Streamlit app calls the
 - Price download (yfinance, auto-adjusted closes) with date checks before
   any request, either aligned to shared dates or as per-ticker history that
   keeps each ticker's own coverage, and simple daily returns.
+- Portfolio returns rebalanced daily, monthly, quarterly, annually, or never
+  (buy-and-hold); see [Rebalancing](#rebalancing).
 - Risk metrics: annualized return and volatility, Sharpe ratio, cumulative
   wealth, drawdown series, max drawdown, and per-asset risk contributions.
 - Tail risk: historical VaR and CVaR (Expected Shortfall) at 95% and 99%
@@ -160,7 +162,7 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `rolling_drawdown`, `rolling_max_drawdown`, `rolling_metrics`,
 `ROLLING_WINDOWS`, `estimate_inputs`, `min_volatility_portfolio`,
 `max_sharpe_portfolio`, `efficient_frontier`, `frontier_point_within_risk`, and
-`TRADING_DAYS_PER_YEAR`,
+`TRADING_DAYS_PER_YEAR`, `REBALANCE_FREQUENCIES`,
 plus the frozen result types `PortfolioMetrics`, `BenchmarkStatistics`,
 `MonteCarloResult`, `StressScenario`, `StressResult`, `OptimizedPortfolio`,
 `SolverDiagnostics`, and `EfficientFrontier`, and the `OptimizationError` exception. Each function's
