@@ -64,8 +64,9 @@ There is no separate backend or database: the Streamlit app calls the
   (see [Simulation and stress testing](#simulation-and-stress-testing)).
 
 Conventions: returns are simple daily returns as fractions (0.01 = 1%),
-annualized with 252 trading days, and portfolios use fixed weights rebalanced
-daily. Drawdowns are negative fractions.
+annualized with 252 trading days, and portfolios reset to their target weights
+daily unless another rebalance frequency is chosen (see
+[Rebalancing](#rebalancing)). Drawdowns are negative fractions.
 
 ## Installation
 
@@ -468,7 +469,8 @@ by closing level. `custom_scenario` builds any other inclusive range.
    adjusted close. Prices are never forward-filled, backfilled or
    interpolated, so a day any asset is missing is dropped for all assets.
 2. Convert the remaining prices to simple daily returns and combine them
-   with the fixed weights, rebalanced daily (`portfolio_returns`).
+   with the target weights at the chosen rebalance frequency, daily by
+   default (`portfolio_returns`).
 3. Report realized `cumulative_return`, `max_drawdown` (negative) and
    `annualized_volatility` (sample std × √252). These come from the same
    metric functions the dashboard uses.
