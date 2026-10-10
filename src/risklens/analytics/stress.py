@@ -245,6 +245,7 @@ def run_stress_tests(
     prices: pd.DataFrame,
     weights: Sequence[float],
     scenarios: Sequence[StressScenario] = HISTORICAL_SCENARIOS,
+    rebalance: str = "daily",
 ) -> list[StressResult]:
     """Run ``stress_test`` for each scenario, keeping the scenario order."""
-    return [stress_test(prices, weights, scenario) for scenario in scenarios]
+    return [stress_test(prices, weights, scenario, rebalance) for scenario in scenarios]
