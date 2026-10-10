@@ -24,7 +24,7 @@ MIN_PRICE_ROWS = 3  # three prices give two returns, the minimum for sample vola
 
 @dataclass(frozen=True)
 class PortfolioMetrics:
-    """Summary of a fixed-weight portfolio. All rates are fractions, not percents.
+    """Summary of a target-weight portfolio. All rates are fractions, not percents.
 
     Attributes:
         daily_returns: simple daily portfolio returns.
@@ -46,19 +46,22 @@ def analyze_portfolio(
     prices: pd.DataFrame,
     weights: Sequence[float],
     risk_free_rate: float = 0.0,
+    rebalance: str = "daily",
 ) -> PortfolioMetrics:
     """Compute portfolio metrics from adjusted prices, one column per asset.
 
     ``weights`` follow the column order of ``prices`` and must sum to 1.
     ``risk_free_rate`` is an annual fraction used only for the Sharpe ratio.
+    ``rebalance`` sets how often holdings reset to ``weights`` (see
+    ``portfolio_returns``); the default ``"daily"`` keeps them fixed.
 
     Raises:
         ValueError: if prices are too short, contain missing or non-positive
-            values, or the weights / risk-free rate are invalid.
+            values, or the weights / risk-free rate / rebalance are invalid.
     """
     rate = validate_risk_free_rate(risk_free_rate)
     clean = validate_prices(prices, min_rows=MIN_PRICE_ROWS)
-    daily = portfolio_returns(to_returns(clean), weights)
+    daily = portfolio_returns(to_returns(clean), weights, rebalance)
     return PortfolioMetrics(
         daily_returns=daily,
         annualized_return=annualized_return(daily),
