@@ -138,6 +138,35 @@ def historical_cvar(
     return max(cvar, var)
 
 
+def tail_risk_summary(
+    returns: pd.Series, confidence_levels: Sequence[float] = VAR_CONFIDENCE_LEVELS
+) -> pd.DataFrame:
+    """Historical VaR and CVaR for each confidence level, indexed by confidence.
+
+    Columns: ``var`` and ``cvar`` (positive one-day loss fractions) and
+    ``sufficient_sample``. That flag is False when there are fewer returns
+    than ``1 / (1 - confidence)`` (e.g. under 100 for 99%): the tail is then
+    thinner than one full observation, so both figures fall back to the worst day.
+
+    Raises:
+        ValueError: if a confidence is not in (0, 1) or returns are invalid.
+    """
+    values = _validate_returns(returns)
+    rows = []
+    for confidence in confidence_levels:
+        expected_tail_size = len(values) * (1 - confidence)
+        rows.append(
+            {
+                "confidence": confidence,
+                "var": historical_var(returns, confidence),
+                "cvar": historical_cvar(returns, confidence),
+                "sufficient_sample": expected_tail_size >= 1 - RETURN_NOISE_TOLERANCE,
+            }
+        )
+    columns = ["confidence", "var", "cvar", "sufficient_sample"]
+    return pd.DataFrame(rows, columns=columns).set_index("confidence")
+
+
 def _validate_dated_returns(returns: pd.Series) -> None:
     """Raise ValueError unless ``returns`` is a non-empty, finite, dated Series."""
     _validate_returns(returns)
