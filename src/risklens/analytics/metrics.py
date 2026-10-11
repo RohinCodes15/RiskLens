@@ -13,6 +13,7 @@ from risklens.validation import validate_risk_free_rate, validate_weights
 
 TRADING_DAYS_PER_YEAR = 252
 DEFAULT_VAR_CONFIDENCE = 0.95
+VAR_CONFIDENCE_LEVELS = (0.95, 0.99)
 MIN_VOLATILITY_OBS = 2  # sample std (ddof=1) needs two returns
 # A daily-return standard deviation at or below this is float rounding (returns
 # from constant-growth prices carry ~1e-16 noise), not real volatility.
@@ -112,6 +113,29 @@ def _validate_confidence(confidence: float) -> None:
     """Raise ValueError unless ``confidence`` is a fraction strictly inside (0, 1)."""
     if not 0 < confidence < 1:
         raise ValueError("confidence must be between 0 and 1.")
+
+
+def historical_cvar(
+    returns: pd.Series, confidence: float = DEFAULT_VAR_CONFIDENCE
+) -> float:
+    """One-day historical CVaR (Expected Shortfall), as a positive loss fraction.
+
+    Tail method: the tail is every observed daily return at or below the
+    ``1 - confidence`` quantile (the same linearly interpolated quantile as
+    ``historical_var``). CVaR is minus the mean of that tail, so 0.03 means
+    the average loss on the worst days was 3%. The tail always contains at
+    least the worst return, and the result is never below ``historical_var``.
+
+    Raises:
+        ValueError: if confidence is not in (0, 1) or returns are invalid.
+    """
+    _validate_confidence(confidence)
+    values = _validate_returns(returns)
+    threshold = np.quantile(values, 1 - confidence)
+    tail = values[values <= threshold]
+    var = -float(threshold)
+    cvar = -float(tail.mean())
+    return max(cvar, var)
 
 
 def _validate_dated_returns(returns: pd.Series) -> None:
