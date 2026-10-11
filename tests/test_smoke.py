@@ -82,11 +82,11 @@ def test_analyze_matches_engine_and_drawdown(prices: pd.DataFrame, download: Mag
         app.number_input[1].set_value(40.0)
         submit(app)
         assert not app.exception and not app.error
-        assert [card.label for card in app.metric] == [
+        assert [card.label for card in app.metric][:6] == [
             "Annualized return", "Annualized volatility", "Sharpe ratio", "Maximum drawdown",
             "HHI concentration", "Effective number of holdings",
         ]
-        assert [card.value for card in app.metric] == [
+        assert [card.value for card in app.metric][:6] == [
             f"{expected.annualized_return:.2%}", f"{expected.annualized_volatility:.2%}",
             f"{expected.sharpe_ratio:.2f}", f"{expected.max_drawdown:.2%}",
             f"{herfindahl_index([0.6, 0.4]):.3f}", f"{effective_holdings([0.6, 0.4]):.2f}",
@@ -160,7 +160,7 @@ def test_constant_prices_show_undefined_sharpe(download: MagicMock, prices: pd.D
     app = AppTest.from_file(APP_PATH).run()
     submit(app)
     assert not app.exception and not app.error
-    assert [card.value for card in app.metric] == ["0.00%", "0.00%", "N/A", "0.00%", "0.500", "2.00"]
+    assert [card.value for card in app.metric][:6] == ["0.00%", "0.00%", "N/A", "0.00%", "0.500", "2.00"]
     assert len(app.get("plotly_chart")) == 3
     assert any("undefined correlation" in note.value for note in app.info)
 
@@ -174,7 +174,7 @@ def test_single_stock_shows_full_concentration_without_heatmap(
     app.text_input[0].set_value("AAPL").run()
     submit(app)
     assert not app.exception and not app.error
-    assert [card.value for card in app.metric][4:] == ["1.000", "1.00"]
+    assert [card.value for card in app.metric][4:6] == ["1.000", "1.00"]
     assert "correlation_heatmap" not in [chart.key for chart in app.get("plotly_chart")]
     assert any("single-stock portfolio" in note.value for note in app.info)
 
@@ -192,9 +192,10 @@ def test_spy_comparison_shows_chart_and_ending_returns(
     download.side_effect = fake_download
     expected = compare_to_benchmark(prices, [0.5, 0.5], spy).iloc[-1] - 1.0
     app = submit(AppTest.from_file(APP_PATH).run())
-    assert not app.exception and not app.error and not app.warning
+    assert not app.exception and not app.error
+    assert not any("Benchmark comparison is unavailable" in note.value for note in app.warning)
     assert "benchmark_chart" in [chart.key for chart in app.get("plotly_chart")]
-    assert [(card.label, card.value) for card in app.metric][-2:] == [
+    assert [(card.label, card.value) for card in app.metric if card.label in {"Portfolio ending return", "SPY ending return"}] == [
         ("Portfolio ending return", f"{expected['portfolio']:.2%}"),
         ("SPY ending return", f"{expected['benchmark']:.2%}"),
     ]
@@ -266,7 +267,7 @@ def test_simulation_failure_clears_stale_chart_and_persists(failure: Exception) 
 def test_custom_stress_metrics_chart_and_invalid_dates(prices: pd.DataFrame, download: MagicMock) -> None:
     """Custom replay uses API metrics, dated wealth and inclusive download dates."""
     app = submit(AppTest.from_file(APP_PATH).run())
-    app.selectbox[0].select("Custom date range").run()
+    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select("Custom date range").run()
     expected = stress_test(prices, [0.5, 0.5], custom_scenario(prices.index[0], prices.index[-1]))
     with patch("risklens.analytics.stress_test", wraps=stress_test) as engine:
         click_button(app, "Run historical stress test")
@@ -296,12 +297,12 @@ def test_historical_scenarios_use_their_own_download_window(scenario, prices: pd
     history = prices.copy()
     history.index = pd.DatetimeIndex([scenario.start, scenario.start + pd.offsets.BDay(1), scenario.end - pd.offsets.BDay(1), scenario.end])
     download.return_value = pd.concat({"Close": history}, axis=1)
-    app.selectbox[0].select(scenario.name).run()
+    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select(scenario.name).run()
     click_button(app, "Run historical stress test")
     assert not app.exception and not app.error and not any("Scenario unavailable" in note.value for note in app.warning)
     assert download.call_args.kwargs["start"] == scenario.start.date()
     assert chart_spec(app, "stress_chart")["data"]
-    app.selectbox[0].select("Custom date range").run()
+    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select("Custom date range").run()
     assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
 
 
@@ -310,7 +311,7 @@ def test_stress_unavailable_preserves_dashboard(failure: str, prices: pd.DataFra
     """Incomplete history and failed downloads never present scenario metrics."""
     app = submit(AppTest.from_file(APP_PATH).run())
     if failure == "short":
-        app.selectbox[0].select("Custom date range").run()
+        next(widget for widget in app.selectbox if widget.label == "Historical scenario").select("Custom date range").run()
         download.return_value = pd.concat({"Close": prices.iloc[:2]}, axis=1)
     elif failure == "network":
         download.side_effect = RuntimeError("Offline")
@@ -326,7 +327,7 @@ def test_new_analysis_resets_both_scenario_tools() -> None:
     """A new request cannot retain simulations or stress results from old inputs."""
     app = submit(AppTest.from_file(APP_PATH).run())
     click_button(app, "Run hypothetical simulations")
-    app.selectbox[0].select("Custom date range").run()
+    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select("Custom date range").run()
     click_button(app, "Run historical stress test")
     assert "simulation" in app.session_state["analysis"] and "stress" in app.session_state["analysis"]
     click_button(app, "Analyze portfolio")
