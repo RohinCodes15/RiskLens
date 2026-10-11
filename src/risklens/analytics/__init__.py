@@ -13,15 +13,18 @@ from risklens.analytics.concentration import (
 from risklens.analytics.engine import PortfolioMetrics, analyze_portfolio
 from risklens.analytics.metrics import (
     TRADING_DAYS_PER_YEAR,
+    VAR_CONFIDENCE_LEVELS,
     annualized_return,
     annualized_volatility,
     cumulative_wealth,
     drawdown_series,
+    historical_cvar,
     historical_var,
     max_drawdown,
     portfolio_returns,
     risk_contributions,
     sharpe_ratio,
+    tail_risk_summary,
 )
 from risklens.analytics.simulation import MonteCarloResult, simulate_portfolio
 from risklens.analytics.stress import (
@@ -36,6 +39,7 @@ from risklens.analytics.stress import (
 __all__ = [
     "HISTORICAL_SCENARIOS",
     "TRADING_DAYS_PER_YEAR",
+    "VAR_CONFIDENCE_LEVELS",
     "BenchmarkStatistics",
     "MonteCarloResult",
     "PortfolioMetrics",
@@ -52,6 +56,7 @@ __all__ = [
     "drawdown_series",
     "effective_holdings",
     "herfindahl_index",
+    "historical_cvar",
     "historical_var",
     "max_drawdown",
     "portfolio_returns",
@@ -60,4 +65,5 @@ __all__ = [
     "sharpe_ratio",
     "simulate_portfolio",
     "stress_test",
+    "tail_risk_summary",
 ]
