@@ -55,6 +55,13 @@ def render_tail_risk(analysis: dict) -> None:
     st.caption(f"{confidence:.0%} confidence · {len(daily):,} observed daily returns. Positive card values mean losses; negative values mean gains. Figures are one-day estimates, not annualized.")
     if not summary["sufficient_sample"]:
         st.warning("Small historical sample: the selected tail contains less than one full expected observation. These estimates are fragile; use a longer history, especially at 99% confidence.")
+    histogram = px.histogram(x=daily, labels={"x": "Historical daily portfolio return", "y": "Trading-day count"}, color_discrete_sequence=["#264653"])
+    histogram.update_layout(template="plotly_white", title="Actual historical daily returns", height=400, showlegend=False, bargap=0.05)
+    histogram.update_xaxes(tickformat=".1%")
+    histogram.update_yaxes(title_text="Trading-day count", rangemode="tozero")
+    histogram.add_vline(x=-summary["var"], line_color="#e76f51", line_dash="dash", annotation_text=f"{confidence:.0%} VaR return cutoff", annotation_position="top left")
+    st.plotly_chart(histogram, key="tail_risk_histogram", use_container_width=True)
+    st.caption("CVaR measures average loss in the worst historical tail beyond the marked return cutoff. Historical estimates can understate future losses; VaR is not a maximum possible loss.")
 
 
 def render_stress_test(analysis: dict) -> None:
