@@ -18,6 +18,16 @@ There is no separate backend or database: the Streamlit app calls the
   ratio (0% risk-free rate), and maximum drawdown. Non-finite values show
   as "N/A".
 - Historical adjusted-price chart and historical drawdown chart (Plotly).
+- Diversification: HHI concentration, effective number of holdings, and a
+  daily-return correlation heatmap.
+- Portfolio vs. S&P 500 (SPY) growth chart with ending-return cards.
+- **Tail Risk**: a 95%/99% confidence selector, one-day historical VaR and
+  CVaR cards (positive values are losses), a histogram of actual daily
+  returns with the VaR cutoff marked, and a warning when the sample is too
+  small for the selected tail.
+- **Simulated futures** tab: seeded Monte Carlo percentile fan chart.
+- **Historical scenarios** tab: 2008, 2020, 2022, or custom stress windows,
+  with unavailable scenarios explained.
 - Bad input, failed downloads, and too-short histories show a readable error
   instead of a traceback.
 
