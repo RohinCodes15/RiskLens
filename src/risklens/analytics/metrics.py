@@ -103,10 +103,15 @@ def historical_var(
     Raises:
         ValueError: if confidence is not in (0, 1) or returns are invalid.
     """
-    if not 0 < confidence < 1:
-        raise ValueError("confidence must be between 0 and 1.")
+    _validate_confidence(confidence)
     values = _validate_returns(returns)
     return float(-np.quantile(values, 1 - confidence))
+
+
+def _validate_confidence(confidence: float) -> None:
+    """Raise ValueError unless ``confidence`` is a fraction strictly inside (0, 1)."""
+    if not 0 < confidence < 1:
+        raise ValueError("confidence must be between 0 and 1.")
 
 
 def _validate_dated_returns(returns: pd.Series) -> None:
