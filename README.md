@@ -113,12 +113,48 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `cumulative_wealth`, `drawdown_series`, `max_drawdown`, `risk_contributions`,
 `compare_to_benchmark`, `herfindahl_index`, `effective_holdings`,
 `correlation_matrix`, `simulate_portfolio`, `stress_test`,
-`run_stress_tests`, `custom_scenario`, `HISTORICAL_SCENARIOS`, and
+`run_stress_tests`, `custom_scenario`, `HISTORICAL_SCENARIOS`,
+`historical_cvar`, `tail_risk_summary`, `VAR_CONFIDENCE_LEVELS`, and
 `TRADING_DAYS_PER_YEAR`. Each function's docstring
 gives its units and sign conventions.
 
 Errors: `ValueError` for bad input, `risklens.data.DataFetchError` for
 download problems.
+
+## Historical VaR and CVaR
+
+```python
+historical_var(returns, confidence=0.95) -> float
+historical_cvar(returns, confidence=0.95) -> float
+tail_risk_summary(returns, confidence_levels=(0.95, 0.99)) -> pd.DataFrame
+```
+
+**Inputs.** Empirical simple daily portfolio returns as fractions, for
+example `PortfolioMetrics.daily_returns`. `confidence` is a fraction strictly
+between 0 and 1 (0.95 for 95%). Empty input, NaN/inf, returns below −100%,
+and non-numeric or out-of-range confidence raise `ValueError`.
+
+**Sign convention.** Both are one-day figures reported as **positive loss
+fractions**. A VaR of 0.02 means that on the worst (1 − confidence) of days
+the portfolio lost at least 2%. A negative value means even the worst days
+were gains.
+
+**Method.**
+- VaR = −(the 1 − confidence quantile of daily returns), using NumPy's
+  linear interpolation between observed returns.
+- CVaR (Expected Shortfall) = −(mean of every observed return at or below
+  that quantile). The tail always contains at least the worst day, and CVaR
+  is never below VaR.
+
+**Small samples and zero volatility.** With fewer than 1 / (1 − confidence)
+returns (under 20 for 95%, under 100 for 99%), the tail is thinner than one
+observation, so both figures fall back toward the worst day.
+`tail_risk_summary` reports this as `sufficient_sample=False`. Constant
+returns give VaR equal to CVaR, both equal to minus that return.
+
+**Limitations.** These are historical, single-day, unconditional figures.
+They assume the sample's tail is representative, ignore volatility
+clustering, and are not scaled to longer horizons.
 
 ## Simulation and stress testing
 
