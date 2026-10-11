@@ -4,6 +4,7 @@ All inputs are daily returns as fractions (0.01 == 1%). Annualized figures
 assume ``TRADING_DAYS_PER_YEAR`` trading days.
 """
 
+import numbers
 from collections.abc import Sequence
 
 import numpy as np
@@ -111,6 +112,8 @@ def historical_var(
 
 def _validate_confidence(confidence: float) -> None:
     """Raise ValueError unless ``confidence`` is a fraction strictly inside (0, 1)."""
+    if isinstance(confidence, (bool, np.bool_)) or not isinstance(confidence, numbers.Real):
+        raise ValueError("confidence must be a number between 0 and 1 (0.95 for 95%).")
     if not 0 < confidence < 1:
         raise ValueError("confidence must be between 0 and 1.")
 
