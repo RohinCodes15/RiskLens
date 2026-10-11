@@ -428,6 +428,7 @@ else:
             st.metric("SPY ending return", f"{ending_returns['S&P 500 (SPY)']:.2%}", help="Cumulative adjusted SPY return over the same shared dates; not annualized.")
         st.caption("Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns.")
 
+    render_tail_risk(analysis)
     simulation_tab, stress_tab = st.tabs(["Simulated futures", "Historical scenarios"])
     with simulation_tab:
         render_simulation(analysis)

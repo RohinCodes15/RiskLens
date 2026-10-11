@@ -96,7 +96,7 @@ def test_analyze_matches_engine_and_drawdown(prices: pd.DataFrame, download: Mag
         assert download.call_args.kwargs["end"] == date(2026, 1, 11)
         assert download.call_args.kwargs["auto_adjust"] is True
         charts = app.get("plotly_chart")
-        assert len(charts) == 3
+        assert len(charts) == 4
         figure = json.loads(charts[1].proto.spec)
         trace = figure["data"][0]
         expected_drawdown = drawdown_series(expected.daily_returns)
@@ -161,7 +161,7 @@ def test_constant_prices_show_undefined_sharpe(download: MagicMock, prices: pd.D
     submit(app)
     assert not app.exception and not app.error
     assert [card.value for card in app.metric][:6] == ["0.00%", "0.00%", "N/A", "0.00%", "0.500", "2.00"]
-    assert len(app.get("plotly_chart")) == 3
+    assert len(app.get("plotly_chart")) == 4
     assert any("undefined correlation" in note.value for note in app.info)
 
 
