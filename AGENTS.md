@@ -11,11 +11,15 @@ app.py (Streamlit UI)
    │  calls
    ▼
 src/risklens/
-   validation.py   user input → clean tickers / weights (raises ValueError)
-   data.py         tickers → price DataFrame (yfinance) → daily returns
+   validation.py      user input → clean tickers / weights / dates (raises ValueError)
+   data.py            tickers → price DataFrame (yfinance) → daily returns
    analytics/
-     metrics.py    returns + weights → portfolio returns → risk metrics
-     engine.py     adjusted prices + weights → PortfolioMetrics
+     metrics.py       returns + weights → portfolio returns → risk metrics, VaR/CVaR
+     engine.py        adjusted prices + weights → PortfolioMetrics
+     benchmark.py     portfolio vs. SPY growth and statistics
+     concentration.py HHI, effective holdings, correlation matrix
+     simulation.py    daily returns → seeded Monte Carlo wealth percentiles
+     stress.py        prices + weights → historical stress-window results
 ```
 
 Data flow: raw input → `validation` → `data.fetch_prices` → `data.to_returns`
