@@ -8,6 +8,7 @@ from risklens.analytics import (
     VAR_CONFIDENCE_LEVELS,
     historical_cvar,
     historical_var,
+    tail_risk_summary,
 )
 
 # -10.0%, -9.9%, ..., +9.9%: 200 evenly spaced daily returns.
@@ -84,3 +85,33 @@ def test_cvar_rejects_bad_returns(returns: object, message: str) -> None:
 def test_cvar_rejects_bad_confidence(confidence: float) -> None:
     with pytest.raises(ValueError, match="confidence"):
         historical_cvar(series(LADDER), confidence)
+
+
+def test_summary_defaults_to_95_and_99() -> None:
+    result = tail_risk_summary(series(LADDER))
+
+    assert list(result.index) == [0.95, 0.99]
+    assert list(result.columns) == ["var", "cvar", "sufficient_sample"]
+    assert result.loc[0.99, "var"] == pytest.approx(0.09801)
+    assert result.loc[0.99, "cvar"] == pytest.approx(0.0995)
+    assert result["sufficient_sample"].tolist() == [True, True]
+
+
+@pytest.mark.parametrize(
+    ("n_returns", "confidence", "sufficient"),
+    [(19, 0.95, False), (20, 0.95, True), (99, 0.99, False), (100, 0.99, True)],
+)
+def test_summary_flags_small_samples(n_returns: int, confidence: float, sufficient: bool) -> None:
+    result = tail_risk_summary(series(LADDER[:n_returns]), [confidence])
+
+    assert bool(result.loc[confidence, "sufficient_sample"]) is sufficient
+
+
+def test_summary_rejects_bad_confidence() -> None:
+    with pytest.raises(ValueError, match="confidence"):
+        tail_risk_summary(series(LADDER), [0.95, 1.0])
+
+
+def test_summary_rejects_empty_returns() -> None:
+    with pytest.raises(ValueError, match="No returns"):
+        tail_risk_summary(series([]))
