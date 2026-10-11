@@ -20,6 +20,7 @@ from risklens.analytics import (
     portfolio_returns,
     simulate_portfolio,
     stress_test,
+    tail_risk_summary,
 )
 from risklens.analytics.simulation import (
     DEFAULT_SEED,
@@ -30,6 +31,30 @@ from risklens.analytics.simulation import (
 )
 from risklens.data import DataFetchError, fetch_benchmark_prices, fetch_prices, to_returns
 from risklens.validation import validate_tickers, validate_weights
+
+
+def render_tail_risk(analysis: dict) -> None:
+    """Show backend one-day loss fractions and observed daily return fractions."""
+    st.divider()
+    st.subheader("Tail Risk")
+    confidence = st.selectbox("Tail risk confidence", [0.95, 0.99], format_func=lambda value: f"{value:.0%}", help="Historical one-day loss threshold at the selected confidence; not a guarantee.")
+    daily = analysis.get("daily_returns")
+    if daily is None:
+        st.info("Select Analyze portfolio to load historical daily returns.")
+        return
+    try:
+        summary = tail_risk_summary(daily, (confidence,)).loc[confidence]
+    except (ValueError, NotImplementedError) as exc:
+        st.warning(f"Tail risk is unavailable. {exc}")
+        return
+    var_column, cvar_column = st.columns(2)
+    with var_column.container(border=True):
+        st.metric("One-day VaR", f"{summary['var']:.2%}", help="Historical Value at Risk: positive values represent losses; negative values mean the threshold was a gain.")
+    with cvar_column.container(border=True):
+        st.metric("One-day CVaR", f"{summary['cvar']:.2%}", help="Conditional VaR / Expected Shortfall: average loss among observations at or below the VaR return cutoff, including ties.")
+    st.caption(f"{confidence:.0%} confidence · {len(daily):,} observed daily returns. Positive card values mean losses; negative values mean gains. Figures are one-day estimates, not annualized.")
+    if not summary["sufficient_sample"]:
+        st.warning("Small historical sample: the selected tail contains less than one full expected observation. These estimates are fragile; use a longer history, especially at 99% confidence.")
 
 
 def render_stress_test(analysis: dict) -> None:
