@@ -163,3 +163,16 @@ def test_within_risk_returns_last_point_for_a_large_budget() -> None:
 def test_within_risk_returns_none_when_every_point_is_riskier() -> None:
     frontier = efficient_frontier(five_assets(), n_points=12)
     assert frontier_point_within_risk(frontier, 0.0) is None
+
+
+@pytest.mark.parametrize("volatility", [-0.01, float("nan"), float("inf"), True, "0.2", None])
+def test_within_risk_rejects_invalid_volatility(volatility: object) -> None:
+    frontier = efficient_frontier(five_assets(), n_points=3)
+    with pytest.raises(ValueError, match="current_volatility"):
+        frontier_point_within_risk(frontier, volatility)  # type: ignore[arg-type]
+
+
+def test_within_risk_accepts_numpy_and_int_budgets() -> None:
+    frontier = efficient_frontier(five_assets(), n_points=3)
+    assert frontier_point_within_risk(frontier, np.float64(10.0)) == 2
+    assert frontier_point_within_risk(frontier, 0) is None
