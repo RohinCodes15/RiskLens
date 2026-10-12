@@ -351,3 +351,27 @@ def efficient_frontier(
     )
     weights = pd.DataFrame([p.weights.to_numpy() for p in portfolios], columns=expected.index)
     return EfficientFrontier(points, weights, infeasible)
+
+
+def frontier_point_within_risk(frontier: EfficientFrontier, current_volatility: float) -> int | None:
+    """Index of the highest-return frontier point no riskier than ``current_volatility``.
+
+    ``current_volatility`` is an annualized fraction (e.g. a portfolio's
+    ``analyze_portfolio(...).annualized_volatility``). Look the answer up with
+    ``frontier.points.loc[i]`` and ``frontier.weights.loc[i]``. Returns None
+    when every frontier point is riskier than ``current_volatility``.
+
+    Raises:
+        ValueError: if ``current_volatility`` is not a finite, non-negative number.
+    """
+    if isinstance(current_volatility, (bool, np.bool_)) or not isinstance(
+        current_volatility, (int, float, np.integer, np.floating)
+    ):
+        raise ValueError("current_volatility must be a number.")
+    limit = float(current_volatility)
+    if not np.isfinite(limit) or limit < 0:
+        raise ValueError(f"current_volatility must be finite and non-negative; got {limit}.")
+    within = frontier.points[frontier.points["volatility"] <= limit + CONSTRAINT_TOLERANCE]
+    if within.empty:
+        return None
+    return int(within["expected_return"].idxmax())
