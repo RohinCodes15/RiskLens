@@ -33,6 +33,7 @@ from risklens.analytics.optimization import (
     SolverDiagnostics,
     efficient_frontier,
     estimate_inputs,
+    frontier_point_within_risk,
     max_sharpe_portfolio,
     min_volatility_portfolio,
 )
@@ -80,6 +81,7 @@ __all__ = [
     "effective_holdings",
     "efficient_frontier",
     "estimate_inputs",
+    "frontier_point_within_risk",
     "herfindahl_index",
     "historical_cvar",
     "historical_var",
