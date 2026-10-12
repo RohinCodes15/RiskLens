@@ -9,6 +9,7 @@ import streamlit as st
 
 from risklens.analytics import (
     HISTORICAL_SCENARIOS,
+    ROLLING_WINDOWS,
     analyze_portfolio,
     compare_to_benchmark,
     correlation_matrix,
@@ -18,6 +19,7 @@ from risklens.analytics import (
     effective_holdings,
     herfindahl_index,
     portfolio_returns,
+    rolling_metrics,
     simulate_portfolio,
     stress_test,
     tail_risk_summary,
@@ -62,6 +64,39 @@ def render_tail_risk(analysis: dict) -> None:
     histogram.add_vline(x=-summary["var"], line_color="#e76f51", line_dash="dash", annotation_text=f"{confidence:.0%} VaR return cutoff", annotation_position="top left")
     st.plotly_chart(histogram, key="tail_risk_histogram", use_container_width=True)
     st.caption("CVaR measures average loss in the worst historical tail beyond the marked return cutoff. Historical estimates can understate future losses; VaR is not a maximum possible loss.")
+
+
+ROLLING_VIEWS = {
+    "Volatility": ("volatility", "Annualized volatility", ".0%"),
+    "Sharpe ratio": ("sharpe", "Annualized Sharpe ratio", ".2f"),
+    "Drawdown": ("drawdown", "Drawdown from the window's peak", ".0%"),
+}
+
+
+def render_rolling(analysis: dict) -> None:
+    """Chart one dated rolling metric over a trailing trading-day window."""
+    st.divider()
+    st.subheader("Rolling risk")
+    window_column, metric_column = st.columns(2)
+    window = window_column.selectbox("Rolling window", ROLLING_WINDOWS, format_func=lambda days: f"{days} trading days")
+    view = metric_column.selectbox("Rolling metric", list(ROLLING_VIEWS))
+    daily = analysis["daily_returns"]
+    if len(daily) < window:
+        st.info(f"A {window}-day window needs at least {window} daily returns; this period has {len(daily):,}. Choose a longer period or a shorter window.")
+        return
+    try:
+        rolling = rolling_metrics(daily, window)
+    except ValueError as exc:
+        st.warning(f"Rolling risk is unavailable. {exc}")
+        return
+    column, axis_title, spec = ROLLING_VIEWS[view]
+    series = rolling[column].dropna()
+    rolling_fig = px.line(x=series.index, y=series, labels={"x": "Date", "y": axis_title}, color_discrete_sequence=["#264653"])
+    rolling_fig.update_layout(template="plotly_white", title=f"{view} · trailing {window} trading days", hovermode="x unified", height=380, showlegend=False)
+    rolling_fig.update_yaxes(title_text=axis_title, tickformat=spec)
+    rolling_fig.update_traces(line_width=2, hovertemplate=f"%{{x|%b %d, %Y}}<br>%{{y:{spec}}}<extra></extra>")
+    st.plotly_chart(rolling_fig, key="rolling_chart")
+    st.caption("Each date uses only the trailing window ending that day. Sharpe assumes a 0% risk-free rate and is blank when a window's volatility is zero. Drawdown is measured from the highest wealth inside the window.")
 
 
 def render_stress_test(analysis: dict) -> None:
@@ -346,6 +381,8 @@ else:
         st.plotly_chart(drawdown_fig, key="drawdown_chart")
         st.caption("Drag to zoom; double-click to reset.")
         st.caption("Initial wealth is included, so a first-day loss counts.")
+
+    render_rolling(analysis)
 
     st.divider()
     st.subheader("Portfolio Diversification")
