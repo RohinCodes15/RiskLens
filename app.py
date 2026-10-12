@@ -3,6 +3,7 @@
 from datetime import date, timedelta
 from math import isfinite
 
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
@@ -19,6 +20,7 @@ from risklens.analytics import (
     effective_holdings,
     herfindahl_index,
     portfolio_returns,
+    risk_contributions,
     rolling_metrics,
     simulate_portfolio,
     stress_test,
@@ -97,6 +99,23 @@ def render_rolling(analysis: dict) -> None:
     rolling_fig.update_traces(line_width=2, hovertemplate=f"%{{x|%b %d, %Y}}<br>%{{y:{spec}}}<extra></extra>")
     st.plotly_chart(rolling_fig, key="rolling_chart")
     st.caption("Each date uses only the trailing window ending that day. Sharpe assumes a 0% risk-free rate and is blank when a window's volatility is zero. Drawdown is measured from the highest wealth inside the window.")
+
+
+def render_risk_attribution(analysis: dict) -> None:
+    """Compare each stock's share of portfolio variance with its allocation weight."""
+    st.markdown("**Risk attribution**")
+    try:
+        shares = risk_contributions(to_returns(analysis["prices"]), analysis["weights"])
+    except ValueError as exc:
+        st.info(f"Risk attribution is unavailable. {exc}")
+        return
+    attribution = pd.DataFrame({"Allocation weight": analysis["weights"], "Share of portfolio risk": shares.to_numpy()}, index=shares.index)
+    attribution_fig = px.bar(attribution, barmode="group", labels={"index": "Ticker", "value": "Share of portfolio", "variable": "Measure"}, color_discrete_sequence=["#8ab17d", "#e76f51"])
+    attribution_fig.update_layout(template="plotly_white", height=380, legend_title_text="Measure")
+    attribution_fig.update_yaxes(tickformat=".0%")
+    attribution_fig.update_traces(hovertemplate="%{x}<br>%{y:.2%}<extra>%{fullData.name}</extra>")
+    st.plotly_chart(attribution_fig, key="risk_attribution_chart")
+    st.caption("Share of portfolio risk = weight × the stock's covariance with the portfolio ÷ portfolio variance; shares sum to 100%. A stock can carry more risk than its weight, and a negative share means it reduces total risk.")
 
 
 def render_stress_test(analysis: dict) -> None:
@@ -405,6 +424,8 @@ else:
                 help="1 / HHI: the number of equally weighted holdings with the same allocation concentration. Zero-weight stocks do not count.",
             )
         st.caption("These measures describe allocation balance, not stock independence. Similar stocks can still carry similar risks.")
+
+    render_risk_attribution(analysis)
 
     if len(prices.columns) == 1:
         st.info("A single-stock portfolio has no cross-stock diversification. Add another stock to compare return correlations.")

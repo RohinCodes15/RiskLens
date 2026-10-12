@@ -96,7 +96,7 @@ def test_analyze_matches_engine_and_drawdown(prices: pd.DataFrame, download: Mag
         assert download.call_args.kwargs["end"] == date(2026, 1, 11)
         assert download.call_args.kwargs["auto_adjust"] is True
         charts = app.get("plotly_chart")
-        assert len(charts) == 4
+        assert len(charts) == 5  # prices, drawdown, risk attribution, correlation, tail risk
         figure = json.loads(charts[1].proto.spec)
         trace = figure["data"][0]
         expected_drawdown = drawdown_series(expected.daily_returns)
