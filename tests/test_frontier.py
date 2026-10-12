@@ -11,6 +11,7 @@ from risklens.analytics import (
     analyze_portfolio,
     efficient_frontier,
     estimate_inputs,
+    frontier_point_within_risk,
     min_volatility_portfolio,
     optimization,
 )
@@ -135,3 +136,30 @@ def test_frontier_with_no_solvable_point_raises(monkeypatch: pytest.MonkeyPatch)
 
     with pytest.raises(OptimizationError, match="No efficient frontier point"):
         efficient_frontier(five_assets())
+
+
+# --- point within a volatility budget ---------------------------------------------------
+
+
+def test_within_risk_picks_highest_return_point_not_riskier_than_budget() -> None:
+    frontier = efficient_frontier(five_assets(), n_points=12)
+    budget = float(frontier.points["volatility"].median())
+    index = frontier_point_within_risk(frontier, budget)
+    allowed = frontier.points[frontier.points["volatility"] <= budget + 1e-6]
+    assert index == allowed["expected_return"].idxmax()
+    assert frontier.points.loc[index, "volatility"] <= budget + 1e-6
+
+
+def test_within_risk_matches_a_point_exactly_on_the_budget() -> None:
+    frontier = efficient_frontier(five_assets(), n_points=12)
+    assert frontier_point_within_risk(frontier, frontier.points["volatility"].iloc[5]) == 5
+
+
+def test_within_risk_returns_last_point_for_a_large_budget() -> None:
+    frontier = efficient_frontier(five_assets(), n_points=12)
+    assert frontier_point_within_risk(frontier, 10.0) == frontier.points.index[-1]
+
+
+def test_within_risk_returns_none_when_every_point_is_riskier() -> None:
+    frontier = efficient_frontier(five_assets(), n_points=12)
+    assert frontier_point_within_risk(frontier, 0.0) is None
