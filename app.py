@@ -19,6 +19,8 @@ from risklens.analytics import (
     drawdown_series,
     effective_holdings,
     herfindahl_index,
+    max_sharpe_portfolio,
+    min_volatility_portfolio,
     portfolio_returns,
     risk_contributions,
     rolling_metrics,
@@ -116,6 +118,45 @@ def render_risk_attribution(analysis: dict) -> None:
     attribution_fig.update_traces(hovertemplate="%{x}<br>%{y:.2%}<extra>%{fullData.name}</extra>")
     st.plotly_chart(attribution_fig, key="risk_attribution_chart")
     st.caption("Share of portfolio risk = weight × the stock's covariance with the portfolio ÷ portfolio variance; shares sum to 100%. A stock can carry more risk than its weight, and a negative share means it reduces total risk.")
+
+
+def render_optimization(analysis: dict) -> None:
+    """Compare the current weights with long-only minimum-volatility and maximum-Sharpe weights."""
+    st.divider()
+    st.subheader("Portfolio optimization")
+    st.caption("Long-only, fully invested weights fit to the selected history. Assumes a 0% risk-free rate.")
+    prices = analysis["prices"]
+    if len(prices.columns) == 1:
+        st.info("Optimization needs at least two stocks. Add another stock to compare allocations.")
+        return
+    if st.button("Optimize portfolio"):
+        analysis.pop("optimization", None)
+        analysis.pop("optimization_error", None)
+        with st.spinner("Solving optimized portfolios…"):
+            try:
+                analysis["optimization"] = (min_volatility_portfolio(prices), max_sharpe_portfolio(prices))
+            except ValueError as exc:
+                analysis["optimization_error"] = str(exc)
+    if "optimization_error" in analysis:
+        st.warning(f"Optimization is unavailable. {analysis['optimization_error']}")
+        return
+    if "optimization" not in analysis:
+        st.info("Select Optimize portfolio to compare your weights with optimized allocations.")
+        return
+    min_vol, max_sharpe = analysis["optimization"]
+    current_return, current_volatility, current_sharpe, _ = analysis["metrics"]
+    table = pd.DataFrame(
+        {
+            "Current": [*analysis["weights"], current_return, current_volatility, current_sharpe],
+            "Minimum volatility": [*min_vol.weights, min_vol.expected_return, min_vol.volatility, min_vol.sharpe_ratio],
+            "Maximum Sharpe": [*max_sharpe.weights, max_sharpe.expected_return, max_sharpe.volatility, max_sharpe.sharpe_ratio],
+        },
+        index=[*(f"{ticker} weight" for ticker in prices.columns), "Annualized return", "Annualized volatility", "Sharpe ratio"],
+    )
+    st.dataframe(table.style.format("{:.2%}").format("{:.2f}", subset=pd.IndexSlice[["Sharpe ratio"], :]), key="optimization_table")
+    if min_vol.diagnostics.singular_covariance or max_sharpe.diagnostics.singular_covariance:
+        st.warning("The covariance matrix is singular (duplicate or constant-price stocks), so these weights are not unique.")
+    st.caption("In-sample results: weights are fit to the same history used to score them, so these figures are optimistic and not a forecast. Maximum-Sharpe weights are especially sensitive to the chosen period.")
 
 
 def render_stress_test(analysis: dict) -> None:
@@ -492,6 +533,7 @@ else:
         render_simulation(analysis)
     with stress_tab:
         render_stress_test(analysis)
+    render_optimization(analysis)
 
 st.divider()
 st.caption(
