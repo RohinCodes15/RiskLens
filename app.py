@@ -11,6 +11,8 @@ import streamlit as st
 from risklens.analytics import (
     HISTORICAL_SCENARIOS,
     ROLLING_WINDOWS,
+    EfficientFrontier,
+    OptimizedPortfolio,
     analyze_portfolio,
     compare_to_benchmark,
     correlation_matrix,
@@ -18,6 +20,8 @@ from risklens.analytics import (
     custom_scenario,
     drawdown_series,
     effective_holdings,
+    efficient_frontier,
+    frontier_point_within_risk,
     herfindahl_index,
     max_sharpe_portfolio,
     min_volatility_portfolio,
@@ -134,7 +138,7 @@ def render_optimization(analysis: dict) -> None:
         analysis.pop("optimization_error", None)
         with st.spinner("Solving optimized portfolios…"):
             try:
-                analysis["optimization"] = (min_volatility_portfolio(prices), max_sharpe_portfolio(prices))
+                analysis["optimization"] = (min_volatility_portfolio(prices), max_sharpe_portfolio(prices), efficient_frontier(prices))
             except ValueError as exc:
                 analysis["optimization_error"] = str(exc)
     if "optimization_error" in analysis:
@@ -143,7 +147,7 @@ def render_optimization(analysis: dict) -> None:
     if "optimization" not in analysis:
         st.info("Select Optimize portfolio to compare your weights with optimized allocations.")
         return
-    min_vol, max_sharpe = analysis["optimization"]
+    min_vol, max_sharpe, frontier = analysis["optimization"]
     current_return, current_volatility, current_sharpe, _ = analysis["metrics"]
     table = pd.DataFrame(
         {
@@ -157,6 +161,32 @@ def render_optimization(analysis: dict) -> None:
     if min_vol.diagnostics.singular_covariance or max_sharpe.diagnostics.singular_covariance:
         st.warning("The covariance matrix is singular (duplicate or constant-price stocks), so these weights are not unique.")
     st.caption("In-sample results: weights are fit to the same history used to score them, so these figures are optimistic and not a forecast. Maximum-Sharpe weights are especially sensitive to the chosen period.")
+    render_frontier(frontier, min_vol, max_sharpe, current_return, current_volatility, list(prices.columns))
+
+
+def render_frontier(frontier: EfficientFrontier, min_vol: OptimizedPortfolio, max_sharpe: OptimizedPortfolio, current_return: float, current_volatility: float, tickers: list[str]) -> None:
+    """Plot the efficient frontier with the current, optimized, and same-risk portfolios."""
+    points = frontier.points
+    frontier_fig = go.Figure(go.Scatter(x=points["volatility"], y=points["expected_return"], mode="lines+markers", name="Efficient frontier", line={"color": "#264653", "width": 2}, marker={"size": 5}))
+    markers = [("Current", current_volatility, current_return, "#e76f51", "x"), ("Minimum volatility", min_vol.volatility, min_vol.expected_return, "#2a9d8f", "diamond"), ("Maximum Sharpe", max_sharpe.volatility, max_sharpe.expected_return, "#e9c46a", "star")]
+    suggested = frontier_point_within_risk(frontier, current_volatility)
+    if suggested is not None:
+        point = points.loc[suggested]
+        markers.append(("Best return at your risk", point["volatility"], point["expected_return"], "#8ab17d", "circle-open"))
+    for name, volatility, expected_return, color, symbol in markers:
+        frontier_fig.add_trace(go.Scatter(x=[volatility], y=[expected_return], mode="markers", name=name, marker={"color": color, "symbol": symbol, "size": 14, "line": {"width": 2}}))
+    frontier_fig.update_layout(template="plotly_white", title="Efficient frontier (in-sample)", height=450, legend_title_text="Portfolio")
+    frontier_fig.update_xaxes(title_text="Annualized volatility", tickformat=".0%")
+    frontier_fig.update_yaxes(title_text="Annualized expected return", tickformat=".0%")
+    frontier_fig.update_traces(hovertemplate="Volatility %{x:.2%}<br>Return %{y:.2%}<extra>%{fullData.name}</extra>")
+    st.plotly_chart(frontier_fig, key="frontier_chart")
+    if suggested is None:
+        st.info("Every frontier portfolio is riskier than your current weights, so no same-risk alternative is shown.")
+    else:
+        weights = " · ".join(f"{ticker} {weight:.2%}" for ticker, weight in zip(tickers, frontier.weights.loc[suggested], strict=True))
+        st.caption(f"Best return at no more than your current volatility: {points.loc[suggested, 'expected_return']:.2%} return at {points.loc[suggested, 'volatility']:.2%} volatility with {weights}.")
+    if frontier.infeasible_targets:
+        st.caption(f"{frontier.infeasible_targets} frontier target(s) could not be solved and are omitted.")
 
 
 def render_stress_test(analysis: dict) -> None:
