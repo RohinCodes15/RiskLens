@@ -148,7 +148,8 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `benchmark_statistics`, `rolling_volatility`, `rolling_sharpe`,
 `rolling_drawdown`, `rolling_max_drawdown`, `rolling_metrics`,
 `ROLLING_WINDOWS`, `estimate_inputs`, `min_volatility_portfolio`,
-`max_sharpe_portfolio`, `efficient_frontier`, and `TRADING_DAYS_PER_YEAR`,
+`max_sharpe_portfolio`, `efficient_frontier`, `frontier_point_within_risk`, and
+`TRADING_DAYS_PER_YEAR`,
 plus the frozen result types `PortfolioMetrics`, `BenchmarkStatistics`,
 `MonteCarloResult`, `StressScenario`, `StressResult`, `OptimizedPortfolio`,
 `SolverDiagnostics`, and `EfficientFrontier`, and the `OptimizationError` exception. Each function's
@@ -244,6 +245,7 @@ the worst peak-to-trough fall inside each window. Both are fractions ≤ 0.
 min_volatility_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
 max_sharpe_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
 efficient_frontier(prices, n_points=40, risk_free_rate=0.0) -> EfficientFrontier
+frontier_point_within_risk(frontier, current_volatility) -> int | None
 estimate_inputs(prices) -> (expected_returns, covariance, observations)
 ```
 
@@ -291,6 +293,19 @@ minimum-volatility point. For reference markers, plot
 ```python
 frontier = analytics.efficient_frontier(prices, n_points=40, risk_free_rate=0.04)
 print(frontier.points.head(), frontier.infeasible_targets)
+```
+
+**Same risk, more return.** `frontier_point_within_risk(frontier,
+current_volatility)` returns the index of the highest-return frontier point
+whose volatility is no more than `current_volatility` (an annualized
+fraction, plus the solver's 1e-6 tolerance), or `None` if every point is
+riskier. Negative, NaN, infinite, or non-numeric budgets raise `ValueError`.
+
+```python
+current = analytics.analyze_portfolio(prices, [0.4, 0.4, 0.2])
+i = analytics.frontier_point_within_risk(frontier, current.annualized_volatility)
+if i is not None:
+    print(frontier.points.loc[i], frontier.weights.loc[i])
 ```
 
 **Edge cases.**
