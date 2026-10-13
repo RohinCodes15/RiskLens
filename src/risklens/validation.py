@@ -96,9 +96,7 @@ def validate_risk_free_rate(rate: float) -> float:
     if not np.isfinite(value):
         raise ValueError("Risk-free rate must be a finite number.")
     if abs(value) > MAX_ABS_RISK_FREE_RATE:
-        raise ValueError(
-            f"Risk-free rate must be an annual fraction (0.04 for 4%); got {value}."
-        )
+        raise ValueError(f"Risk-free rate must be an annual fraction (0.04 for 4%); got {value}.")
     return value
 
 

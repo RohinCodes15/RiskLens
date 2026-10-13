@@ -61,9 +61,7 @@ def fetch_prices(
         raise ValueError("Enter at least one ticker.")
     validate_date_range(start, end)
     try:
-        raw = yf.download(
-            tickers, start=start, end=end, auto_adjust=True, progress=False
-        )
+        raw = yf.download(tickers, start=start, end=end, auto_adjust=True, progress=False)
     except Exception as exc:  # yfinance raises many unrelated exception types
         raise DataFetchError(f"Price download failed: {exc}") from exc
 
