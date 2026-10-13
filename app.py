@@ -70,7 +70,7 @@ def render_tail_risk(analysis: dict) -> None:
     histogram.update_xaxes(tickformat=".1%")
     histogram.update_yaxes(title_text="Trading-day count", rangemode="tozero")
     histogram.add_vline(x=-summary["var"], line_color="#e76f51", line_dash="dash", annotation_text=f"{confidence:.0%} VaR return cutoff", annotation_position="top left")
-    st.plotly_chart(histogram, key="tail_risk_histogram", use_container_width=True)
+    st.plotly_chart(histogram, key="tail_risk_histogram", width="stretch")
     st.caption("CVaR measures average loss in the worst historical tail beyond the marked return cutoff. Historical estimates can understate future losses; VaR is not a maximum possible loss.")
 
 
@@ -305,7 +305,7 @@ def render_simulation(analysis: dict) -> None:
     fan.update_xaxes(title_text="Simulation date", rangeslider_visible=True)
     fan.update_yaxes(title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×")
     fan.add_hline(y=1.0, line_dash="dot", line_color="gray")
-    st.plotly_chart(fan, key="simulation_chart", use_container_width=True)
+    st.plotly_chart(fan, key="simulation_chart", width="stretch")
     st.caption("Bands are pointwise percentiles across hypothetical paths, not confidence bounds or individual paths. The median line is not one simulated path.")
     st.caption("Assumes independent normally distributed daily log returns fitted to historical data. Short histories are unreliable; crashes, changing markets, fees, taxes and cash flows are not captured. Dates include weekdays without excluding exchange holidays.")
 
