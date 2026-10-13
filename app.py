@@ -47,7 +47,12 @@ def render_tail_risk(analysis: dict) -> None:
     """Show backend one-day loss fractions and observed daily return fractions."""
     st.divider()
     st.subheader("Tail Risk")
-    confidence = st.selectbox("Tail risk confidence", [0.95, 0.99], format_func=lambda value: f"{value:.0%}", help="Historical one-day loss threshold at the selected confidence; not a guarantee.")
+    confidence = st.selectbox(
+        "Tail risk confidence",
+        [0.95, 0.99],
+        format_func=lambda value: f"{value:.0%}",
+        help="Historical one-day loss threshold at the selected confidence; not a guarantee.",
+    )
     daily = analysis.get("daily_returns")
     if daily is None:
         st.info("Select Analyze portfolio to load historical daily returns.")
@@ -59,19 +64,49 @@ def render_tail_risk(analysis: dict) -> None:
         return
     var_column, cvar_column = st.columns(2)
     with var_column.container(border=True):
-        st.metric("One-day VaR", f"{summary['var']:.2%}", help="Historical Value at Risk: positive values represent losses; negative values mean the threshold was a gain.")
+        st.metric(
+            "One-day VaR",
+            f"{summary['var']:.2%}",
+            help="Historical Value at Risk: positive values represent losses; negative values mean the threshold was a gain.",
+        )
     with cvar_column.container(border=True):
-        st.metric("One-day CVaR", f"{summary['cvar']:.2%}", help="Conditional VaR / Expected Shortfall: average loss among observations at or below the VaR return cutoff, including ties.")
-    st.caption(f"{confidence:.0%} confidence · {len(daily):,} observed daily returns. Positive card values mean losses; negative values mean gains. Figures are one-day estimates, not annualized.")
+        st.metric(
+            "One-day CVaR",
+            f"{summary['cvar']:.2%}",
+            help="Conditional VaR / Expected Shortfall: average loss among observations at or below the VaR return cutoff, including ties.",
+        )
+    st.caption(
+        f"{confidence:.0%} confidence · {len(daily):,} observed daily returns. Positive card values mean losses; negative values mean gains. Figures are one-day estimates, not annualized."
+    )
     if not summary["sufficient_sample"]:
-        st.warning("Small historical sample: the selected tail contains less than one full expected observation. These estimates are fragile; use a longer history, especially at 99% confidence.")
-    histogram = px.histogram(x=daily, labels={"x": "Historical daily portfolio return", "y": "Trading-day count"}, color_discrete_sequence=["#264653"])
-    histogram.update_layout(template="plotly_white", title="Actual historical daily returns", height=400, showlegend=False, bargap=0.05)
+        st.warning(
+            "Small historical sample: the selected tail contains less than one full expected observation. These estimates are fragile; use a longer history, especially at 99% confidence."
+        )
+    histogram = px.histogram(
+        x=daily,
+        labels={"x": "Historical daily portfolio return", "y": "Trading-day count"},
+        color_discrete_sequence=["#264653"],
+    )
+    histogram.update_layout(
+        template="plotly_white",
+        title="Actual historical daily returns",
+        height=400,
+        showlegend=False,
+        bargap=0.05,
+    )
     histogram.update_xaxes(tickformat=".1%")
     histogram.update_yaxes(title_text="Trading-day count", rangemode="tozero")
-    histogram.add_vline(x=-summary["var"], line_color="#e76f51", line_dash="dash", annotation_text=f"{confidence:.0%} VaR return cutoff", annotation_position="top left")
+    histogram.add_vline(
+        x=-summary["var"],
+        line_color="#e76f51",
+        line_dash="dash",
+        annotation_text=f"{confidence:.0%} VaR return cutoff",
+        annotation_position="top left",
+    )
     st.plotly_chart(histogram, key="tail_risk_histogram", width="stretch")
-    st.caption("CVaR measures average loss in the worst historical tail beyond the marked return cutoff. Historical estimates can understate future losses; VaR is not a maximum possible loss.")
+    st.caption(
+        "CVaR measures average loss in the worst historical tail beyond the marked return cutoff. Historical estimates can understate future losses; VaR is not a maximum possible loss."
+    )
 
 
 ROLLING_VIEWS = {
@@ -86,11 +121,15 @@ def render_rolling(analysis: dict) -> None:
     st.divider()
     st.subheader("Rolling risk")
     window_column, metric_column = st.columns(2)
-    window = window_column.selectbox("Rolling window", ROLLING_WINDOWS, format_func=lambda days: f"{days} trading days")
+    window = window_column.selectbox(
+        "Rolling window", ROLLING_WINDOWS, format_func=lambda days: f"{days} trading days"
+    )
     view = metric_column.selectbox("Rolling metric", list(ROLLING_VIEWS))
     daily = analysis["daily_returns"]
     if len(daily) < window:
-        st.info(f"A {window}-day window needs at least {window} daily returns; this period has {len(daily):,}. Choose a longer period or a shorter window.")
+        st.info(
+            f"A {window}-day window needs at least {window} daily returns; this period has {len(daily):,}. Choose a longer period or a shorter window."
+        )
         return
     try:
         rolling = rolling_metrics(daily, window)
@@ -99,12 +138,27 @@ def render_rolling(analysis: dict) -> None:
         return
     column, axis_title, spec = ROLLING_VIEWS[view]
     series = rolling[column].dropna()
-    rolling_fig = px.line(x=series.index, y=series, labels={"x": "Date", "y": axis_title}, color_discrete_sequence=["#264653"])
-    rolling_fig.update_layout(template="plotly_white", title=f"{view} · trailing {window} trading days", hovermode="x unified", height=380, showlegend=False)
+    rolling_fig = px.line(
+        x=series.index,
+        y=series,
+        labels={"x": "Date", "y": axis_title},
+        color_discrete_sequence=["#264653"],
+    )
+    rolling_fig.update_layout(
+        template="plotly_white",
+        title=f"{view} · trailing {window} trading days",
+        hovermode="x unified",
+        height=380,
+        showlegend=False,
+    )
     rolling_fig.update_yaxes(title_text=axis_title, tickformat=spec)
-    rolling_fig.update_traces(line_width=2, hovertemplate=f"%{{x|%b %d, %Y}}<br>%{{y:{spec}}}<extra></extra>")
+    rolling_fig.update_traces(
+        line_width=2, hovertemplate=f"%{{x|%b %d, %Y}}<br>%{{y:{spec}}}<extra></extra>"
+    )
     st.plotly_chart(rolling_fig, key="rolling_chart")
-    st.caption("Each date uses only the trailing window ending that day. Sharpe assumes a 0% risk-free rate and is blank when a window's volatility is zero. Drawdown is measured from the highest wealth inside the window.")
+    st.caption(
+        "Each date uses only the trailing window ending that day. Sharpe assumes a 0% risk-free rate and is blank when a window's volatility is zero. Drawdown is measured from the highest wealth inside the window."
+    )
 
 
 def render_risk_attribution(analysis: dict) -> None:
@@ -115,20 +169,32 @@ def render_risk_attribution(analysis: dict) -> None:
     except ValueError as exc:
         st.info(f"Risk attribution is unavailable. {exc}")
         return
-    attribution = pd.DataFrame({"Allocation weight": analysis["weights"], "Share of portfolio risk": shares.to_numpy()}, index=shares.index)
-    attribution_fig = px.bar(attribution, barmode="group", labels={"index": "Ticker", "value": "Share of portfolio", "variable": "Measure"}, color_discrete_sequence=["#8ab17d", "#e76f51"])
+    attribution = pd.DataFrame(
+        {"Allocation weight": analysis["weights"], "Share of portfolio risk": shares.to_numpy()},
+        index=shares.index,
+    )
+    attribution_fig = px.bar(
+        attribution,
+        barmode="group",
+        labels={"index": "Ticker", "value": "Share of portfolio", "variable": "Measure"},
+        color_discrete_sequence=["#8ab17d", "#e76f51"],
+    )
     attribution_fig.update_layout(template="plotly_white", height=380, legend_title_text="Measure")
     attribution_fig.update_yaxes(tickformat=".0%")
     attribution_fig.update_traces(hovertemplate="%{x}<br>%{y:.2%}<extra>%{fullData.name}</extra>")
     st.plotly_chart(attribution_fig, key="risk_attribution_chart")
-    st.caption("Share of portfolio risk = weight × the stock's covariance with the portfolio ÷ portfolio variance; shares sum to 100%. A stock can carry more risk than its weight, and a negative share means it reduces total risk.")
+    st.caption(
+        "Share of portfolio risk = weight × the stock's covariance with the portfolio ÷ portfolio variance; shares sum to 100%. A stock can carry more risk than its weight, and a negative share means it reduces total risk."
+    )
 
 
 def render_optimization(analysis: dict) -> None:
     """Compare the current weights with long-only minimum-volatility and maximum-Sharpe weights."""
     st.divider()
     st.subheader("Portfolio optimization")
-    st.caption("Long-only, fully invested weights fit to the selected history. Assumes a 0% risk-free rate.")
+    st.caption(
+        "Long-only, fully invested weights fit to the selected history. Assumes a 0% risk-free rate."
+    )
     prices = analysis["prices"]
     if len(prices.columns) == 1:
         st.info("Optimization needs at least two stocks. Add another stock to compare allocations.")
@@ -138,7 +204,11 @@ def render_optimization(analysis: dict) -> None:
         analysis.pop("optimization_error", None)
         with st.spinner("Solving optimized portfolios…"):
             try:
-                analysis["optimization"] = (min_volatility_portfolio(prices), max_sharpe_portfolio(prices), efficient_frontier(prices))
+                analysis["optimization"] = (
+                    min_volatility_portfolio(prices),
+                    max_sharpe_portfolio(prices),
+                    efficient_frontier(prices),
+                )
             except ValueError as exc:
                 analysis["optimization_error"] = str(exc)
     if "optimization_error" in analysis:
@@ -152,53 +222,141 @@ def render_optimization(analysis: dict) -> None:
     table = pd.DataFrame(
         {
             "Current": [*analysis["weights"], current_return, current_volatility, current_sharpe],
-            "Minimum volatility": [*min_vol.weights, min_vol.expected_return, min_vol.volatility, min_vol.sharpe_ratio],
-            "Maximum Sharpe": [*max_sharpe.weights, max_sharpe.expected_return, max_sharpe.volatility, max_sharpe.sharpe_ratio],
+            "Minimum volatility": [
+                *min_vol.weights,
+                min_vol.expected_return,
+                min_vol.volatility,
+                min_vol.sharpe_ratio,
+            ],
+            "Maximum Sharpe": [
+                *max_sharpe.weights,
+                max_sharpe.expected_return,
+                max_sharpe.volatility,
+                max_sharpe.sharpe_ratio,
+            ],
         },
-        index=[*(f"{ticker} weight" for ticker in prices.columns), "Annualized return", "Annualized volatility", "Sharpe ratio"],
+        index=[
+            *(f"{ticker} weight" for ticker in prices.columns),
+            "Annualized return",
+            "Annualized volatility",
+            "Sharpe ratio",
+        ],
     )
-    st.dataframe(table.style.format("{:.2%}").format("{:.2f}", subset=pd.IndexSlice[["Sharpe ratio"], :]), key="optimization_table")
+    st.dataframe(
+        table.style.format("{:.2%}").format("{:.2f}", subset=pd.IndexSlice[["Sharpe ratio"], :]),
+        key="optimization_table",
+    )
     if min_vol.diagnostics.singular_covariance or max_sharpe.diagnostics.singular_covariance:
-        st.warning("The covariance matrix is singular (duplicate or constant-price stocks), so these weights are not unique.")
-    st.caption("In-sample results: weights are fit to the same history used to score them, so these figures are optimistic and not a forecast. Maximum-Sharpe weights are especially sensitive to the chosen period.")
-    render_frontier(frontier, min_vol, max_sharpe, current_return, current_volatility, list(prices.columns))
+        st.warning(
+            "The covariance matrix is singular (duplicate or constant-price stocks), so these weights are not unique."
+        )
+    st.caption(
+        "In-sample results: weights are fit to the same history used to score them, so these figures are optimistic and not a forecast. Maximum-Sharpe weights are especially sensitive to the chosen period."
+    )
+    render_frontier(
+        frontier, min_vol, max_sharpe, current_return, current_volatility, list(prices.columns)
+    )
 
 
-def render_frontier(frontier: EfficientFrontier, min_vol: OptimizedPortfolio, max_sharpe: OptimizedPortfolio, current_return: float, current_volatility: float, tickers: list[str]) -> None:
+def render_frontier(
+    frontier: EfficientFrontier,
+    min_vol: OptimizedPortfolio,
+    max_sharpe: OptimizedPortfolio,
+    current_return: float,
+    current_volatility: float,
+    tickers: list[str],
+) -> None:
     """Plot the efficient frontier with the current, optimized, and same-risk portfolios."""
     points = frontier.points
-    frontier_fig = go.Figure(go.Scatter(x=points["volatility"], y=points["expected_return"], mode="lines+markers", name="Efficient frontier", line={"color": "#264653", "width": 2}, marker={"size": 5}))
-    markers = [("Current", current_volatility, current_return, "#e76f51", "x"), ("Minimum volatility", min_vol.volatility, min_vol.expected_return, "#2a9d8f", "diamond"), ("Maximum Sharpe", max_sharpe.volatility, max_sharpe.expected_return, "#e9c46a", "star")]
+    frontier_fig = go.Figure(
+        go.Scatter(
+            x=points["volatility"],
+            y=points["expected_return"],
+            mode="lines+markers",
+            name="Efficient frontier",
+            line={"color": "#264653", "width": 2},
+            marker={"size": 5},
+        )
+    )
+    markers = [
+        ("Current", current_volatility, current_return, "#e76f51", "x"),
+        ("Minimum volatility", min_vol.volatility, min_vol.expected_return, "#2a9d8f", "diamond"),
+        ("Maximum Sharpe", max_sharpe.volatility, max_sharpe.expected_return, "#e9c46a", "star"),
+    ]
     suggested = frontier_point_within_risk(frontier, current_volatility)
     if suggested is not None:
         point = points.loc[suggested]
-        markers.append(("Best return at your risk", point["volatility"], point["expected_return"], "#8ab17d", "circle-open"))
+        markers.append(
+            (
+                "Best return at your risk",
+                point["volatility"],
+                point["expected_return"],
+                "#8ab17d",
+                "circle-open",
+            )
+        )
     for name, volatility, expected_return, color, symbol in markers:
-        frontier_fig.add_trace(go.Scatter(x=[volatility], y=[expected_return], mode="markers", name=name, marker={"color": color, "symbol": symbol, "size": 14, "line": {"width": 2}}))
-    frontier_fig.update_layout(template="plotly_white", title="Efficient frontier (in-sample)", height=450, legend_title_text="Portfolio")
+        frontier_fig.add_trace(
+            go.Scatter(
+                x=[volatility],
+                y=[expected_return],
+                mode="markers",
+                name=name,
+                marker={"color": color, "symbol": symbol, "size": 14, "line": {"width": 2}},
+            )
+        )
+    frontier_fig.update_layout(
+        template="plotly_white",
+        title="Efficient frontier (in-sample)",
+        height=450,
+        legend_title_text="Portfolio",
+    )
     frontier_fig.update_xaxes(title_text="Annualized volatility", tickformat=".0%")
     frontier_fig.update_yaxes(title_text="Annualized expected return", tickformat=".0%")
-    frontier_fig.update_traces(hovertemplate="Volatility %{x:.2%}<br>Return %{y:.2%}<extra>%{fullData.name}</extra>")
+    frontier_fig.update_traces(
+        hovertemplate="Volatility %{x:.2%}<br>Return %{y:.2%}<extra>%{fullData.name}</extra>"
+    )
     st.plotly_chart(frontier_fig, key="frontier_chart")
     if suggested is None:
-        st.info("Every frontier portfolio is riskier than your current weights, so no same-risk alternative is shown.")
+        st.info(
+            "Every frontier portfolio is riskier than your current weights, so no same-risk alternative is shown."
+        )
     else:
-        weights = " · ".join(f"{ticker} {weight:.2%}" for ticker, weight in zip(tickers, frontier.weights.loc[suggested], strict=True))
-        st.caption(f"Best return at no more than your current volatility: {points.loc[suggested, 'expected_return']:.2%} return at {points.loc[suggested, 'volatility']:.2%} volatility with {weights}.")
+        weights = " · ".join(
+            f"{ticker} {weight:.2%}"
+            for ticker, weight in zip(tickers, frontier.weights.loc[suggested], strict=True)
+        )
+        st.caption(
+            f"Best return at no more than your current volatility: {points.loc[suggested, 'expected_return']:.2%} return at {points.loc[suggested, 'volatility']:.2%} volatility with {weights}."
+        )
     if frontier.infeasible_targets:
-        st.caption(f"{frontier.infeasible_targets} frontier target(s) could not be solved and are omitted.")
+        st.caption(
+            f"{frontier.infeasible_targets} frontier target(s) could not be solved and are omitted."
+        )
 
 
 def render_stress_test(analysis: dict) -> None:
     """Display historical stress outcomes as fractions and normalized wealth."""
     st.divider()
     st.subheader("Historical Stress Testing")
-    st.caption("Hypothetical replay: current fixed weights applied to past adjusted prices, not your actual historical holdings. Not a prediction.")
+    st.caption(
+        "Hypothetical replay: current fixed weights applied to past adjusted prices, not your actual historical holdings. Not a prediction."
+    )
     names = [scenario.name for scenario in HISTORICAL_SCENARIOS]
     selected = st.selectbox("Historical scenario", names + ["Custom date range"])
     if selected == "Custom date range":
-        start_date = st.date_input("Scenario start date", analysis["prices"].index.min().date(), min_value=date(1900, 1, 1), max_value=date.today())
-        end_date = st.date_input("Scenario end date (inclusive)", analysis["prices"].index.max().date(), min_value=date(1900, 1, 1), max_value=date.today())
+        start_date = st.date_input(
+            "Scenario start date",
+            analysis["prices"].index.min().date(),
+            min_value=date(1900, 1, 1),
+            max_value=date.today(),
+        )
+        end_date = st.date_input(
+            "Scenario end date (inclusive)",
+            analysis["prices"].index.max().date(),
+            min_value=date(1900, 1, 1),
+            max_value=date.today(),
+        )
         try:
             scenario = custom_scenario(start_date, end_date)
         except ValueError as exc:
@@ -207,18 +365,24 @@ def render_stress_test(analysis: dict) -> None:
     else:
         scenario = HISTORICAL_SCENARIOS[names.index(selected)]
         st.caption(scenario.description)
-    st.caption(f"Requested window: {scenario.start:%b %d, %Y} – {scenario.end:%b %d, %Y} (inclusive).")
+    st.caption(
+        f"Requested window: {scenario.start:%b %d, %Y} – {scenario.end:%b %d, %Y} (inclusive)."
+    )
     request = (scenario.name, scenario.start, scenario.end)
     if st.button("Run historical stress test"):
         analysis.pop("stress", None)
         analysis.pop("stress_error", None)
         try:
             with st.spinner("Loading scenario prices and replaying historical returns…"):
-                history = fetch_prices(list(analysis["prices"].columns), scenario.start.date(), scenario.end.date() + timedelta(days=1))
+                history = fetch_prices(
+                    list(analysis["prices"].columns),
+                    scenario.start.date(),
+                    scenario.end.date() + timedelta(days=1),
+                )
                 result = stress_test(history, analysis["weights"], scenario)
                 curve = None
                 if result.available:
-                    window = history.loc[result.first_date:result.last_date]
+                    window = history.loc[result.first_date : result.last_date]
                     daily = portfolio_returns(to_returns(window), analysis["weights"])
                     curve = cumulative_wealth(daily).reindex(window.index, fill_value=1.0)
                 analysis["stress"] = (request, result, curve)
@@ -229,12 +393,16 @@ def render_stress_test(analysis: dict) -> None:
         return
     saved = analysis.get("stress")
     if saved is None or saved[0] != request:
-        st.info("Run the selected scenario to check availability. Every stock needs history spanning the window and at least three common price dates. Recently listed stocks may make older scenarios unavailable; no prices are invented or filled.")
+        st.info(
+            "Run the selected scenario to check availability. Every stock needs history spanning the window and at least three common price dates. Recently listed stocks may make older scenarios unavailable; no prices are invented or filled."
+        )
         return
     result = saved[1]
     if not result.available:
         st.warning(f"Scenario unavailable — {result.scenario.name}. {result.reason}")
-        st.caption("Try a later custom start date or a portfolio whose stocks traded throughout the window. At least three common price dates are required.")
+        st.caption(
+            "Try a later custom start date or a portfolio whose stocks traded throughout the window. At least three common price dates are required."
+        )
         return
     render_stress_result(saved)
 
@@ -242,21 +410,53 @@ def render_stress_test(analysis: dict) -> None:
 def render_stress_result(saved: tuple) -> None:
     """Show backend scenario metrics as fractions and wealth as a multiple."""
     _, result, curve = saved
-    st.caption(f"Actual price dates: {result.first_date:%b %d, %Y} – {result.last_date:%b %d, %Y} · {result.n_returns:,} return observations.")
+    st.caption(
+        f"Actual price dates: {result.first_date:%b %d, %Y} – {result.last_date:%b %d, %Y} · {result.n_returns:,} return observations."
+    )
     return_column, drawdown_column, volatility_column = st.columns(3)
     with return_column.container(border=True):
-        st.metric("Scenario return", f"{result.cumulative_return:.2%}", help="Cumulative return over the actual scenario price dates.")
+        st.metric(
+            "Scenario return",
+            f"{result.cumulative_return:.2%}",
+            help="Cumulative return over the actual scenario price dates.",
+        )
     with drawdown_column.container(border=True):
-        st.metric("Scenario maximum drawdown", f"{result.max_drawdown:.2%}", help="Worst peak-to-trough decline; negative values represent losses.")
+        st.metric(
+            "Scenario maximum drawdown",
+            f"{result.max_drawdown:.2%}",
+            help="Worst peak-to-trough decline; negative values represent losses.",
+        )
     with volatility_column.container(border=True):
-        st.metric("Scenario annualized volatility", f"{result.annualized_volatility:.2%}", help="Sample daily volatility annualized using 252 trading days.")
-    stress_fig = px.line(x=curve.index, y=curve, labels={"x": "Date", "y": "Portfolio wealth"}, color_discrete_sequence=["#264653"])
-    stress_fig.update_layout(template="plotly_white", title=f"Hypothetical replay · {result.scenario.name}", hovermode="x unified", height=450, showlegend=False)
+        st.metric(
+            "Scenario annualized volatility",
+            f"{result.annualized_volatility:.2%}",
+            help="Sample daily volatility annualized using 252 trading days.",
+        )
+    stress_fig = px.line(
+        x=curve.index,
+        y=curve,
+        labels={"x": "Date", "y": "Portfolio wealth"},
+        color_discrete_sequence=["#264653"],
+    )
+    stress_fig.update_layout(
+        template="plotly_white",
+        title=f"Hypothetical replay · {result.scenario.name}",
+        hovermode="x unified",
+        height=450,
+        showlegend=False,
+    )
     stress_fig.update_xaxes(title_text="Historical date", rangeslider_visible=True)
-    stress_fig.update_yaxes(title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×")
-    stress_fig.update_traces(line_width=2, hovertemplate="%{x|%b %d, %Y}<br>Portfolio wealth: %{y:.3f}×<extra></extra>")
+    stress_fig.update_yaxes(
+        title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×"
+    )
+    stress_fig.update_traces(
+        line_width=2, hovertemplate="%{x|%b %d, %Y}<br>Portfolio wealth: %{y:.3f}×<extra></extra>"
+    )
     st.plotly_chart(stress_fig, key="stress_chart")
-    st.caption(result.note + " Daily rebalancing; fees and taxes excluded. Missing trading dates are omitted.")
+    st.caption(
+        result.note
+        + " Daily rebalancing; fees and taxes excluded. Missing trading dates are omitted."
+    )
 
 
 def render_simulation(analysis: dict) -> None:
@@ -265,16 +465,37 @@ def render_simulation(analysis: dict) -> None:
     st.subheader("Monte Carlo · hypothetical simulations")
     st.caption("Scenarios based on historical returns, not predictions or guarantees.")
     with st.form("simulation_request"):
-        horizon = st.number_input("Forecast horizon (trading days)", MIN_HORIZON_DAYS, MAX_HORIZON_DAYS, 252, help="Simulation steps; future dates are weekdays, including exchange holidays.")
-        paths = st.number_input("Simulation count", MIN_PATHS, MAX_PATHS, MIN_PATHS, step=1000, help="More paths reduce sampling noise but require more time and memory.")
-        seed = st.number_input("Random seed", 0, 2**32 - 1, DEFAULT_SEED, help="Identical history and settings reproduce the same scenarios.")
+        horizon = st.number_input(
+            "Forecast horizon (trading days)",
+            MIN_HORIZON_DAYS,
+            MAX_HORIZON_DAYS,
+            252,
+            help="Simulation steps; future dates are weekdays, including exchange holidays.",
+        )
+        paths = st.number_input(
+            "Simulation count",
+            MIN_PATHS,
+            MAX_PATHS,
+            MIN_PATHS,
+            step=1000,
+            help="More paths reduce sampling noise but require more time and memory.",
+        )
+        seed = st.number_input(
+            "Random seed",
+            0,
+            2**32 - 1,
+            DEFAULT_SEED,
+            help="Identical history and settings reproduce the same scenarios.",
+        )
         run = st.form_submit_button("Run hypothetical simulations")
     if run:
         analysis.pop("simulation", None)
         analysis.pop("simulation_error", None)
         try:
             with st.spinner("Generating hypothetical portfolio scenarios…"):
-                result = simulate_portfolio(analysis["daily_returns"], horizon_days=horizon, n_paths=paths, seed=seed)
+                result = simulate_portfolio(
+                    analysis["daily_returns"], horizon_days=horizon, n_paths=paths, seed=seed
+                )
                 analysis["simulation"] = (result, horizon, paths, seed)
         except (ValueError, NotImplementedError, MemoryError) as exc:
             analysis["simulation_error"] = str(exc) or "Try fewer simulations or a shorter horizon."
@@ -287,27 +508,79 @@ def render_simulation(analysis: dict) -> None:
         return
     result, used_horizon, used_paths, used_seed = saved
     bands = result.percentile_paths
-    st.caption(f"Displayed run: {used_horizon:,} trading days · {used_paths:,} simulations · seed {used_seed}. Run again to apply changes.")
+    st.caption(
+        f"Displayed run: {used_horizon:,} trading days · {used_paths:,} simulations · seed {used_seed}. Run again to apply changes."
+    )
     median_column, loss_column = st.columns(2)
     with median_column.container(border=True):
-        st.metric("Hypothetical terminal median return", f"{bands['median'].iloc[-1] - 1.0:.2%}", help="Ending median wealth from the simulation API, displayed as cumulative return from the starting wealth of 1.0.")
+        st.metric(
+            "Hypothetical terminal median return",
+            f"{bands['median'].iloc[-1] - 1.0:.2%}",
+            help="Ending median wealth from the simulation API, displayed as cumulative return from the starting wealth of 1.0.",
+        )
     with loss_column.container(border=True):
-        st.metric("Hypothetical probability of loss", f"{result.loss_probability:.2%}", help="Share of simulated paths ending below their starting wealth; not a real-world loss forecast.")
+        st.metric(
+            "Hypothetical probability of loss",
+            f"{result.loss_probability:.2%}",
+            help="Share of simulated paths ending below their starting wealth; not a real-world loss forecast.",
+        )
     fan = go.Figure()
     for lower, upper, label, color in (
         ("p5", "p95", "5th–95th percentiles", "rgba(42,157,143,0.15)"),
         ("p25", "p75", "25th–75th percentiles", "rgba(42,157,143,0.35)"),
     ):
-        fan.add_trace(go.Scatter(x=bands.index, y=bands[lower], mode="lines", line_width=0, showlegend=False, name=lower, hovertemplate="%{x|%b %d, %Y}<br>Wealth: %{y:.3f}×<extra>%{fullData.name}</extra>"))
-        fan.add_trace(go.Scatter(x=bands.index, y=bands[upper], mode="lines", line_width=0, fill="tonexty", fillcolor=color, name=label, hovertemplate="%{x|%b %d, %Y}<br>Upper wealth: %{y:.3f}×<extra>%{fullData.name}</extra>"))
-    fan.add_trace(go.Scatter(x=bands.index, y=bands["median"], mode="lines", line={"color": "#264653", "width": 3}, name="Median", hovertemplate="%{x|%b %d, %Y}<br>Median wealth: %{y:.3f}×<extra></extra>"))
-    fan.update_layout(template="plotly_white", title="Hypothetical portfolio wealth scenarios", hovermode="x unified", height=450, legend_title_text="Simulated percentiles")
+        fan.add_trace(
+            go.Scatter(
+                x=bands.index,
+                y=bands[lower],
+                mode="lines",
+                line_width=0,
+                showlegend=False,
+                name=lower,
+                hovertemplate="%{x|%b %d, %Y}<br>Wealth: %{y:.3f}×<extra>%{fullData.name}</extra>",
+            )
+        )
+        fan.add_trace(
+            go.Scatter(
+                x=bands.index,
+                y=bands[upper],
+                mode="lines",
+                line_width=0,
+                fill="tonexty",
+                fillcolor=color,
+                name=label,
+                hovertemplate="%{x|%b %d, %Y}<br>Upper wealth: %{y:.3f}×<extra>%{fullData.name}</extra>",
+            )
+        )
+    fan.add_trace(
+        go.Scatter(
+            x=bands.index,
+            y=bands["median"],
+            mode="lines",
+            line={"color": "#264653", "width": 3},
+            name="Median",
+            hovertemplate="%{x|%b %d, %Y}<br>Median wealth: %{y:.3f}×<extra></extra>",
+        )
+    )
+    fan.update_layout(
+        template="plotly_white",
+        title="Hypothetical portfolio wealth scenarios",
+        hovermode="x unified",
+        height=450,
+        legend_title_text="Simulated percentiles",
+    )
     fan.update_xaxes(title_text="Simulation date", rangeslider_visible=True)
-    fan.update_yaxes(title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×")
+    fan.update_yaxes(
+        title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×"
+    )
     fan.add_hline(y=1.0, line_dash="dot", line_color="gray")
     st.plotly_chart(fan, key="simulation_chart", width="stretch")
-    st.caption("Bands are pointwise percentiles across hypothetical paths, not confidence bounds or individual paths. The median line is not one simulated path.")
-    st.caption("Assumes independent normally distributed daily log returns fitted to historical data. Short histories are unreliable; crashes, changing markets, fees, taxes and cash flows are not captured. Dates include weekdays without excluding exchange holidays.")
+    st.caption(
+        "Bands are pointwise percentiles across hypothetical paths, not confidence bounds or individual paths. The median line is not one simulated path."
+    )
+    st.caption(
+        "Assumes independent normally distributed daily log returns fitted to historical data. Short histories are unreliable; crashes, changing markets, fees, taxes and cash flows are not captured. Dates include weekdays without excluding exchange holidays."
+    )
 
 
 st.set_page_config(page_title="RiskLens Quant", page_icon="◈", layout="wide")
@@ -317,7 +590,8 @@ with st.sidebar:
     st.caption("QUANT · PORTFOLIO ANALYTICS")
     st.divider()
     raw_tickers = st.text_input(
-        "Stock tickers", "AAPL, MSFT",
+        "Stock tickers",
+        "AAPL, MSFT",
         help="Separate tickers with commas or spaces; maximum 25.",
     )
     try:
@@ -333,28 +607,39 @@ with st.sidebar:
         for index, ticker in enumerate(tickers):
             equal_weight = round(100 / len(tickers), 2)
             default_weight = (
-                100 - equal_weight * index
-                if index == len(tickers) - 1 else equal_weight
+                100 - equal_weight * index if index == len(tickers) - 1 else equal_weight
             )
-            weights_pct.append(st.number_input(
-                f"{ticker} weight (%)", min_value=0.0, max_value=100.0,
-                value=default_weight, step=1.0, format="%.2f",
-                key=f"weight:{','.join(tickers)}:{ticker}",
-            ))
+            weights_pct.append(
+                st.number_input(
+                    f"{ticker} weight (%)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=default_weight,
+                    step=1.0,
+                    format="%.2f",
+                    key=f"weight:{','.join(tickers)}:{ticker}",
+                )
+            )
         today = date.today()
         start = st.date_input(
-            "Start date", today - timedelta(days=365),
-            min_value=date(1900, 1, 1), max_value=today,
+            "Start date",
+            today - timedelta(days=365),
+            min_value=date(1900, 1, 1),
+            max_value=today,
         )
         end = st.date_input(
-            "End date (inclusive)", today,
-            min_value=date(1900, 1, 1), max_value=today,
+            "End date (inclusive)",
+            today,
+            min_value=date(1900, 1, 1),
+            max_value=today,
         )
         submitted = st.form_submit_button("Analyze portfolio", disabled=not tickers)
 
 st.caption("PORTFOLIO INTELLIGENCE / OVERVIEW")
 st.title("RiskLens Quant")
-st.markdown("Explore historical risk, diversification, market comparisons, and hypothetical scenarios.")
+st.markdown(
+    "Explore historical risk, diversification, market comparisons, and hypothetical scenarios."
+)
 
 analysis = st.session_state.get("analysis")
 if analysis is not None and list(analysis["prices"].columns) != tickers:
@@ -384,21 +669,29 @@ if submitted:
                 result.max_drawdown,
             )
             if not all(isfinite(value) for value in (metrics[0], metrics[1], metrics[3])):
-                raise ValueError("Choose a longer period: these prices could not produce finite risk metrics.")
+                raise ValueError(
+                    "Choose a longer period: these prices could not produce finite risk metrics."
+                )
             st.session_state["analysis"] = {
-                "prices": prices, "weights": weights, "metrics": metrics,
+                "prices": prices,
+                "weights": weights,
+                "metrics": metrics,
                 "drawdown": drawdown_series(result.daily_returns),
                 "daily_returns": result.daily_returns,
             }
             try:
                 benchmark_prices = fetch_benchmark_prices(start, end + timedelta(days=1))
                 st.session_state["analysis"]["benchmark"] = compare_to_benchmark(
-                    prices, weights, benchmark_prices,
+                    prices,
+                    weights,
+                    benchmark_prices,
                 )
             except (ValueError, DataFetchError, NotImplementedError) as exc:
                 st.session_state["analysis"]["benchmark_error"] = str(exc)
     except NotImplementedError:
-        st.error("Portfolio analytics is not ready. Save Claude’s completed analytics engine and try again.")
+        st.error(
+            "Portfolio analytics is not ready. Save Claude’s completed analytics engine and try again."
+        )
     except (ValueError, DataFetchError) as exc:
         st.error(f"Unable to analyze this portfolio. {exc}")
 
@@ -418,34 +711,59 @@ else:
         f"{prices.index.max():%b %d, %Y} | {len(prices):,} price observations"
     )
     descriptions = (
-        ("Annualized return", "Mean daily portfolio return × 252; arithmetic annualization.", ".2%"),
+        (
+            "Annualized return",
+            "Mean daily portfolio return × 252; arithmetic annualization.",
+            ".2%",
+        ),
         ("Annualized volatility", "Sample daily standard deviation × √252.", ".2%"),
-        ("Sharpe ratio", "Annualized excess return / volatility. Assumes a 0% annual risk-free rate.", ".2f"),
-        ("Maximum drawdown", "Worst peak-to-trough decline, including initial wealth; negative means loss.", ".2%"),
+        (
+            "Sharpe ratio",
+            "Annualized excess return / volatility. Assumes a 0% annual risk-free rate.",
+            ".2f",
+        ),
+        (
+            "Maximum drawdown",
+            "Worst peak-to-trough decline, including initial wealth; negative means loss.",
+            ".2%",
+        ),
     )
     for column, (label, help_text, spec), value in zip(
-        st.columns(4), descriptions, analysis["metrics"], strict=True,
+        st.columns(4),
+        descriptions,
+        analysis["metrics"],
+        strict=True,
     ):
         with column.container(border=True):
             st.metric(label, format(value, spec) if isfinite(value) else "N/A", help=help_text)
     if not isfinite(analysis["metrics"][2]):
-        st.caption("Sharpe ratio is unavailable because portfolio volatility is zero or too close to zero.")
+        st.caption(
+            "Sharpe ratio is unavailable because portfolio volatility is zero or too close to zero."
+        )
     st.caption("Fixed weights, rebalanced daily. Annualized figures use 252 trading days.")
 
     st.divider()
     st.subheader("Historical prices")
-    fig = px.line(prices, labels={"index": "Date", "value": "Adjusted closing price", "variable": "Ticker"})
+    fig = px.line(
+        prices, labels={"index": "Date", "value": "Adjusted closing price", "variable": "Ticker"}
+    )
     fig.update_layout(
-        title="Historical adjusted closing prices", template="plotly_white",
-        hovermode="x unified", legend_title_text="Ticker", height=450,
+        title="Historical adjusted closing prices",
+        template="plotly_white",
+        hovermode="x unified",
+        legend_title_text="Ticker",
+        height=450,
     )
     fig.update_xaxes(title_text="Date", showgrid=False)
     fig.update_yaxes(title_text="Adjusted closing price", tickformat=".2f")
     fig.update_traces(
-        line_width=2, hovertemplate="%{y:.2f}<extra>%{fullData.name}</extra>",
+        line_width=2,
+        hovertemplate="%{y:.2f}<extra>%{fullData.name}</extra>",
     )
     st.plotly_chart(fig)
-    st.caption("Daily adjusted closing prices. Use tickers quoted in the same currency; no currency conversion is applied.")
+    st.caption(
+        "Daily adjusted closing prices. Use tickers quoted in the same currency; no currency conversion is applied."
+    )
 
     st.divider()
     st.subheader("Historical drawdown")
@@ -454,7 +772,8 @@ else:
         st.info("No drawdown history is available. Select Analyze portfolio to reload it.")
     else:
         drawdown_fig = px.area(
-            x=drawdown.index, y=drawdown,
+            x=drawdown.index,
+            y=drawdown,
             labels={"x": "Date", "y": "Drawdown"},
             color_discrete_sequence=["#e76f51"],
         )
@@ -486,20 +805,26 @@ else:
         concentration_column, holdings_column = st.columns(2)
         with concentration_column.container(border=True):
             st.metric(
-                "HHI concentration", f"{hhi:.3f}",
+                "HHI concentration",
+                f"{hhi:.3f}",
                 help="Sum of squared allocation weights, on a 0–1 scale. Lower means more evenly spread; 1 means one holding has all the weight.",
             )
         with holdings_column.container(border=True):
             st.metric(
-                "Effective number of holdings", f"{holdings:.2f}",
+                "Effective number of holdings",
+                f"{holdings:.2f}",
                 help="1 / HHI: the number of equally weighted holdings with the same allocation concentration. Zero-weight stocks do not count.",
             )
-        st.caption("These measures describe allocation balance, not stock independence. Similar stocks can still carry similar risks.")
+        st.caption(
+            "These measures describe allocation balance, not stock independence. Similar stocks can still carry similar risks."
+        )
 
     render_risk_attribution(analysis)
 
     if len(prices.columns) == 1:
-        st.info("A single-stock portfolio has no cross-stock diversification. Add another stock to compare return correlations.")
+        st.info(
+            "A single-stock portfolio has no cross-stock diversification. Add another stock to compare return correlations."
+        )
     else:
         try:
             correlations = correlation_matrix(to_returns(prices))
@@ -507,13 +832,21 @@ else:
             st.warning(f"Stock-return correlation is unavailable. {exc}")
         else:
             st.markdown("**Daily stock-return correlation**")
-            st.caption("Pearson correlation: +1 = move together, 0 = no linear relationship, −1 = move oppositely. Historical correlations can change.")
+            st.caption(
+                "Pearson correlation: +1 = move together, 0 = no linear relationship, −1 = move oppositely. Historical correlations can change."
+            )
             if correlations.isna().any().any():
-                st.info("Blank cells indicate undefined correlation, usually because a stock's returns are constant. They do not mean zero correlation.")
+                st.info(
+                    "Blank cells indicate undefined correlation, usually because a stock's returns are constant. They do not mean zero correlation."
+                )
             correlation_fig = px.imshow(
-                correlations, zmin=-1, zmax=1, color_continuous_scale="RdBu",
+                correlations,
+                zmin=-1,
+                zmax=1,
+                color_continuous_scale="RdBu",
                 labels={"x": "Stock", "y": "Stock", "color": "Correlation"},
-                text_auto=".2f", aspect="equal",
+                text_auto=".2f",
+                aspect="equal",
             )
             correlation_fig.update_traces(
                 hovertemplate="%{y} / %{x}<br>Daily return correlation: %{z:.2f}<extra></extra>",
@@ -521,11 +854,15 @@ else:
             )
             correlation_fig.update_layout(template="plotly_white", height=500)
             st.plotly_chart(correlation_fig, key="correlation_heatmap")
-            st.caption("Based on adjusted daily returns over the selected period, using dates shared by every stock. Includes entered stocks with zero allocation; this is not a weighted portfolio correlation.")
+            st.caption(
+                "Based on adjusted daily returns over the selected period, using dates shared by every stock. Includes entered stocks with zero allocation; this is not a weighted portfolio correlation."
+            )
 
     st.divider()
     st.subheader("Portfolio vs. S&P 500 (SPY)")
-    st.caption("SPY is an ETF tracking the S&P 500. Both series use adjusted prices, including splits and dividends.")
+    st.caption(
+        "SPY is an ETF tracking the S&P 500. Both series use adjusted prices, including splits and dividends."
+    )
     comparison = analysis.get("benchmark")
     if comparison is None:
         reason = analysis.get("benchmark_error", "Select Analyze portfolio to load SPY history.")
@@ -542,20 +879,43 @@ else:
             "Both curves start at 0% on the first shared date; no missing dates are filled."
         )
         if len(performance) == 2:
-            st.info("Only one shared return interval is available. Choose a longer period for a more useful comparison.")
-        benchmark_fig = px.line(performance, labels={"index": "Date", "value": "Cumulative return", "variable": "Investment"}, color_discrete_sequence=["#264653", "#e76f51"])
-        benchmark_fig.update_layout(template="plotly_white", hovermode="x unified", height=450, legend_title_text="Investment")
+            st.info(
+                "Only one shared return interval is available. Choose a longer period for a more useful comparison."
+            )
+        benchmark_fig = px.line(
+            performance,
+            labels={"index": "Date", "value": "Cumulative return", "variable": "Investment"},
+            color_discrete_sequence=["#264653", "#e76f51"],
+        )
+        benchmark_fig.update_layout(
+            template="plotly_white",
+            hovermode="x unified",
+            height=450,
+            legend_title_text="Investment",
+        )
         benchmark_fig.update_xaxes(title_text="Date", showgrid=False, rangeslider_visible=True)
         benchmark_fig.update_yaxes(title_text="Cumulative return", tickformat=".1%")
-        benchmark_fig.update_traces(line_width=2, hovertemplate="%{x|%b %d, %Y}<br>%{y:.2%}<extra>%{fullData.name}</extra>")
+        benchmark_fig.update_traces(
+            line_width=2, hovertemplate="%{x|%b %d, %Y}<br>%{y:.2%}<extra>%{fullData.name}</extra>"
+        )
         benchmark_fig.add_hline(y=0, line_dash="dot", line_color="gray")
         st.plotly_chart(benchmark_fig, key="benchmark_chart")
         portfolio_column, benchmark_column = st.columns(2)
         with portfolio_column.container(border=True):
-            st.metric("Portfolio ending return", f"{ending_returns['Portfolio']:.2%}", help="Cumulative portfolio return over the shared dates; not annualized.")
+            st.metric(
+                "Portfolio ending return",
+                f"{ending_returns['Portfolio']:.2%}",
+                help="Cumulative portfolio return over the shared dates; not annualized.",
+            )
         with benchmark_column.container(border=True):
-            st.metric("SPY ending return", f"{ending_returns['S&P 500 (SPY)']:.2%}", help="Cumulative adjusted SPY return over the same shared dates; not annualized.")
-        st.caption("Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns.")
+            st.metric(
+                "SPY ending return",
+                f"{ending_returns['S&P 500 (SPY)']:.2%}",
+                help="Cumulative adjusted SPY return over the same shared dates; not annualized.",
+            )
+        st.caption(
+            "Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns."
+        )
 
     render_tail_risk(analysis)
     simulation_tab, stress_tab = st.tabs(["Simulated futures", "Historical scenarios"])
