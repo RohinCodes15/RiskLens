@@ -93,9 +93,7 @@ def sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.0) -> float:
     return (annualized_return(returns) - rate) / vol
 
 
-def historical_var(
-    returns: pd.Series, confidence: float = DEFAULT_VAR_CONFIDENCE
-) -> float:
+def historical_var(returns: pd.Series, confidence: float = DEFAULT_VAR_CONFIDENCE) -> float:
     """One-day historical Value at Risk, reported as a positive loss fraction.
 
     A result of 0.02 means: on (1 - confidence) of days, the loss was at
@@ -118,9 +116,7 @@ def _validate_confidence(confidence: float) -> None:
         raise ValueError("confidence must be between 0 and 1.")
 
 
-def historical_cvar(
-    returns: pd.Series, confidence: float = DEFAULT_VAR_CONFIDENCE
-) -> float:
+def historical_cvar(returns: pd.Series, confidence: float = DEFAULT_VAR_CONFIDENCE) -> float:
     """One-day historical CVaR (Expected Shortfall), as a positive loss fraction.
 
     Tail method: the tail is every observed daily return at or below the
