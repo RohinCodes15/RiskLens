@@ -44,21 +44,16 @@ Rules of the layering:
 | `src/risklens/` (data, validation, risk analytics) | Claude |
 | `app.py`, any `ui/` or chart/visualization modules | Codex |
 | `tests/` | Codex |
-| Lines marked `TODO(human)` | Human |
 
 ## Agent rules
 
 1. **Claude owns financial logic and infrastructure.**
 2. **Codex owns the Streamlit UI, visualization, and tests.**
-3. **Every task leaves 10–15 meaningful Python lines for the human to type.**
-   Mark the insertion point with `TODO(human)`, keep the surrounding code
-   importable, and make the gap real logic (not boilerplate).
-4. **Show, don't insert.** In the final response, show the exact code to
-   type, explain each line simply, and name the file and insertion point.
-   Never write those lines into the file yourself.
-5. **Never overwrite another agent's files.** If you need a change in a file
+3. **Implement assigned code completely.** Do not leave `TODO(human)` markers
+   or code for the human to type.
+4. **Never overwrite another agent's files.** If you need a change in a file
    you don't own, describe it in your summary instead of editing it.
-6. **Keep changes simple, accurate, and testable.**
+5. **Keep changes simple, accurate, and testable.**
 
 ## Coding standards
 

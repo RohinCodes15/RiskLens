@@ -20,8 +20,11 @@ There is no separate backend or database: the Streamlit app calls the
   ratio (0% risk-free rate), and maximum drawdown. Non-finite values show
   as "N/A".
 - Historical adjusted-price chart and historical drawdown chart (Plotly).
-- Diversification: HHI concentration, effective number of holdings, and a
-  daily-return correlation heatmap.
+- **Rolling risk**: rolling volatility, Sharpe ratio, or drawdown over a
+  21-, 63-, or 126-trading-day window.
+- Diversification: HHI concentration, effective number of holdings, a risk
+  attribution chart (each stock's share of portfolio variance next to its
+  weight), and a daily-return correlation heatmap.
 - Portfolio vs. S&P 500 (SPY) growth chart with ending-return cards.
 - **Tail Risk**: a 95%/99% confidence selector, one-day historical VaR and
   CVaR cards (positive values are losses), a histogram of actual daily
@@ -30,6 +33,10 @@ There is no separate backend or database: the Streamlit app calls the
 - **Simulated futures** tab: seeded Monte Carlo percentile fan chart.
 - **Historical scenarios** tab: 2008, 2020, 2022, or custom stress windows,
   with unavailable scenarios explained.
+- **Portfolio optimization** (on demand): current, minimum-volatility, and
+  maximum-Sharpe weights and metrics side by side, plus an efficient
+  frontier chart marking each portfolio and the highest-return frontier
+  point no riskier than the current weights.
 - Bad input, failed downloads, and too-short histories show a readable error
   instead of a traceback.
 
@@ -87,7 +94,7 @@ streamlit run app.py
 
 ```bash
 pytest                                                # full suite, no network (yfinance is mocked)
-pytest tests/test_smoke.py tests/test_tail_risk_ui.py  # dashboard tests only
+pytest tests/test_smoke.py tests/test_tail_risk_ui.py tests/test_risk_ui.py  # dashboard tests only
 ruff check .                                          # lint
 ```
 
@@ -469,8 +476,9 @@ src/risklens/
     concentration.py      Herfindahl index, effective holdings, correlation
     simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio)
     stress.py             Historical stress windows (stress_test, custom_scenario)
-tests/                    pytest suite (network-free); test_smoke.py and
-                          test_tail_risk_ui.py drive the dashboard with AppTest
+tests/                    pytest suite (network-free); test_smoke.py,
+                          test_tail_risk_ui.py, and test_risk_ui.py drive the
+                          dashboard with AppTest
 pyproject.toml            Package metadata, dependencies, pytest and Ruff config
 AGENTS.md                 Architecture, ownership, and coding rules
 LICENSE                   MIT license
