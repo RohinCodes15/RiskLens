@@ -8,7 +8,16 @@ import pytest
 from streamlit.testing.v1 import AppTest
 from test_smoke import APP_PATH, chart_spec, chart_values, click_button
 
-from risklens.analytics import analyze_portfolio, risk_contributions, rolling_metrics
+from risklens.analytics import (
+    OptimizationError,
+    analyze_portfolio,
+    efficient_frontier,
+    frontier_point_within_risk,
+    max_sharpe_portfolio,
+    min_volatility_portfolio,
+    risk_contributions,
+    rolling_metrics,
+)
 from risklens.data import to_returns
 
 
@@ -85,3 +94,59 @@ def test_constant_prices_show_attribution_unavailable(prices: pd.DataFrame) -> N
     assert not app.exception
     assert not any(chart.key == "risk_attribution_chart" for chart in app.get("plotly_chart"))
     assert any("Risk attribution is unavailable" in note.value for note in app.info)
+
+
+# --- optimization and efficient frontier -------------------------------------------------
+
+
+def test_optimization_waits_for_the_button(prices: pd.DataFrame) -> None:
+    with patch("risklens.analytics.efficient_frontier") as frontier:
+        app = analyzed_app(prices)
+    frontier.assert_not_called()
+    assert not app.dataframe
+    assert any("Select Optimize portfolio" in note.value for note in app.info)
+
+
+def test_optimization_table_and_frontier_match_the_api(prices: pd.DataFrame) -> None:
+    app = click_button(analyzed_app(prices), "Optimize portfolio")
+    assert not app.exception and not app.error
+    analysis = app.session_state["analysis"]
+    current = analyze_portfolio(prices, analysis["weights"])
+    min_vol, max_sharpe = min_volatility_portfolio(prices), max_sharpe_portfolio(prices)
+    table = app.dataframe[0].value
+    np.testing.assert_allclose(table["Minimum volatility"].iloc[:3], min_vol.weights, atol=1e-6)
+    np.testing.assert_allclose(table["Maximum Sharpe"].iloc[:3], max_sharpe.weights, atol=1e-6)
+    assert np.isclose(table.loc["Annualized volatility", "Current"], current.annualized_volatility)
+
+    frontier = efficient_frontier(prices)
+    traces = {trace["name"]: trace for trace in chart_spec(app, "frontier_chart")["data"]}
+    np.testing.assert_allclose(chart_values(traces["Efficient frontier"]["x"]), frontier.points["volatility"], rtol=1e-6)
+    assert np.isclose(chart_values(traces["Current"]["x"])[0], current.annualized_volatility)
+    best = frontier.points.loc[frontier_point_within_risk(frontier, current.annualized_volatility)]
+    assert np.isclose(chart_values(traces["Best return at your risk"]["y"])[0], best["expected_return"], rtol=1e-6)
+    assert best["volatility"] <= current.annualized_volatility + 1e-6
+
+
+def test_least_risky_current_portfolio_has_no_same_risk_point(prices: pd.DataFrame) -> None:
+    with patch("risklens.analytics.frontier_point_within_risk", return_value=None):
+        app = click_button(analyzed_app(prices), "Optimize portfolio")
+    assert not app.exception
+    names = [trace["name"] for trace in chart_spec(app, "frontier_chart")["data"]]
+    assert "Best return at your risk" not in names
+    assert any("no same-risk alternative" in note.value for note in app.info)
+
+
+def test_optimizer_failure_shows_a_warning(prices: pd.DataFrame) -> None:
+    error = OptimizationError("Solver did not converge.")
+    with patch("risklens.analytics.max_sharpe_portfolio", side_effect=error):
+        app = click_button(analyzed_app(prices), "Optimize portfolio")
+    assert not app.exception
+    assert any("Solver did not converge" in note.value for note in app.warning)
+    assert not any(chart.key == "frontier_chart" for chart in app.get("plotly_chart"))
+
+
+def test_single_stock_skips_optimization(prices: pd.DataFrame) -> None:
+    app = analyzed_app(prices[["AAPL"]], tickers="AAPL")
+    assert not app.exception
+    assert not any(button.label == "Optimize portfolio" for button in app.button)
+    assert any("at least two stocks" in note.value for note in app.info)
