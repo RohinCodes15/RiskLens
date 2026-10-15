@@ -81,13 +81,16 @@ streamlit run app.py
 ## Tests and checks
 
 ```bash
-pytest                       # full suite, no network access (yfinance is mocked)
-pytest tests/test_smoke.py   # dashboard smoke tests only
-ruff check .                 # lint
+pytest                                                # full suite, no network (yfinance is mocked)
+pytest tests/test_smoke.py tests/test_tail_risk_ui.py  # dashboard tests only
+ruff check .                                          # lint
 ```
 
-Every test is expected to pass; `-ra` prints the reason for any skip or
-expected failure added later.
+Every test is expected to pass. pytest runs with `--strict-markers` and
+`xfail_strict`, so a misspelled marker or an expected failure that starts
+passing is reported as an error. Ruff's rule set is pinned in
+`pyproject.toml` (defaults plus import order, bugs, and modern syntax), so
+newer Ruff releases do not change what is enforced.
 
 ## Analytics API
 
