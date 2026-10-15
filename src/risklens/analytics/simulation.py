@@ -151,4 +151,3 @@ def simulate_portfolio(
         daily_mean=mu,
         daily_volatility=sigma,
     )
- 

@@ -50,7 +50,9 @@ def _windows(returns: pd.Series, window: object) -> tuple[int, np.ndarray]:
     w = _validate_window(window)
     _validate_dated_returns(returns)
     if len(returns) < w:
-        raise ValueError(f"Need at least {w} daily returns for a {w}-day window; got {len(returns)}.")
+        raise ValueError(
+            f"Need at least {w} daily returns for a {w}-day window; got {len(returns)}."
+        )
     return w, sliding_window_view(returns.to_numpy(dtype=float), w)
 
 
