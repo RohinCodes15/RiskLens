@@ -35,12 +35,16 @@ There is no separate backend or database: the Streamlit app calls the
 
 **Library (`risklens`)**, which goes further than the dashboard:
 
-- Input validation for tickers, weights, risk-free rate, and price tables.
-- Price download (yfinance, auto-adjusted closes) and simple daily returns.
-- Risk metrics: annualized return and volatility, Sharpe ratio, historical
-  VaR, cumulative wealth, drawdown series, max drawdown, and per-asset risk
-  contributions.
-- Benchmark comparison against SPY and concentration measures (Herfindahl
+- Input validation for tickers, weights, risk-free rate, date ranges, and
+  price tables.
+- Price download (yfinance, auto-adjusted closes) with date checks before
+  any request, and simple daily returns.
+- Risk metrics: annualized return and volatility, Sharpe ratio, cumulative
+  wealth, drawdown series, max drawdown, and per-asset risk contributions.
+- Tail risk: historical VaR and CVaR (Expected Shortfall) at 95% and 99%
+  (see [Historical VaR and CVaR](#historical-var-and-cvar)).
+- Benchmark comparison against SPY (growth curves plus excess return, beta,
+  correlation, and tracking error) and concentration measures (Herfindahl
   index, effective number of holdings, correlation matrix).
 - Monte Carlo simulation of future wealth and historical stress testing
   (see [Simulation and stress testing](#simulation-and-stress-testing)).
