@@ -152,7 +152,9 @@ def test_results_are_deterministic_and_inputs_unchanged(optimizer: object) -> No
 
     pd.testing.assert_series_equal(first.weights, second.weights)
     assert (first.expected_return, first.volatility, first.sharpe_ratio) == (
-        second.expected_return, second.volatility, second.sharpe_ratio
+        second.expected_return,
+        second.volatility,
+        second.sharpe_ratio,
     )
     assert first.diagnostics == second.diagnostics
     pd.testing.assert_frame_equal(prices, before)
@@ -259,7 +261,8 @@ def test_max_sharpe_rejects_when_no_asset_beats_risk_free_rate() -> None:
 def test_optimizers_stay_optimal_for_very_low_or_high_volatility(scale: float) -> None:
     # SLSQP's tolerance is absolute; without rescaling, tiny variances stop it early.
     prices = make_prices(
-        [3e-4 * scale, 5e-4 * scale, 2e-4 * scale], [0.010 * scale, 0.015 * scale, 0.008 * scale],
+        [3e-4 * scale, 5e-4 * scale, 2e-4 * scale],
+        [0.010 * scale, 0.015 * scale, 0.008 * scale],
         seed=6,
     )
     expected, covariance, _ = estimate_inputs(prices)
@@ -267,9 +270,10 @@ def test_optimizers_stay_optimal_for_very_low_or_high_volatility(scale: float) -
     vols = np.sqrt(np.einsum("ij,jk,ik->i", weights, covariance.to_numpy(), weights))
 
     assert min_volatility_portfolio(prices).volatility <= vols.min() * (1 + 1e-9)
-    assert max_sharpe_portfolio(prices).sharpe_ratio >= (
-        (weights @ expected.to_numpy()) / vols
-    ).max() - 1e-9
+    assert (
+        max_sharpe_portfolio(prices).sharpe_ratio
+        >= ((weights @ expected.to_numpy()) / vols).max() - 1e-9
+    )
 
 
 # --- singular covariance and zero volatility ----------------------------------------------

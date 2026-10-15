@@ -60,8 +60,15 @@ def test_input_returns_are_not_mutated(func: object) -> None:
 @pytest.mark.parametrize("func", ROLLING_FUNCTIONS)
 @pytest.mark.parametrize(
     ("window", "message"),
-    [(1, "at least 2"), (0, "at least 2"), (-21, "at least 2"), (21.0, "whole number"),
-     ("21", "whole number"), (True, "whole number"), (None, "whole number")],
+    [
+        (1, "at least 2"),
+        (0, "at least 2"),
+        (-21, "at least 2"),
+        (21.0, "whole number"),
+        ("21", "whole number"),
+        (True, "whole number"),
+        (None, "whole number"),
+    ],
 )
 def test_invalid_windows_are_rejected(func: object, window: object, message: str) -> None:
     with pytest.raises(ValueError, match=message):
@@ -78,10 +85,15 @@ def test_numpy_integer_window_is_accepted(func: object) -> None:
 @pytest.mark.parametrize("func", ROLLING_FUNCTIONS)
 @pytest.mark.parametrize(
     ("bad", "message"),
-    [([0.01, np.nan, 0.02], "NaN"), ([0.01, np.inf, 0.02], "infinite"),
-     ([0.01, -1.5, 0.02], "below -100%")],
+    [
+        ([0.01, np.nan, 0.02], "NaN"),
+        ([0.01, np.inf, 0.02], "infinite"),
+        ([0.01, -1.5, 0.02], "below -100%"),
+    ],
 )
-def test_nonfinite_or_impossible_returns_are_rejected(func: object, bad: list[float], message: str) -> None:
+def test_nonfinite_or_impossible_returns_are_rejected(
+    func: object, bad: list[float], message: str
+) -> None:
     with pytest.raises(ValueError, match=message):
         func(dated(bad), 2)  # type: ignore[operator]
 
@@ -226,7 +238,9 @@ def test_max_drawdown_hand_calculation() -> None:
 def test_max_drawdown_is_at_most_current_drawdown() -> None:
     returns = noisy()
 
-    assert (rolling_max_drawdown(returns, 63).dropna() <= rolling_drawdown(returns, 63).dropna()).all()
+    assert (
+        rolling_max_drawdown(returns, 63).dropna() <= rolling_drawdown(returns, 63).dropna()
+    ).all()
 
 
 def test_rising_window_has_zero_max_drawdown() -> None:
@@ -242,10 +256,18 @@ def test_rolling_metrics_combines_every_metric_on_input_dates() -> None:
 
     assert list(frame.columns) == ["volatility", "sharpe", "drawdown", "max_drawdown"]
     assert frame.index.equals(returns.index)
-    pd.testing.assert_series_equal(frame["volatility"], rolling_volatility(returns, 63), check_names=False)
-    pd.testing.assert_series_equal(frame["sharpe"], rolling_sharpe(returns, 63, 0.02), check_names=False)
-    pd.testing.assert_series_equal(frame["drawdown"], rolling_drawdown(returns, 63), check_names=False)
-    pd.testing.assert_series_equal(frame["max_drawdown"], rolling_max_drawdown(returns, 63), check_names=False)
+    pd.testing.assert_series_equal(
+        frame["volatility"], rolling_volatility(returns, 63), check_names=False
+    )
+    pd.testing.assert_series_equal(
+        frame["sharpe"], rolling_sharpe(returns, 63, 0.02), check_names=False
+    )
+    pd.testing.assert_series_equal(
+        frame["drawdown"], rolling_drawdown(returns, 63), check_names=False
+    )
+    pd.testing.assert_series_equal(
+        frame["max_drawdown"], rolling_max_drawdown(returns, 63), check_names=False
+    )
 
 
 def test_rolling_metrics_validates_inputs() -> None:
