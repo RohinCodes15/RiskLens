@@ -76,7 +76,9 @@ def test_constant_history_is_deterministic(daily: float, loss: float) -> None:
 
     assert result.daily_volatility == 0.0
     assert result.loss_probability == loss
-    np.testing.assert_allclose(result.terminal_returns, (1 + daily) ** 50 - 1, rtol=1e-12, atol=1e-15)
+    np.testing.assert_allclose(
+        result.terminal_returns, (1 + daily) ** 50 - 1, rtol=1e-12, atol=1e-15
+    )
     spread = result.percentile_paths.max(axis=1) - result.percentile_paths.min(axis=1)
     assert np.allclose(spread, 0.0)
 
@@ -84,7 +86,9 @@ def test_constant_history_is_deterministic(daily: float, loss: float) -> None:
 @pytest.mark.parametrize(("growth", "loss"), [(1.001, 0.0), (0.999, 1.0)])
 def test_constant_growth_prices_give_exactly_zero_volatility(growth: float, loss: float) -> None:
     # pct_change of 100 * growth**n leaves ~1e-16 rounding noise in the returns.
-    prices = pd.Series(100 * growth ** np.arange(61), index=pd.bdate_range("2024-01-02", periods=61))
+    prices = pd.Series(
+        100 * growth ** np.arange(61), index=pd.bdate_range("2024-01-02", periods=61)
+    )
     result = simulate_portfolio(to_returns(prices), 50)
 
     assert result.daily_volatility == 0.0

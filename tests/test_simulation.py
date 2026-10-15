@@ -10,7 +10,9 @@ LABELS = ["p5", "p25", "median", "p75", "p95"]
 
 
 def history(values: list[float] | np.ndarray) -> pd.Series:
-    return pd.Series(values, index=pd.bdate_range("2024-01-02", periods=len(values)), name="portfolio")
+    return pd.Series(
+        values, index=pd.bdate_range("2024-01-02", periods=len(values)), name="portfolio"
+    )
 
 
 @pytest.fixture
@@ -61,7 +63,9 @@ def test_terminal_log_wealth_matches_model_moments(returns: pd.Series) -> None:
     log_wealth = np.log1p(result.terminal_returns)
     expected_sd = result.daily_volatility * np.sqrt(horizon)
     # Four standard errors keeps the seeded check meaningful but not brittle.
-    assert log_wealth.mean() == pytest.approx(result.daily_mean * horizon, abs=4 * expected_sd / np.sqrt(paths))
+    assert log_wealth.mean() == pytest.approx(
+        result.daily_mean * horizon, abs=4 * expected_sd / np.sqrt(paths)
+    )
     assert log_wealth.std(ddof=1) == pytest.approx(expected_sd, rel=0.05)
 
 

@@ -62,8 +62,10 @@ def test_different_asset_calendars_use_only_common_actual_prices() -> None:
     assert result.n_returns == len(data.dropna()) - 1
 
 
-@pytest.mark.parametrize(("first_price", "available"), [("2024-01-08", True), ("2024-01-09", True),
-                                                        ("2024-01-10", False), ("2024-01-11", False)])
+@pytest.mark.parametrize(
+    ("first_price", "available"),
+    [("2024-01-08", True), ("2024-01-09", True), ("2024-01-10", False), ("2024-01-11", False)],
+)
 def test_late_listing_allows_at_most_one_missing_weekday(first_price: str, available: bool) -> None:
     data = prices(first_price, "2024-02-29")
     result = stress_test(data, [0.5, 0.5], custom_scenario("2024-01-08", "2024-02-29"))
@@ -71,9 +73,12 @@ def test_late_listing_allows_at_most_one_missing_weekday(first_price: str, avail
     assert result.available is available
 
 
-@pytest.mark.parametrize(("last_price", "available"), [("2024-02-29", True), ("2024-02-28", True),
-                                                       ("2024-02-27", False)])
-def test_early_history_end_allows_at_most_one_missing_weekday(last_price: str, available: bool) -> None:
+@pytest.mark.parametrize(
+    ("last_price", "available"), [("2024-02-29", True), ("2024-02-28", True), ("2024-02-27", False)]
+)
+def test_early_history_end_allows_at_most_one_missing_weekday(
+    last_price: str, available: bool
+) -> None:
     data = prices("2024-01-02", last_price)
     result = stress_test(data, [0.5, 0.5], custom_scenario("2024-01-08", "2024-02-29"))
 
@@ -117,8 +122,11 @@ def test_scenario_dates_are_normalized_at_construction() -> None:
 
 @pytest.mark.parametrize(
     ("args", "message"),
-    [(("x", "2024-02-01", "2024-01-15"), "before end"), (("", "2024-01-01", "2024-02-01"), "blank"),
-     (("x", "soon", "2024-02-01"), "not a valid date")],
+    [
+        (("x", "2024-02-01", "2024-01-15"), "before end"),
+        (("", "2024-01-01", "2024-02-01"), "blank"),
+        (("x", "soon", "2024-02-01"), "not a valid date"),
+    ],
 )
 def test_invalid_scenarios_are_rejected_at_construction(args: tuple, message: str) -> None:
     with pytest.raises(ValueError, match=message):
