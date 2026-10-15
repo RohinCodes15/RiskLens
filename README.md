@@ -66,6 +66,12 @@ pip install -e ".[dev]"
 `[dev]` adds pytest and Ruff. Leave it off (`pip install -e .`) to install
 just the app.
 
+Dependency floors in `pyproject.toml` are tested: the full suite passes on
+Python 3.11 with the minimum versions (numpy 1.26, pandas 2.2, plotly 5.20,
+Streamlit 1.63, yfinance 0.2.40, pytest 8.0) and on current releases.
+Streamlit 1.63 is required by the dashboard tests, whose AppTest checks look
+charts up by key.
+
 ## Run the app
 
 ```bash
