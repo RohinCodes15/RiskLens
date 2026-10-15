@@ -42,7 +42,11 @@ def test_concentration_rejects_invalid_weights(weights: list[float], message: st
 
 def test_correlation_matrix_is_symmetric_with_unit_diagonal() -> None:
     returns = pd.DataFrame(
-        {"A": [0.01, -0.02, 0.03, 0.00], "B": [0.02, -0.04, 0.06, 0.00], "C": [-0.01, 0.02, -0.03, 0.0]}
+        {
+            "A": [0.01, -0.02, 0.03, 0.00],
+            "B": [0.02, -0.04, 0.06, 0.00],
+            "C": [-0.01, 0.02, -0.03, 0.0],
+        }
     )
 
     result = correlation_matrix(returns)

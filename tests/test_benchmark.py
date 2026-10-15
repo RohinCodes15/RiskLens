@@ -112,17 +112,28 @@ def test_unsorted_inputs_are_aligned_in_date_order() -> None:
 @pytest.mark.parametrize(
     ("assets", "spy", "message"),
     [
-        (pd.DataFrame({"A": [1.0, 2.0]}, index=dates(2)),
-         pd.DataFrame({"SPY": [1.0, 2.0]}, index=dates(2)), "benchmark_prices must be"),
+        (
+            pd.DataFrame({"A": [1.0, 2.0]}, index=dates(2)),
+            pd.DataFrame({"SPY": [1.0, 2.0]}, index=dates(2)),
+            "benchmark_prices must be",
+        ),
         ([1.0, 2.0], pd.Series([1.0, 2.0], index=dates(2)), "asset_prices must be"),
-        (pd.DataFrame({"A": [1.0, 2.0]}, index=dates(2)),
-         pd.Series([1.0, 2.0], index=pd.bdate_range("2024-01-02", periods=2, tz="UTC")),
-         "time zone"),
+        (
+            pd.DataFrame({"A": [1.0, 2.0]}, index=dates(2)),
+            pd.Series([1.0, 2.0], index=pd.bdate_range("2024-01-02", periods=2, tz="UTC")),
+            "time zone",
+        ),
         (pd.DataFrame({"A": [1.0, 2.0]}), pd.Series([1.0, 2.0]), "indexed by date"),
-        (pd.DataFrame({"A": [1.0, 2.0, 3.0]}, index=dates(3)),
-         pd.Series([400.0, 0.0, 410.0], index=dates(3)), "positive"),
-        (pd.DataFrame({"A": [1.0, 2.0, 3.0]}, index=dates(3)),
-         pd.Series([400.0, -1.0, 410.0], index=dates(3)), "positive"),
+        (
+            pd.DataFrame({"A": [1.0, 2.0, 3.0]}, index=dates(3)),
+            pd.Series([400.0, 0.0, 410.0], index=dates(3)),
+            "positive",
+        ),
+        (
+            pd.DataFrame({"A": [1.0, 2.0, 3.0]}, index=dates(3)),
+            pd.Series([400.0, -1.0, 410.0], index=dates(3)),
+            "positive",
+        ),
     ],
 )
 def test_rejects_malformed_inputs(assets: object, spy: object, message: str) -> None:

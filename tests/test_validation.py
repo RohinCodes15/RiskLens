@@ -21,7 +21,10 @@ def prices(values: dict[str, list[object]]) -> pd.DataFrame:
 def test_tickers_are_split_uppercased_and_deduplicated_in_order() -> None:
     assert validate_tickers(" aapl, msft  AAPL,spy ") == ["AAPL", "MSFT", "SPY"]
     assert validate_tickers(["brk-b", " ^gspc ", "eurusd=x", "es=f"]) == [
-        "BRK-B", "^GSPC", "EURUSD=X", "ES=F",
+        "BRK-B",
+        "^GSPC",
+        "EURUSD=X",
+        "ES=F",
     ]
 
 
@@ -108,8 +111,14 @@ def test_prices_return_float_copy_without_mutating_input() -> None:
     [
         ([[1.0, 2.0]], "pandas DataFrame"),
         (pd.DataFrame(index=pd.bdate_range("2024-01-02", periods=2)), "at least one asset"),
-        (pd.DataFrame([[1.0, 2.0], [1.0, 2.0]], columns=["A", "A"],
-                      index=pd.bdate_range("2024-01-02", periods=2)), "unique"),
+        (
+            pd.DataFrame(
+                [[1.0, 2.0], [1.0, 2.0]],
+                columns=["A", "A"],
+                index=pd.bdate_range("2024-01-02", periods=2),
+            ),
+            "unique",
+        ),
         (pd.DataFrame({"A": [1.0, 2.0]}), "indexed by date"),
         (prices({"A": [1.0, 2.0]}).iloc[::-1], "sorted and unique"),
         (prices({"A": [1.0]}), "at least 2 price dates"),
@@ -137,7 +146,8 @@ def test_date_range_parses_strings_and_dates() -> None:
     from risklens.validation import validate_date_range
 
     assert validate_date_range("2024-01-02", date(2024, 2, 1)) == (
-        pd.Timestamp("2024-01-02"), pd.Timestamp("2024-02-01"),
+        pd.Timestamp("2024-01-02"),
+        pd.Timestamp("2024-02-01"),
     )
     assert validate_date_range(date(2024, 1, 2)) == (pd.Timestamp("2024-01-02"), None)
 

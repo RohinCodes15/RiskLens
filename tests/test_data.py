@@ -61,13 +61,28 @@ def test_download_exception_becomes_data_fetch_error() -> None:
         (None, ["A"], "No price data returned"),
         (pd.DataFrame(), ["A"], "No price data returned"),
         ([1.0, 2.0], ["A"], "Unexpected price response"),
-        (pd.concat({"Open": pd.DataFrame({"A": [1.0, 2.0]}, index=dates(2))}, axis=1),
-         ["A"], "no Close prices"),
-        (pd.DataFrame({"Close": [1.0, 2.0]}, index=dates(2)), ["A", "B"],
-         "one Close column for several"),
-        (pd.concat({"Close": pd.DataFrame([[1.0, 2.0], [1.0, 2.0]], columns=["A", "A"],
-                                          index=dates(2))}, axis=1),
-         ["A"], "repeated or malformed"),
+        (
+            pd.concat({"Open": pd.DataFrame({"A": [1.0, 2.0]}, index=dates(2))}, axis=1),
+            ["A"],
+            "no Close prices",
+        ),
+        (
+            pd.DataFrame({"Close": [1.0, 2.0]}, index=dates(2)),
+            ["A", "B"],
+            "one Close column for several",
+        ),
+        (
+            pd.concat(
+                {
+                    "Close": pd.DataFrame(
+                        [[1.0, 2.0], [1.0, 2.0]], columns=["A", "A"], index=dates(2)
+                    )
+                },
+                axis=1,
+            ),
+            ["A"],
+            "repeated or malformed",
+        ),
         (yahoo({"A": [1.0, 2.0], "B": [np.nan, np.nan]}), ["A", "B"], "No price data for: B"),
         (yahoo({"A": [1.0, 2.0]}), ["A", "C"], "No price data for: C"),
         (yahoo({"A": [1.0, np.nan], "B": [np.nan, 2.0]}), ["A", "B"], "overlapping"),

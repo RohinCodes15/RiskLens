@@ -31,7 +31,9 @@ def test_metrics_match_hand_calculation() -> None:
 
 
 def test_first_day_loss_counts_in_max_drawdown() -> None:
-    falling = pd.DataFrame({"A": [100.0, 80.0, 88.0]}, index=pd.bdate_range("2024-01-02", periods=3))
+    falling = pd.DataFrame(
+        {"A": [100.0, 80.0, 88.0]}, index=pd.bdate_range("2024-01-02", periods=3)
+    )
 
     assert analyze_portfolio(falling, [1.0]).max_drawdown == pytest.approx(-0.20)
 
