@@ -83,13 +83,20 @@ def test_analyze_matches_engine_and_drawdown(prices: pd.DataFrame, download: Mag
         submit(app)
         assert not app.exception and not app.error
         assert [card.label for card in app.metric][:6] == [
-            "Annualized return", "Annualized volatility", "Sharpe ratio", "Maximum drawdown",
-            "HHI concentration", "Effective number of holdings",
+            "Annualized return",
+            "Annualized volatility",
+            "Sharpe ratio",
+            "Maximum drawdown",
+            "HHI concentration",
+            "Effective number of holdings",
         ]
         assert [card.value for card in app.metric][:6] == [
-            f"{expected.annualized_return:.2%}", f"{expected.annualized_volatility:.2%}",
-            f"{expected.sharpe_ratio:.2f}", f"{expected.max_drawdown:.2%}",
-            f"{herfindahl_index([0.6, 0.4]):.3f}", f"{effective_holdings([0.6, 0.4]):.2f}",
+            f"{expected.annualized_return:.2%}",
+            f"{expected.annualized_volatility:.2%}",
+            f"{expected.sharpe_ratio:.2f}",
+            f"{expected.max_drawdown:.2%}",
+            f"{herfindahl_index([0.6, 0.4]):.3f}",
+            f"{effective_holdings([0.6, 0.4]):.2f}",
         ]
         pd.testing.assert_frame_equal(engine.call_args.args[0], prices)
         np.testing.assert_allclose(engine.call_args.args[1], [0.6, 0.4])
@@ -106,7 +113,12 @@ def test_analyze_matches_engine_and_drawdown(prices: pd.DataFrame, download: Mag
         assert figure["layout"]["yaxis"]["tickformat"] == ".0%"
         assert figure["layout"]["xaxis"]["rangeslider"]["visible"] is True
         app.checkbox[0].uncheck().run()
-        assert json.loads(app.get("plotly_chart")[1].proto.spec)["layout"]["xaxis"]["rangeslider"]["visible"] is False
+        assert (
+            json.loads(app.get("plotly_chart")[1].proto.spec)["layout"]["xaxis"]["rangeslider"][
+                "visible"
+            ]
+            is False
+        )
         engine.assert_called_once()
 
 
@@ -131,12 +143,15 @@ def test_invalid_inputs_do_not_download(invalid: str, download: MagicMock) -> No
 
 @pytest.mark.parametrize("failure", ["empty", "network", "analytics", "unfinished"])
 def test_failed_analysis_clears_previous_results(
-    failure: str, prices: pd.DataFrame, download: MagicMock,
+    failure: str,
+    prices: pd.DataFrame,
+    download: MagicMock,
 ) -> None:
     """Failed requests clear old results and show an error instead of crashing."""
     app = AppTest.from_file(APP_PATH).run()
     app.session_state["analysis"] = {
-        "prices": prices, "weights": [0.5, 0.5],
+        "prices": prices,
+        "weights": [0.5, 0.5],
         "metrics": (0.1, 0.2, 0.5, -0.1),
         "drawdown": pd.Series([0.0, -0.1], index=prices.index[:2]),
     }
@@ -144,7 +159,11 @@ def test_failed_analysis_clears_previous_results(
         download.return_value = pd.DataFrame()
     elif failure == "network":
         download.side_effect = RuntimeError("Download unavailable")
-    engine_error = NotImplementedError("Unfinished") if failure == "unfinished" else ValueError("Invalid price history")
+    engine_error = (
+        NotImplementedError("Unfinished")
+        if failure == "unfinished"
+        else ValueError("Invalid price history")
+    )
     with patch("risklens.analytics.analyze_portfolio", side_effect=engine_error):
         submit(app)
     assert not app.exception and app.error
@@ -160,13 +179,21 @@ def test_constant_prices_show_undefined_sharpe(download: MagicMock, prices: pd.D
     app = AppTest.from_file(APP_PATH).run()
     submit(app)
     assert not app.exception and not app.error
-    assert [card.value for card in app.metric][:6] == ["0.00%", "0.00%", "N/A", "0.00%", "0.500", "2.00"]
+    assert [card.value for card in app.metric][:6] == [
+        "0.00%",
+        "0.00%",
+        "N/A",
+        "0.00%",
+        "0.500",
+        "2.00",
+    ]
     assert len(app.get("plotly_chart")) == 4
     assert any("undefined correlation" in note.value for note in app.info)
 
 
 def test_single_stock_shows_full_concentration_without_heatmap(
-    download: MagicMock, prices: pd.DataFrame,
+    download: MagicMock,
+    prices: pd.DataFrame,
 ) -> None:
     """One holding is fully concentrated and has no correlation heatmap."""
     download.return_value = pd.concat({"Close": prices[["AAPL"]]}, axis=1)
@@ -180,7 +207,8 @@ def test_single_stock_shows_full_concentration_without_heatmap(
 
 
 def test_spy_comparison_shows_chart_and_ending_returns(
-    download: MagicMock, prices: pd.DataFrame,
+    download: MagicMock,
+    prices: pd.DataFrame,
 ) -> None:
     """With SPY available, the chart and cards match the date-aligned API."""
     spy = pd.Series([500.0, 505.0, 495.0, 510.0], index=prices.index, name="SPY")
@@ -195,7 +223,11 @@ def test_spy_comparison_shows_chart_and_ending_returns(
     assert not app.exception and not app.error
     assert not any("Benchmark comparison is unavailable" in note.value for note in app.warning)
     assert "benchmark_chart" in [chart.key for chart in app.get("plotly_chart")]
-    assert [(card.label, card.value) for card in app.metric if card.label in {"Portfolio ending return", "SPY ending return"}] == [
+    assert [
+        (card.label, card.value)
+        for card in app.metric
+        if card.label in {"Portfolio ending return", "SPY ending return"}
+    ] == [
         ("Portfolio ending return", f"{expected['portfolio']:.2%}"),
         ("SPY ending return", f"{expected['benchmark']:.2%}"),
     ]
@@ -218,7 +250,9 @@ def click_button(app: AppTest, label: str) -> AppTest:
 
 def chart_spec(app: AppTest, key: str) -> dict:
     """Read a named Plotly figure without relying on section order."""
-    return json.loads(next(chart for chart in app.get("plotly_chart") if chart.key == key).proto.spec)
+    return json.loads(
+        next(chart for chart in app.get("plotly_chart") if chart.key == key).proto.spec
+    )
 
 
 def test_simulation_controls_fan_and_persistence(prices: pd.DataFrame, download: MagicMock) -> None:
@@ -226,22 +260,35 @@ def test_simulation_controls_fan_and_persistence(prices: pd.DataFrame, download:
     with patch("risklens.analytics.simulate_portfolio", wraps=simulate_portfolio) as engine:
         app = submit(AppTest.from_file(APP_PATH).run())
         assert [tab.label for tab in app.tabs] == ["Simulated futures", "Historical scenarios"]
-        for label, value in [("Forecast horizon (trading days)", 10), ("Simulation count", 2000), ("Random seed", 7)]:
+        for label, value in [
+            ("Forecast horizon (trading days)", 10),
+            ("Simulation count", 2000),
+            ("Random seed", 7),
+        ]:
             next(widget for widget in app.number_input if widget.label == label).set_value(value)
         engine.assert_not_called()
         click_button(app, "Run hypothetical simulations")
         assert not app.exception and not app.error
-        expected = simulate_portfolio(analyze_portfolio(prices, [0.5, 0.5]).daily_returns, 10, 2000, 7)
+        expected = simulate_portfolio(
+            analyze_portfolio(prices, [0.5, 0.5]).daily_returns, 10, 2000, 7
+        )
         assert engine.call_args.kwargs == {"horizon_days": 10, "n_paths": 2000, "seed": 7}
-        pd.testing.assert_series_equal(engine.call_args.args[0], analyze_portfolio(prices, [0.5, 0.5]).daily_returns)
+        pd.testing.assert_series_equal(
+            engine.call_args.args[0], analyze_portfolio(prices, [0.5, 0.5]).daily_returns
+        )
         figure = chart_spec(app, "simulation_chart")
         assert len(figure["data"]) == 5
-        for trace, column in zip(figure["data"], ["p5", "p95", "p25", "p75", "median"], strict=True):
+        for trace, column in zip(
+            figure["data"], ["p5", "p95", "p25", "p75", "median"], strict=True
+        ):
             np.testing.assert_allclose(chart_values(trace["y"]), expected.percentile_paths[column])
             assert pd.to_datetime(trace["x"]).tolist() == expected.percentile_paths.index.tolist()
         assert [figure["data"][i]["fill"] for i in [1, 3]] == ["tonexty", "tonexty"]
         cards = {card.label: card.value for card in app.metric}
-        assert cards["Hypothetical terminal median return"] == f"{expected.percentile_paths['median'].iloc[-1] - 1:.2%}"
+        assert (
+            cards["Hypothetical terminal median return"]
+            == f"{expected.percentile_paths['median'].iloc[-1] - 1:.2%}"
+        )
         assert cards["Hypothetical probability of loss"] == f"{expected.loss_probability:.2%}"
         assert any("not predictions" in caption.value for caption in app.caption)
         calls = download.call_count
@@ -264,10 +311,14 @@ def test_simulation_failure_clears_stale_chart_and_persists(failure: Exception) 
     assert app.metric[0].label == "Annualized return"
 
 
-def test_custom_stress_metrics_chart_and_invalid_dates(prices: pd.DataFrame, download: MagicMock) -> None:
+def test_custom_stress_metrics_chart_and_invalid_dates(
+    prices: pd.DataFrame, download: MagicMock
+) -> None:
     """Custom replay uses API metrics, dated wealth and inclusive download dates."""
     app = submit(AppTest.from_file(APP_PATH).run())
-    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select("Custom date range").run()
+    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select(
+        "Custom date range"
+    ).run()
     expected = stress_test(prices, [0.5, 0.5], custom_scenario(prices.index[0], prices.index[-1]))
     with patch("risklens.analytics.stress_test", wraps=stress_test) as engine:
         click_button(app, "Run historical stress test")
@@ -279,39 +330,66 @@ def test_custom_stress_metrics_chart_and_invalid_dates(prices: pd.DataFrame, dow
     assert cards["Scenario maximum drawdown"] == f"{expected.max_drawdown:.2%}"
     assert cards["Scenario annualized volatility"] == f"{expected.annualized_volatility:.2%}"
     trace = chart_spec(app, "stress_chart")["data"][0]
-    wealth = cumulative_wealth(portfolio_returns(to_returns(prices), [0.5, 0.5])).reindex(prices.index, fill_value=1.0)
+    wealth = cumulative_wealth(portfolio_returns(to_returns(prices), [0.5, 0.5])).reindex(
+        prices.index, fill_value=1.0
+    )
     np.testing.assert_allclose(chart_values(trace["y"]), wealth)
     assert pd.to_datetime(trace["x"]).tolist() == prices.index.tolist()
-    assert any("not the portfolio's actual historical holdings" in caption.value for caption in app.caption)
+    assert any(
+        "not the portfolio's actual historical holdings" in caption.value for caption in app.caption
+    )
     calls = download.call_count
-    next(widget for widget in app.date_input if widget.label == "Scenario start date").set_value(date(2026, 1, 9)).run()
+    next(widget for widget in app.date_input if widget.label == "Scenario start date").set_value(
+        date(2026, 1, 9)
+    ).run()
     assert not app.exception and any("before" in note.value for note in app.warning)
     assert download.call_count == calls
     assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
 
 
 @pytest.mark.parametrize("scenario", HISTORICAL_SCENARIOS, ids=lambda scenario: scenario.name)
-def test_historical_scenarios_use_their_own_download_window(scenario, prices: pd.DataFrame, download: MagicMock) -> None:
+def test_historical_scenarios_use_their_own_download_window(
+    scenario, prices: pd.DataFrame, download: MagicMock
+) -> None:
     """Older scenarios fetch their own history rather than using dashboard dates."""
     app = submit(AppTest.from_file(APP_PATH).run())
     history = prices.copy()
-    history.index = pd.DatetimeIndex([scenario.start, scenario.start + pd.offsets.BDay(1), scenario.end - pd.offsets.BDay(1), scenario.end])
+    history.index = pd.DatetimeIndex(
+        [
+            scenario.start,
+            scenario.start + pd.offsets.BDay(1),
+            scenario.end - pd.offsets.BDay(1),
+            scenario.end,
+        ]
+    )
     download.return_value = pd.concat({"Close": history}, axis=1)
-    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select(scenario.name).run()
+    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select(
+        scenario.name
+    ).run()
     click_button(app, "Run historical stress test")
-    assert not app.exception and not app.error and not any("Scenario unavailable" in note.value for note in app.warning)
+    assert (
+        not app.exception
+        and not app.error
+        and not any("Scenario unavailable" in note.value for note in app.warning)
+    )
     assert download.call_args.kwargs["start"] == scenario.start.date()
     assert chart_spec(app, "stress_chart")["data"]
-    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select("Custom date range").run()
+    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select(
+        "Custom date range"
+    ).run()
     assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
 
 
 @pytest.mark.parametrize("failure", ["insufficient", "short", "network"])
-def test_stress_unavailable_preserves_dashboard(failure: str, prices: pd.DataFrame, download: MagicMock) -> None:
+def test_stress_unavailable_preserves_dashboard(
+    failure: str, prices: pd.DataFrame, download: MagicMock
+) -> None:
     """Incomplete history and failed downloads never present scenario metrics."""
     app = submit(AppTest.from_file(APP_PATH).run())
     if failure == "short":
-        next(widget for widget in app.selectbox if widget.label == "Historical scenario").select("Custom date range").run()
+        next(widget for widget in app.selectbox if widget.label == "Historical scenario").select(
+            "Custom date range"
+        ).run()
         download.return_value = pd.concat({"Close": prices.iloc[:2]}, axis=1)
     elif failure == "network":
         download.side_effect = RuntimeError("Offline")
@@ -327,9 +405,16 @@ def test_new_analysis_resets_both_scenario_tools() -> None:
     """A new request cannot retain simulations or stress results from old inputs."""
     app = submit(AppTest.from_file(APP_PATH).run())
     click_button(app, "Run hypothetical simulations")
-    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select("Custom date range").run()
+    next(widget for widget in app.selectbox if widget.label == "Historical scenario").select(
+        "Custom date range"
+    ).run()
     click_button(app, "Run historical stress test")
-    assert "simulation" in app.session_state["analysis"] and "stress" in app.session_state["analysis"]
+    assert (
+        "simulation" in app.session_state["analysis"] and "stress" in app.session_state["analysis"]
+    )
     click_button(app, "Analyze portfolio")
     assert not app.exception
-    assert "simulation" not in app.session_state["analysis"] and "stress" not in app.session_state["analysis"]
+    assert (
+        "simulation" not in app.session_state["analysis"]
+        and "stress" not in app.session_state["analysis"]
+    )

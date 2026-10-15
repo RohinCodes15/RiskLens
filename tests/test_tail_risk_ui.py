@@ -32,7 +32,9 @@ def test_confidence_switch_uses_api_and_actual_histogram(app_data) -> None:
     calls = download.call_count
     with patch("risklens.analytics.tail_risk_summary", wraps=tail_risk_summary) as engine:
         for confidence in [0.99, 0.95]:
-            next(widget for widget in app.selectbox if widget.label == "Tail risk confidence").select(confidence).run()
+            next(
+                widget for widget in app.selectbox if widget.label == "Tail risk confidence"
+            ).select(confidence).run()
             assert not app.exception and not app.error
             expected = tail_risk_summary(daily, (confidence,)).loc[confidence]
             cards = {card.label: card.value for card in app.metric}
@@ -54,14 +56,22 @@ def test_small_sample_warning_and_zero_returns(app_data, confidence: float) -> N
     app, _, _ = app_data
     analysis = app.session_state["analysis"]
     analysis["daily_returns"] = pd.Series([0.0, 0.0], index=pd.bdate_range("2025-01-02", periods=2))
-    next(widget for widget in app.selectbox if widget.label == "Tail risk confidence").select(confidence).run()
+    next(widget for widget in app.selectbox if widget.label == "Tail risk confidence").select(
+        confidence
+    ).run()
     assert not app.exception
-    cards = {card.label: float(card.value.rstrip("%")) for card in app.metric if card.label in {"One-day VaR", "One-day CVaR"}}
+    cards = {
+        card.label: float(card.value.rstrip("%"))
+        for card in app.metric
+        if card.label in {"One-day VaR", "One-day CVaR"}
+    }
     assert cards == {"One-day VaR": 0.0, "One-day CVaR": 0.0}
     assert any("Small historical sample" in note.value for note in app.warning)
 
 
-@pytest.mark.parametrize("bad", [pd.Series(dtype=float), pd.Series([np.nan, 0.01]), pd.Series([np.inf, 0.01])])
+@pytest.mark.parametrize(
+    "bad", [pd.Series(dtype=float), pd.Series([np.nan, 0.01]), pd.Series([np.inf, 0.01])]
+)
 def test_invalid_tail_data_hides_risk_results(app_data, bad: pd.Series) -> None:
     """Backend rejection displays a warning without breaking other sections."""
     app, _, _ = app_data

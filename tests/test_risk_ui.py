@@ -53,15 +53,23 @@ def prices() -> pd.DataFrame:
 
 @pytest.mark.parametrize(
     ("window", "view", "column"),
-    [(21, "Volatility", "volatility"), (63, "Sharpe ratio", "sharpe"), (126, "Drawdown", "drawdown")],
+    [
+        (21, "Volatility", "volatility"),
+        (63, "Sharpe ratio", "sharpe"),
+        (126, "Drawdown", "drawdown"),
+    ],
 )
-def test_rolling_chart_matches_the_api(prices: pd.DataFrame, window: int, view: str, column: str) -> None:
+def test_rolling_chart_matches_the_api(
+    prices: pd.DataFrame, window: int, view: str, column: str
+) -> None:
     app = analyzed_app(prices)
     select(app, "Rolling window", window)
     select(app, "Rolling metric", view)
     assert not app.exception and not app.error
     weights = app.session_state["analysis"]["weights"]
-    expected = rolling_metrics(analyze_portfolio(prices, weights).daily_returns, window)[column].dropna()
+    expected = rolling_metrics(analyze_portfolio(prices, weights).daily_returns, window)[
+        column
+    ].dropna()
     trace = chart_spec(app, "rolling_chart")["data"][0]
     np.testing.assert_allclose(chart_values(trace["y"]), expected.to_numpy())
     assert pd.to_datetime(trace["x"]).tolist() == expected.index.tolist()
@@ -120,10 +128,14 @@ def test_optimization_table_and_frontier_match_the_api(prices: pd.DataFrame) -> 
 
     frontier = efficient_frontier(prices)
     traces = {trace["name"]: trace for trace in chart_spec(app, "frontier_chart")["data"]}
-    np.testing.assert_allclose(chart_values(traces["Efficient frontier"]["x"]), frontier.points["volatility"], rtol=1e-6)
+    np.testing.assert_allclose(
+        chart_values(traces["Efficient frontier"]["x"]), frontier.points["volatility"], rtol=1e-6
+    )
     assert np.isclose(chart_values(traces["Current"]["x"])[0], current.annualized_volatility)
     best = frontier.points.loc[frontier_point_within_risk(frontier, current.annualized_volatility)]
-    assert np.isclose(chart_values(traces["Best return at your risk"]["y"])[0], best["expected_return"], rtol=1e-6)
+    assert np.isclose(
+        chart_values(traces["Best return at your risk"]["y"])[0], best["expected_return"], rtol=1e-6
+    )
     assert best["volatility"] <= current.annualized_volatility + 1e-6
 
 
