@@ -96,6 +96,7 @@ streamlit run app.py
 pytest                                                # full suite, no network (yfinance is mocked)
 pytest tests/test_smoke.py tests/test_tail_risk_ui.py tests/test_risk_ui.py  # dashboard tests only
 ruff check .                                          # lint
+ruff format --check .                                 # formatting
 ```
 
 Every test is expected to pass. pytest runs with `--strict-markers` and
