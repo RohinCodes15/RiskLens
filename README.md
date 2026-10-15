@@ -139,9 +139,16 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `compare_to_benchmark`, `herfindahl_index`, `effective_holdings`,
 `correlation_matrix`, `simulate_portfolio`, `stress_test`,
 `run_stress_tests`, `custom_scenario`, `HISTORICAL_SCENARIOS`,
-`historical_cvar`, `tail_risk_summary`, `VAR_CONFIDENCE_LEVELS`, and
-`TRADING_DAYS_PER_YEAR`. Each function's docstring
-gives its units and sign conventions.
+`historical_cvar`, `tail_risk_summary`, `VAR_CONFIDENCE_LEVELS`,
+`benchmark_statistics`, and `TRADING_DAYS_PER_YEAR`, plus the frozen result
+types `PortfolioMetrics`, `BenchmarkStatistics`, `MonteCarloResult`,
+`StressScenario`, and `StressResult`. Each function's docstring gives its
+units and sign conventions.
+
+`risklens.validation` provides `validate_tickers`, `validate_weights`,
+`validate_risk_free_rate`, `validate_prices`, and `validate_date_range`;
+`risklens.data` provides `fetch_prices`, `fetch_benchmark_prices`,
+`to_returns`, and `DataFetchError`.
 
 Errors: `ValueError` for bad input, `risklens.data.DataFetchError` for
 download problems.
