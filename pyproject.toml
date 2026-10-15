@@ -26,6 +26,7 @@ packages = ["src/risklens"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-ra --strict-markers"  # list skip/xfail reasons; reject unknown markers
+xfail_strict = true  # an expected failure that starts passing must be cleaned up
 
 [tool.ruff]
 target-version = "py311"
