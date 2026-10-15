@@ -353,7 +353,9 @@ def efficient_frontier(
     return EfficientFrontier(points, weights, infeasible)
 
 
-def frontier_point_within_risk(frontier: EfficientFrontier, current_volatility: float) -> int | None:
+def frontier_point_within_risk(
+    frontier: EfficientFrontier, current_volatility: float
+) -> int | None:
     """Index of the highest-return frontier point no riskier than ``current_volatility``.
 
     ``current_volatility`` is an annualized fraction (e.g. a portfolio's
