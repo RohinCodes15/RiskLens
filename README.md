@@ -320,14 +320,16 @@ src/risklens/
   data.py                 Price download (yfinance), SPY benchmark, daily returns
   analytics/
     engine.py             analyze_portfolio and PortfolioMetrics
-    metrics.py            Return-based metrics (volatility, Sharpe, VaR, drawdown, ...)
-    benchmark.py          Portfolio vs. SPY growth from a common 1.0
+    metrics.py            Return-based metrics (volatility, Sharpe, VaR/CVaR, drawdown, ...)
+    benchmark.py          Portfolio vs. SPY growth and benchmark statistics
     concentration.py      Herfindahl index, effective holdings, correlation
     simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio)
     stress.py             Historical stress windows (stress_test, custom_scenario)
-tests/                    pytest suite (network-free)
+tests/                    pytest suite (network-free); test_smoke.py and
+                          test_tail_risk_ui.py drive the dashboard with AppTest
 pyproject.toml            Package metadata, dependencies, pytest and Ruff config
 AGENTS.md                 Architecture, ownership, and coding rules
+LICENSE                   MIT license
 ```
 
 See [AGENTS.md](AGENTS.md) for architecture, ownership, and coding rules.
