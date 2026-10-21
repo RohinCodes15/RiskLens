@@ -9,7 +9,7 @@ from datetime import date
 import pandas as pd
 import yfinance as yf
 
-from risklens.validation import validate_prices
+from risklens.validation import validate_date_range, validate_prices
 
 
 class DataFetchError(RuntimeError):
@@ -51,14 +51,15 @@ def fetch_prices(
     a price are dropped so every row is comparable across assets.
 
     Raises:
-        ValueError: if ``tickers`` is empty.
+        ValueError: if ``tickers`` is empty or the dates fail
+            ``validate_date_range``.
         DataFetchError: if the download fails, is empty or malformed, a ticker
             has no data, or the prices are not finite positive numbers.
     """
     tickers = list(tickers)
     if not tickers:
         raise ValueError("Enter at least one ticker.")
-    # TODO(human): validate the dates here with validate_date_range (one line).
+    validate_date_range(start, end)
     try:
         raw = yf.download(
             tickers, start=start, end=end, auto_adjust=True, progress=False
