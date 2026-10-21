@@ -8,13 +8,25 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from risklens.analytics import (
-    analyze_portfolio, compare_to_benchmark, correlation_matrix, drawdown_series,
-    effective_holdings, herfindahl_index, simulate_portfolio,
-    HISTORICAL_SCENARIOS, custom_scenario, stress_test,
-    cumulative_wealth, portfolio_returns,
+    HISTORICAL_SCENARIOS,
+    analyze_portfolio,
+    compare_to_benchmark,
+    correlation_matrix,
+    cumulative_wealth,
+    custom_scenario,
+    drawdown_series,
+    effective_holdings,
+    herfindahl_index,
+    portfolio_returns,
+    simulate_portfolio,
+    stress_test,
 )
 from risklens.analytics.simulation import (
-    DEFAULT_SEED, MAX_HORIZON_DAYS, MAX_PATHS, MIN_HORIZON_DAYS, MIN_PATHS,
+    DEFAULT_SEED,
+    MAX_HORIZON_DAYS,
+    MAX_PATHS,
+    MIN_HORIZON_DAYS,
+    MIN_PATHS,
 )
 from risklens.data import DataFetchError, fetch_benchmark_prices, fetch_prices, to_returns
 from risklens.validation import validate_tickers, validate_weights
@@ -242,7 +254,7 @@ else:
     st.subheader("Portfolio snapshot")
     allocation = " · ".join(
         f"{ticker} {weight:.2%}"
-        for ticker, weight in zip(prices.columns, analysis["weights"])
+        for ticker, weight in zip(prices.columns, analysis["weights"], strict=True)
     )
     st.caption(
         f"{allocation} | {prices.index.min():%b %d, %Y} – "
@@ -255,7 +267,7 @@ else:
         ("Maximum drawdown", "Worst peak-to-trough decline, including initial wealth; negative means loss.", ".2%"),
     )
     for column, (label, help_text, spec), value in zip(
-        st.columns(4), descriptions, analysis["metrics"],
+        st.columns(4), descriptions, analysis["metrics"], strict=True,
     ):
         with column.container(border=True):
             st.metric(label, format(value, spec) if isfinite(value) else "N/A", help=help_text)
