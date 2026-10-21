@@ -295,6 +295,7 @@ else:
         drawdown_fig.update_xaxes(rangeslider_visible=show_slider)
         drawdown_fig.update_yaxes(tickformat=".0%", title_text="Drawdown")
         drawdown_fig.update_traces(
+            fill="tozeroy",
             hovertemplate="%{x|%b %d, %Y}<br>%{y:.2%}<extra></extra>",
         )
         drawdown_fig.update_layout(hovermode="x unified", height=380, showlegend=False)
