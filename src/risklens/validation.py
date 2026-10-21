@@ -149,5 +149,25 @@ def validate_date_range(
     Raises:
         ValueError: describing the first rule that is broken.
     """
-    # TODO(human): parse start/end with pd.Timestamp and enforce the rules above.
-    raise NotImplementedError("validate_date_range is left for the human to write.")
+    start_ts = _parse_date(start, "start")
+    end_ts = None if end is None else _parse_date(end, "end")
+    try:
+        if end_ts is not None and start_ts >= end_ts:
+            raise ValueError("The start date must be before the end date.")
+    except TypeError as exc:  # one date has a time zone and the other does not
+        raise ValueError("Start and end dates must both have, or both lack, a time zone.") from exc
+    naive_start = start_ts.tz_localize(None) if start_ts.tz else start_ts
+    if naive_start.normalize() > pd.Timestamp.today().normalize():
+        raise ValueError("The start date cannot be in the future.")
+    return start_ts, end_ts
+
+
+def _parse_date(value: str | date, label: str) -> pd.Timestamp:
+    """Parse ``value`` as a timestamp, rejecting missing or unparseable dates."""
+    try:
+        stamp = pd.Timestamp(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"The {label} date is not a valid date: {value!r}.") from exc
+    if pd.isna(stamp):
+        raise ValueError(f"The {label} date is not a valid date: {value!r}.")
+    return stamp
