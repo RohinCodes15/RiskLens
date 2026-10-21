@@ -32,7 +32,11 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from risklens.analytics.metrics import MIN_VOLATILITY_OBS, _validate_returns
+from risklens.analytics.metrics import (
+    MIN_VOLATILITY_OBS,
+    RETURN_NOISE_TOLERANCE,
+    _validate_returns,
+)
 
 MIN_PATHS = 1_000
 MAX_PATHS = 10_000
@@ -90,9 +94,9 @@ def _estimate_parameters(returns: pd.Series) -> tuple[float, float]:
     if np.any(values <= -1):
         raise ValueError("A -100% daily return leaves no wealth to simulate.")
     log_returns = np.log1p(values)
-    # Only an exactly constant history is deterministic; std() of equal values
-    # can leave ~1e-19 float noise, while a tiny real sigma must be kept.
-    sigma = 0.0 if np.ptp(log_returns) == 0 else float(log_returns.std(ddof=1))
+    sigma = float(log_returns.std(ddof=1))
+    if sigma <= RETURN_NOISE_TOLERANCE:
+        sigma = 0.0  # constant history up to float rounding: one deterministic curve
     return float(log_returns.mean()), sigma
 
 
