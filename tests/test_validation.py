@@ -131,12 +131,6 @@ def test_prices_honour_min_rows() -> None:
         validate_prices(prices({"A": [1.0, 2.0]}), min_rows=3)
 
 
-# The tests below cover the TODO(human) in validate_date_range. They are
-# expected failures until it is written; delete the xfail marks after.
-TODO_HUMAN = pytest.mark.xfail(raises=NotImplementedError, reason="TODO(human): validate_date_range")
-
-
-@TODO_HUMAN
 def test_date_range_parses_strings_and_dates() -> None:
     from datetime import date
 
@@ -148,7 +142,6 @@ def test_date_range_parses_strings_and_dates() -> None:
     assert validate_date_range(date(2024, 1, 2)) == (pd.Timestamp("2024-01-02"), None)
 
 
-@TODO_HUMAN
 @pytest.mark.parametrize(
     ("start", "end", "message"),
     [
