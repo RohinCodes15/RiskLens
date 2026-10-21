@@ -64,9 +64,8 @@ pytest tests/test_smoke.py   # dashboard smoke tests only
 ruff check .                 # lint
 ```
 
-Some tests are expected to show as `xfail` or `skipped`. They cover code
-marked `TODO(human)` that hasn't been written yet (for example
-`validation.validate_date_range`), and `-ra` prints the reason for each one.
+Every test is expected to pass; `-ra` prints the reason for any skip or
+expected failure added later.
 
 ## Analytics API
 
@@ -150,8 +149,10 @@ the same time of day. `terminal_returns` holds each path's ending wealth
 - Same returns, settings and seed always give identical output.
 - No look-ahead: only the returns passed in are used, and every simulated
   date comes after the last of them.
-- σ is exactly 0 only when every historical return is identical. That gives
-  one deterministic curve and a loss probability of 0 or 1.
+- σ is set to exactly 0 only when every historical return is identical, up
+  to float rounding (daily standard deviation ≤ 1e-12, the noise left by
+  returns computed from constant-growth prices). That gives one
+  deterministic curve and a loss probability of 0 or 1.
 
 **Inputs.** At least 2 dated, sorted, finite returns, none at −100% or
 below. `horizon_days` must be 1–1,260, `n_paths` 1,000–10,000, and `seed`
