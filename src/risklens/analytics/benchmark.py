@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from risklens.analytics.metrics import (
+    RETURN_NOISE_TOLERANCE,
     annualized_return,
     annualized_volatility,
     cumulative_wealth,
@@ -126,9 +127,11 @@ def benchmark_statistics(
         raise ValueError(
             f"Need at least {MIN_STATISTIC_RETURNS} shared daily returns for benchmark statistics."
         )
-    bench_variance = float(np.var(bench, ddof=1))
-    if np.isclose(bench_variance, 0.0):
+    # Compare std, not variance, to the noise floor: np.isclose(variance, 0)
+    # rejected real low-volatility benchmarks (daily volatility under 0.01%).
+    if float(np.std(bench, ddof=1)) <= RETURN_NOISE_TOLERANCE:
         raise ValueError("Benchmark returns are constant, so beta is undefined.")
+    bench_variance = float(np.var(bench, ddof=1))
     return BenchmarkStatistics(
         excess_return=annualized_return(port) - annualized_return(bench),
         beta=float(np.cov(port, bench, ddof=1)[0, 1]) / bench_variance,
