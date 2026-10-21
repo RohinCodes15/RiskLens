@@ -87,8 +87,18 @@ def test_analyze_matches_engine_and_drawdown(prices: pd.DataFrame, download: Mag
         np.testing.assert_allclose(engine.call_args.args[1], [0.6, 0.4])
         assert download.call_args.kwargs["end"] == date(2026, 1, 11)
         assert download.call_args.kwargs["auto_adjust"] is True
-        # TODO(human): Replace the next line with the 12 chart assertions (eight spaces).
-        pytest.skip("Complete the drawdown assertions before running this test.")
+        charts = app.get("plotly_chart")
+        assert len(charts) == 3
+        figure = json.loads(charts[1].proto.spec)
+        trace = figure["data"][0]
+        expected_drawdown = drawdown_series(expected.daily_returns)
+        np.testing.assert_allclose(chart_values(trace["y"]), expected_drawdown.to_numpy())
+        assert pd.to_datetime(trace["x"]).tolist() == expected_drawdown.index.tolist()
+        assert trace["fill"] == "tozeroy"
+        assert figure["layout"]["yaxis"]["tickformat"] == ".0%"
+        assert figure["layout"]["xaxis"]["rangeslider"]["visible"] is True
+        app.checkbox[0].uncheck().run()
+        assert json.loads(app.get("plotly_chart")[1].proto.spec)["layout"]["xaxis"]["rangeslider"]["visible"] is False
         engine.assert_called_once()
 
 
