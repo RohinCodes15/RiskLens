@@ -74,7 +74,6 @@ def render_stress_result(saved: tuple) -> None:
     """Show backend scenario metrics as fractions and wealth as a multiple."""
     _, result, curve = saved
     st.caption(f"Actual price dates: {result.first_date:%b %d, %Y} – {result.last_date:%b %d, %Y} · {result.n_returns:,} return observations.")
-    # TODO(human): Replace the next line with the 13 UI lines (four spaces).
     return_column, drawdown_column, volatility_column = st.columns(3)
     with return_column.container(border=True):
         st.metric("Scenario return", f"{result.cumulative_return:.2%}", help="Cumulative return over the actual scenario price dates.")
