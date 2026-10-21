@@ -1,9 +1,9 @@
 """Network-free dashboard checks using mocked downloads and the analytics API."""
 
 import base64
+import json
 from collections.abc import Iterator
 from datetime import date
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -13,9 +13,17 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from risklens.analytics import (
-    analyze_portfolio, compare_to_benchmark, drawdown_series, effective_holdings, herfindahl_index,
-    HISTORICAL_SCENARIOS, cumulative_wealth, custom_scenario, portfolio_returns,
-    simulate_portfolio, stress_test,
+    HISTORICAL_SCENARIOS,
+    analyze_portfolio,
+    compare_to_benchmark,
+    cumulative_wealth,
+    custom_scenario,
+    drawdown_series,
+    effective_holdings,
+    herfindahl_index,
+    portfolio_returns,
+    simulate_portfolio,
+    stress_test,
 )
 from risklens.data import to_returns
 
@@ -227,7 +235,7 @@ def test_simulation_controls_fan_and_persistence(prices: pd.DataFrame, download:
         pd.testing.assert_series_equal(engine.call_args.args[0], analyze_portfolio(prices, [0.5, 0.5]).daily_returns)
         figure = chart_spec(app, "simulation_chart")
         assert len(figure["data"]) == 5
-        for trace, column in zip(figure["data"], ["p5", "p95", "p25", "p75", "median"]):
+        for trace, column in zip(figure["data"], ["p5", "p95", "p25", "p75", "median"], strict=True):
             np.testing.assert_allclose(chart_values(trace["y"]), expected.percentile_paths[column])
             assert pd.to_datetime(trace["x"]).tolist() == expected.percentile_paths.index.tolist()
         assert [figure["data"][i]["fill"] for i in [1, 3]] == ["tonexty", "tonexty"]

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from risklens.analytics import PortfolioMetrics, TRADING_DAYS_PER_YEAR, analyze_portfolio
+from risklens.analytics import TRADING_DAYS_PER_YEAR, PortfolioMetrics, analyze_portfolio
 
 
 def prices() -> pd.DataFrame:
