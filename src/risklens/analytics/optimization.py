@@ -26,6 +26,10 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from risklens.analytics.metrics import MIN_VOLATILITY_OBS, TRADING_DAYS_PER_YEAR
+from risklens.data import to_returns
+from risklens.validation import validate_prices
+
 
 class OptimizationError(ValueError):
     """The solver failed to converge to a feasible portfolio.
@@ -81,3 +85,26 @@ class OptimizedPortfolio:
     volatility: float
     sharpe_ratio: float
     diagnostics: SolverDiagnostics
+
+
+def estimate_inputs(prices: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame, int]:
+    """Annualized expected returns, covariance, and return count from prices.
+
+    ``prices`` are aligned adjusted closes (one column per asset, no missing
+    values), as returned by ``risklens.data.fetch_prices``.
+
+    Raises:
+        ValueError: if prices are invalid (see ``validate_prices``) or give
+            no more daily returns than assets, since a sample covariance
+            from that few returns is always singular.
+    """
+    returns = to_returns(validate_prices(prices))
+    n_obs, n_assets = returns.shape
+    min_obs = max(MIN_VOLATILITY_OBS, n_assets + 1)
+    if n_obs < min_obs:
+        raise ValueError(
+            f"Need at least {min_obs} daily returns to optimize {n_assets} asset(s); got {n_obs}."
+        )
+    expected = returns.mean() * TRADING_DAYS_PER_YEAR
+    covariance = returns.cov() * TRADING_DAYS_PER_YEAR
+    return expected.rename("expected_return"), covariance, n_obs
