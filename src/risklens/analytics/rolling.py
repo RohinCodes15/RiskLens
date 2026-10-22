@@ -102,5 +102,27 @@ def rolling_sharpe(returns: pd.Series, window: int, risk_free_rate: float = 0.0)
     return _dated(sharpe, returns, w, "rolling_sharpe")
 
 
+def _window_wealth(windows: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Wealth after each return, restarted at 1.0, and its running peak (>= 1.0)."""
+    wealth = np.cumprod(1.0 + windows, axis=1)
+    peak = np.maximum(np.maximum.accumulate(wealth, axis=1), 1.0)
+    return wealth, peak
+
+
+def rolling_drawdown(returns: pd.Series, window: int) -> pd.Series:
+    """Current drawdown from a **local** peak inside each trailing window.
+
+    The peak is the highest wealth reached within the window, including the
+    starting level just before its first return, so it is not the all-time
+    high. Values are fractions <= 0: -0.10 means wealth is 10% below the best
+    level of the last ``window`` trading days. Use ``drawdown_series`` for the
+    drawdown from the all-time peak.
+
+    Raises:
+        ValueError: see ``_windows``.
+    """
+    w, windows = _windows(returns, window)
+    wealth, peak = _window_wealth(windows)
+    return _dated(wealth[:, -1] / peak[:, -1] - 1.0, returns, w, "rolling_drawdown")
 
 
