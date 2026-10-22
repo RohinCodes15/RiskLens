@@ -25,6 +25,7 @@ from risklens.analytics.metrics import (
     TRADING_DAYS_PER_YEAR,
     _validate_dated_returns,
 )
+from risklens.validation import validate_risk_free_rate
 
 ROLLING_WINDOWS = (21, 63, 126)  # about one month, one quarter, and six months
 MIN_WINDOW = MIN_VOLATILITY_OBS  # sample volatility needs two returns
@@ -79,6 +80,26 @@ def rolling_volatility(returns: pd.Series, window: int) -> pd.Series:
     w, windows = _windows(returns, window)
     return _dated(_annualized_volatility(windows), returns, w, "rolling_volatility")
 
+
+def rolling_sharpe(returns: pd.Series, window: int, risk_free_rate: float = 0.0) -> pd.Series:
+    """Annualized Sharpe ratio of each trailing ``window`` of daily returns.
+
+    (mean daily return x 252 - ``risk_free_rate``) / annualized volatility,
+    where ``risk_free_rate`` is an annual fraction (0.04 == 4%). Like
+    ``sharpe_ratio``, a window whose volatility is zero (``np.isclose(vol, 0)``)
+    is NaN rather than infinite.
+
+    Raises:
+        ValueError: on an invalid rate (see ``validate_risk_free_rate``) or
+            the inputs rejected by ``_windows``.
+    """
+    rate = validate_risk_free_rate(risk_free_rate)
+    w, windows = _windows(returns, window)
+    vol = _annualized_volatility(windows)
+    excess = windows.mean(axis=1) * TRADING_DAYS_PER_YEAR - rate
+    with np.errstate(divide="ignore", invalid="ignore"):
+        sharpe = np.where(np.isclose(vol, 0.0), np.nan, excess / vol)
+    return _dated(sharpe, returns, w, "rolling_sharpe")
 
 
 
