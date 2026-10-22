@@ -24,11 +24,18 @@ Limitations, stated plainly:
 
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
+from scipy.optimize import OptimizeResult, minimize
 
 from risklens.analytics.metrics import MIN_VOLATILITY_OBS, TRADING_DAYS_PER_YEAR
 from risklens.data import to_returns
 from risklens.validation import validate_prices
+
+SOLVER_METHOD = "SLSQP"
+SOLVER_TOLERANCE = 1e-12
+SOLVER_MAX_ITERATIONS = 1_000
+CONSTRAINT_TOLERANCE = 1e-6  # accepted violation of the solver's constraints
 
 
 class OptimizationError(ValueError):
@@ -108,3 +115,77 @@ def estimate_inputs(prices: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame, int]
     expected = returns.mean() * TRADING_DAYS_PER_YEAR
     covariance = returns.cov() * TRADING_DAYS_PER_YEAR
     return expected.rename("expected_return"), covariance, n_obs
+
+
+def _solve(
+    covariance: np.ndarray,
+    x0: np.ndarray,
+    bounds: list[tuple[float, float | None]],
+    direction: np.ndarray,
+) -> OptimizeResult:
+    """Minimize x' covariance x s.t. direction @ x == 1 and ``bounds``.
+
+    The covariance is divided by its largest variance first: SLSQP's
+    tolerance is absolute, and rescaling the objective leaves the
+    minimizer unchanged.
+
+    Raises:
+        OptimizationError: unless SLSQP reports success with a finite,
+            feasible solution.
+    """
+    largest_variance = float(np.max(np.diag(covariance)))
+    cov = covariance / largest_variance if largest_variance > 0 else covariance
+
+    def constraint(x: np.ndarray) -> float:
+        return float(direction @ x) - 1.0
+
+    def constraint_gradient(x: np.ndarray) -> np.ndarray:
+        return direction
+
+    result = minimize(
+        lambda x: float(x @ cov @ x),
+        x0,
+        jac=lambda x: 2.0 * cov @ x,
+        method=SOLVER_METHOD,
+        bounds=bounds,
+        constraints=[{"type": "eq", "fun": constraint, "jac": constraint_gradient}],
+        options={"ftol": SOLVER_TOLERANCE, "maxiter": SOLVER_MAX_ITERATIONS},
+    )
+    x = np.asarray(result.x, dtype=float)
+    feasible = (
+        np.all(np.isfinite(x))
+        and np.all(x >= -CONSTRAINT_TOLERANCE)
+        and abs(constraint(x)) <= CONSTRAINT_TOLERANCE
+    )
+    if not result.success or not feasible:
+        raise OptimizationError(f"Portfolio optimizer did not converge: {result.message}")
+    return result
+
+
+def _portfolio(
+    objective: str,
+    result: OptimizeResult,
+    expected: pd.Series,
+    covariance: pd.DataFrame,
+    rate: float,
+    n_obs: int,
+) -> OptimizedPortfolio:
+    """Turn solver output into weights summing to 1 plus their in-sample metrics."""
+    w = np.clip(np.asarray(result.x, dtype=float), 0.0, None)
+    w = w / w.sum()
+    cov = covariance.to_numpy()
+    ret = float(w @ expected.to_numpy())
+    vol = float(np.sqrt(max(float(w @ cov @ w), 0.0)))
+    sharpe = float("nan") if np.isclose(vol, 0.0) else (ret - rate) / vol
+    rank = int(np.linalg.matrix_rank(cov, hermitian=True))
+    diagnostics = SolverDiagnostics(
+        converged=bool(result.success),
+        status=int(result.status),
+        message=str(result.message),
+        iterations=int(result.nit),
+        observations=n_obs,
+        covariance_rank=rank,
+        singular_covariance=rank < len(w),
+    )
+    weights = pd.Series(w, index=expected.index, name="weight")
+    return OptimizedPortfolio(objective, weights, ret, vol, sharpe, diagnostics)
