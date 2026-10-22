@@ -140,3 +140,21 @@ def rolling_max_drawdown(returns: pd.Series, window: int) -> pd.Series:
     wealth, peak = _window_wealth(windows)
     return _dated((wealth / peak - 1.0).min(axis=1), returns, w, "rolling_max_drawdown")
 
+
+def rolling_metrics(returns: pd.Series, window: int, risk_free_rate: float = 0.0) -> pd.DataFrame:
+    """All rolling metrics for one window, indexed by the input return dates.
+
+    Columns: ``volatility``, ``sharpe``, ``drawdown`` (local peak), and
+    ``max_drawdown``. Units and rules match the single-metric functions.
+
+    Raises:
+        ValueError: on the inputs rejected by ``rolling_sharpe``.
+    """
+    return pd.DataFrame(
+        {
+            "volatility": rolling_volatility(returns, window),
+            "sharpe": rolling_sharpe(returns, window, risk_free_rate),
+            "drawdown": rolling_drawdown(returns, window),
+            "max_drawdown": rolling_max_drawdown(returns, window),
+        }
+    )
