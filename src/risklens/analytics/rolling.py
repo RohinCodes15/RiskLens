@@ -126,3 +126,17 @@ def rolling_drawdown(returns: pd.Series, window: int) -> pd.Series:
     return _dated(wealth[:, -1] / peak[:, -1] - 1.0, returns, w, "rolling_drawdown")
 
 
+def rolling_max_drawdown(returns: pd.Series, window: int) -> pd.Series:
+    """Worst peak-to-trough decline inside each trailing window, as a negative fraction.
+
+    Each window is measured on its own, from wealth 1.0 just before its
+    first return, exactly as ``max_drawdown`` would measure that slice.
+    0.0 means no decline within the window.
+
+    Raises:
+        ValueError: see ``_windows``.
+    """
+    w, windows = _windows(returns, window)
+    wealth, peak = _window_wealth(windows)
+    return _dated((wealth / peak - 1.0).min(axis=1), returns, w, "rolling_max_drawdown")
+
