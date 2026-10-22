@@ -30,7 +30,7 @@ from scipy.optimize import OptimizeResult, minimize
 
 from risklens.analytics.metrics import MIN_VOLATILITY_OBS, TRADING_DAYS_PER_YEAR
 from risklens.data import to_returns
-from risklens.validation import validate_prices
+from risklens.validation import validate_prices, validate_risk_free_rate
 
 SOLVER_METHOD = "SLSQP"
 SOLVER_TOLERANCE = 1e-12
@@ -189,3 +189,24 @@ def _portfolio(
     )
     weights = pd.Series(w, index=expected.index, name="weight")
     return OptimizedPortfolio(objective, weights, ret, vol, sharpe, diagnostics)
+
+
+def min_volatility_portfolio(
+    prices: pd.DataFrame, risk_free_rate: float = 0.0
+) -> OptimizedPortfolio:
+    """Long-only, fully invested portfolio with the lowest in-sample volatility.
+
+    Minimizes w' covariance w subject to sum(w) = 1 and 0 <= w <= 1, from
+    equal weights. The weights ignore expected returns and
+    ``risk_free_rate``, which only sets the reported Sharpe ratio (NaN if
+    the minimum volatility is zero, e.g. with a constant-price asset).
+
+    Raises:
+        ValueError: on invalid prices, too few returns, or an invalid rate.
+        OptimizationError: if the solver fails.
+    """
+    rate = validate_risk_free_rate(risk_free_rate)
+    expected, covariance, n_obs = estimate_inputs(prices)
+    n = len(expected)
+    result = _solve(covariance.to_numpy(), np.full(n, 1.0 / n), [(0.0, 1.0)] * n, np.ones(n))
+    return _portfolio("min_volatility", result, expected, covariance, rate, n_obs)
