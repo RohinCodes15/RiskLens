@@ -210,3 +210,40 @@ def min_volatility_portfolio(
     n = len(expected)
     result = _solve(covariance.to_numpy(), np.full(n, 1.0 / n), [(0.0, 1.0)] * n, np.ones(n))
     return _portfolio("min_volatility", result, expected, covariance, rate, n_obs)
+
+
+def max_sharpe_portfolio(prices: pd.DataFrame, risk_free_rate: float = 0.0) -> OptimizedPortfolio:
+    """Long-only, fully invested portfolio with the highest in-sample Sharpe ratio.
+
+    Solved as the equivalent convex problem: minimize y' covariance y subject
+    to (expected - rate) @ y = 1 (rescaled) and y >= 0, then w = y / sum(y). Because it
+    is convex, the solution is the global maximum, not a local one, and w
+    satisfies 0 <= w <= 1 and sum(w) = 1.
+
+    Raises:
+        ValueError: on invalid prices, too few returns, or an invalid rate;
+            if no asset's expected return exceeds ``risk_free_rate`` (no
+            portfolio has a positive Sharpe ratio, so none is "best"); or if
+            a zero-volatility portfolio beats the risk-free rate (the
+            Sharpe ratio is then unbounded).
+        OptimizationError: if the solver fails.
+    """
+    rate = validate_risk_free_rate(risk_free_rate)
+    expected, covariance, n_obs = estimate_inputs(prices)
+    excess = expected.to_numpy() - rate
+    if not np.any(excess > 0):
+        raise ValueError(
+            "No asset's expected return exceeds the risk-free rate, so the maximum-Sharpe "
+            "portfolio is undefined. Try the minimum-volatility portfolio."
+        )
+    direction = excess / excess.max()  # unit scale keeps y near 1; w = y / sum(y) is unchanged
+    beats_rate = (excess > 0).astype(float)
+    start = beats_rate / float(direction @ beats_rate)  # feasible: direction @ start == 1
+    result = _solve(covariance.to_numpy(), start, [(0.0, None)] * len(excess), direction)
+    portfolio = _portfolio("max_sharpe", result, expected, covariance, rate, n_obs)
+    if np.isclose(portfolio.volatility, 0.0):
+        raise ValueError(
+            "A zero-volatility portfolio beats the risk-free rate, so the Sharpe ratio is "
+            "unbounded. Remove constant-price assets or raise the risk-free rate."
+        )
+    return portfolio
