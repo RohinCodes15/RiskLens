@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=1.26",
     "pandas>=2.2",
     "plotly>=5.20",
+    "scipy>=1.11",  # scipy.optimize SLSQP for mean-variance optimization
     "streamlit>=1.63",  # oldest release whose AppTest exposes chart keys used by the suite
     "yfinance>=0.2.40",
 ]
