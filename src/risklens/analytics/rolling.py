@@ -21,6 +21,8 @@ from numpy.lib.stride_tricks import sliding_window_view
 
 from risklens.analytics.metrics import (
     MIN_VOLATILITY_OBS,
+    RETURN_NOISE_TOLERANCE,
+    TRADING_DAYS_PER_YEAR,
     _validate_dated_returns,
 )
 
@@ -58,6 +60,24 @@ def _dated(values: np.ndarray, returns: pd.Series, window: int, name: str) -> pd
     return pd.Series(out, index=returns.index, name=name)
 
 
+def _annualized_volatility(windows: np.ndarray) -> np.ndarray:
+    """Sample std x sqrt(252) per window, with float-rounding noise set to 0."""
+    daily = windows.std(axis=1, ddof=1)
+    daily[daily <= RETURN_NOISE_TOLERANCE] = 0.0
+    return daily * np.sqrt(TRADING_DAYS_PER_YEAR)
+
+
+def rolling_volatility(returns: pd.Series, window: int) -> pd.Series:
+    """Annualized volatility of each trailing ``window`` of daily returns.
+
+    A window of constant returns, up to float rounding (daily std <=
+    ``RETURN_NOISE_TOLERANCE``), reports exactly 0.0.
+
+    Raises:
+        ValueError: see ``_windows``.
+    """
+    w, windows = _windows(returns, window)
+    return _dated(_annualized_volatility(windows), returns, w, "rolling_volatility")
 
 
 
