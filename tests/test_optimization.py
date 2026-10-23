@@ -6,6 +6,8 @@ import pytest
 
 from risklens.analytics import (
     TRADING_DAYS_PER_YEAR,
+    OptimizedPortfolio,
+    analyze_portfolio,
     estimate_inputs,
     max_sharpe_portfolio,
     min_volatility_portfolio,
@@ -97,3 +99,65 @@ def test_invalid_prices_are_rejected(optimizer: object) -> None:
 def test_invalid_risk_free_rate_is_rejected(optimizer: object, rate: object) -> None:
     with pytest.raises(ValueError, match="Risk-free rate"):
         optimizer(five_assets(), risk_free_rate=rate)  # type: ignore[operator]
+
+
+# --- shared result contract ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+@pytest.mark.parametrize("rate", [0.0, 0.03])
+def test_weights_are_long_only_and_fully_invested(optimizer: object, rate: float) -> None:
+    prices = five_assets()
+    result = optimizer(prices, risk_free_rate=rate)  # type: ignore[operator]
+
+    assert isinstance(result, OptimizedPortfolio)
+    assert list(result.weights.index) == list(prices.columns)
+    assert result.weights.sum() == pytest.approx(1.0, abs=1e-12)
+    assert ((result.weights >= 0) & (result.weights <= 1)).all()
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+@pytest.mark.parametrize("rate", [0.0, 0.03])
+def test_reported_metrics_match_analyze_portfolio(optimizer: object, rate: float) -> None:
+    prices = five_assets()
+    result = optimizer(prices, risk_free_rate=rate)  # type: ignore[operator]
+    metrics = analyze_portfolio(prices, result.weights.to_numpy(), rate)
+
+    assert result.expected_return == pytest.approx(metrics.annualized_return, rel=1e-12)
+    assert result.volatility == pytest.approx(metrics.annualized_volatility, rel=1e-12)
+    assert result.sharpe_ratio == pytest.approx(metrics.sharpe_ratio, rel=1e-12)
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_diagnostics_report_a_converged_full_rank_solve(optimizer: object) -> None:
+    diagnostics = optimizer(five_assets()).diagnostics  # type: ignore[operator]
+
+    assert diagnostics.converged
+    assert diagnostics.status == 0
+    assert diagnostics.iterations >= 1
+    assert diagnostics.observations == 499
+    assert diagnostics.covariance_rank == 5
+    assert not diagnostics.singular_covariance
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_results_are_deterministic_and_inputs_unchanged(optimizer: object) -> None:
+    prices = five_assets()
+    before = prices.copy()
+
+    first = optimizer(prices, risk_free_rate=0.02)  # type: ignore[operator]
+    second = optimizer(prices, risk_free_rate=0.02)  # type: ignore[operator]
+
+    pd.testing.assert_series_equal(first.weights, second.weights)
+    assert (first.expected_return, first.volatility, first.sharpe_ratio) == (
+        second.expected_return, second.volatility, second.sharpe_ratio
+    )
+    assert first.diagnostics == second.diagnostics
+    pd.testing.assert_frame_equal(prices, before)
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_single_asset_gets_all_the_weight(optimizer: object) -> None:
+    result = optimizer(make_prices([5e-4], [0.01]))  # type: ignore[operator]
+
+    assert result.weights.tolist() == [1.0]
