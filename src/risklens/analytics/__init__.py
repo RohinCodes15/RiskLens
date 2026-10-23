@@ -26,6 +26,14 @@ from risklens.analytics.metrics import (
     sharpe_ratio,
     tail_risk_summary,
 )
+from risklens.analytics.rolling import (
+    ROLLING_WINDOWS,
+    rolling_drawdown,
+    rolling_max_drawdown,
+    rolling_metrics,
+    rolling_sharpe,
+    rolling_volatility,
+)
 from risklens.analytics.simulation import MonteCarloResult, simulate_portfolio
 from risklens.analytics.stress import (
     HISTORICAL_SCENARIOS,
@@ -38,6 +46,7 @@ from risklens.analytics.stress import (
 
 __all__ = [
     "HISTORICAL_SCENARIOS",
+    "ROLLING_WINDOWS",
     "TRADING_DAYS_PER_YEAR",
     "VAR_CONFIDENCE_LEVELS",
     "BenchmarkStatistics",
@@ -61,6 +70,11 @@ __all__ = [
     "max_drawdown",
     "portfolio_returns",
     "risk_contributions",
+    "rolling_drawdown",
+    "rolling_max_drawdown",
+    "rolling_metrics",
+    "rolling_sharpe",
+    "rolling_volatility",
     "run_stress_tests",
     "sharpe_ratio",
     "simulate_portfolio",
