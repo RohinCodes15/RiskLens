@@ -6,6 +6,8 @@ import pytest
 
 from risklens.analytics import (
     ROLLING_WINDOWS,
+    TRADING_DAYS_PER_YEAR,
+    annualized_volatility,
     rolling_drawdown,
     rolling_max_drawdown,
     rolling_sharpe,
@@ -98,3 +100,29 @@ def test_fewer_returns_than_window_is_rejected(func: object) -> None:
 
 def test_exactly_window_returns_gives_one_value() -> None:
     assert rolling_volatility(noisy(21), 21).notna().sum() == 1
+
+
+# --- rolling volatility --------------------------------------------------------
+
+
+@pytest.mark.parametrize("window", ROLLING_WINDOWS)
+def test_volatility_matches_annualized_volatility_on_each_window(window: int) -> None:
+    returns = noisy()
+    result = rolling_volatility(returns, window)
+
+    for end in range(window, len(returns) + 1, 17):
+        expected = annualized_volatility(returns.iloc[end - window : end])
+        assert result.iloc[end - 1] == pytest.approx(expected, rel=1e-12)
+
+
+def test_volatility_hand_calculation() -> None:
+    result = rolling_volatility(dated([0.01, -0.01, 0.03]), 2)
+
+    expected = [np.nan, np.std([0.01, -0.01], ddof=1), np.std([-0.01, 0.03], ddof=1)]
+    np.testing.assert_allclose(result, np.array(expected) * np.sqrt(TRADING_DAYS_PER_YEAR))
+
+
+def test_constant_window_has_exactly_zero_volatility() -> None:
+    returns = dated([0.02, -0.01] + [0.001] * 21)  # last window is constant
+
+    assert rolling_volatility(returns, 21).iloc[-1] == 0.0
