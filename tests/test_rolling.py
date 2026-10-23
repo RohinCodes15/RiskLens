@@ -8,6 +8,7 @@ from risklens.analytics import (
     ROLLING_WINDOWS,
     TRADING_DAYS_PER_YEAR,
     annualized_volatility,
+    drawdown_series,
     rolling_drawdown,
     rolling_max_drawdown,
     rolling_sharpe,
@@ -164,3 +165,37 @@ def test_zero_volatility_window_gives_nan_sharpe() -> None:
 def test_invalid_risk_free_rate_is_rejected(rate: object) -> None:
     with pytest.raises(ValueError, match="Risk-free rate"):
         rolling_sharpe(noisy(30), 21, risk_free_rate=rate)  # type: ignore[arg-type]
+
+
+# --- rolling drawdown (local peak) ----------------------------------------------------
+
+
+def test_drawdown_uses_local_peak_not_all_time_high() -> None:
+    # Wealth: 1.0 -> 2.0 -> 1.0 -> 1.0 -> 1.0. All-time drawdown stays -50%;
+    # a 2-day window ending on day 4 only sees levels 1.0, 1.0, 1.0.
+    returns = dated([1.0, -0.5, 0.0, 0.0])
+
+    assert drawdown_series(returns).iloc[-1] == pytest.approx(-0.5)
+    np.testing.assert_allclose(rolling_drawdown(returns, 2), [np.nan, -0.5, -0.5, 0.0])
+
+
+def test_drawdown_counts_the_level_before_the_window() -> None:
+    # A 2-day window of -10% then +5% ends 5.5% below its starting level.
+    result = rolling_drawdown(dated([0.0, -0.10, 0.05]), 2)
+
+    assert result.iloc[-1] == pytest.approx(0.9 * 1.05 - 1)
+
+
+@pytest.mark.parametrize("window", ROLLING_WINDOWS)
+def test_drawdown_matches_drawdown_series_on_each_window(window: int) -> None:
+    returns = noisy()
+    result = rolling_drawdown(returns, window)
+
+    for end in range(window, len(returns) + 1, 17):
+        expected = drawdown_series(returns.iloc[end - window : end]).iloc[-1]
+        assert result.iloc[end - 1] == pytest.approx(expected, abs=1e-12)
+
+
+def test_drawdown_is_never_positive_and_total_loss_is_minus_one() -> None:
+    assert (rolling_drawdown(noisy(), 21).dropna() <= 0).all()
+    assert rolling_drawdown(dated([0.01, -1.0, 0.0]), 2).iloc[1] == -1.0
