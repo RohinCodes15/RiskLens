@@ -9,6 +9,7 @@ from risklens.analytics import (
     TRADING_DAYS_PER_YEAR,
     annualized_volatility,
     drawdown_series,
+    max_drawdown,
     rolling_drawdown,
     rolling_max_drawdown,
     rolling_sharpe,
@@ -199,3 +200,33 @@ def test_drawdown_matches_drawdown_series_on_each_window(window: int) -> None:
 def test_drawdown_is_never_positive_and_total_loss_is_minus_one() -> None:
     assert (rolling_drawdown(noisy(), 21).dropna() <= 0).all()
     assert rolling_drawdown(dated([0.01, -1.0, 0.0]), 2).iloc[1] == -1.0
+
+
+# --- rolling max drawdown -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize("window", ROLLING_WINDOWS)
+def test_max_drawdown_matches_max_drawdown_on_each_window(window: int) -> None:
+    returns = noisy()
+    result = rolling_max_drawdown(returns, window)
+
+    for end in range(window, len(returns) + 1, 17):
+        expected = max_drawdown(returns.iloc[end - window : end])
+        assert result.iloc[end - 1] == pytest.approx(expected, abs=1e-12)
+
+
+def test_max_drawdown_hand_calculation() -> None:
+    # Window wealth 1.0 -> 1.1 -> 0.88 -> 0.968: worst fall is 0.88 / 1.1 - 1 = -20%.
+    result = rolling_max_drawdown(dated([0.10, -0.20, 0.10]), 3)
+
+    assert result.iloc[-1] == pytest.approx(-0.20)
+
+
+def test_max_drawdown_is_at_most_current_drawdown() -> None:
+    returns = noisy()
+
+    assert (rolling_max_drawdown(returns, 63).dropna() <= rolling_drawdown(returns, 63).dropna()).all()
+
+
+def test_rising_window_has_zero_max_drawdown() -> None:
+    assert rolling_max_drawdown(dated([0.01] * 25), 21).dropna().eq(0.0).all()
