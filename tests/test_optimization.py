@@ -194,3 +194,50 @@ def test_min_volatility_weights_ignore_risk_free_rate() -> None:
 
     pd.testing.assert_series_equal(low.weights, high.weights)
     assert high.sharpe_ratio == pytest.approx((high.expected_return - 0.05) / high.volatility)
+
+
+# --- maximum Sharpe ---------------------------------------------------------------------
+
+
+def test_max_sharpe_matches_interior_tangency_closed_form() -> None:
+    corr = np.array([[1.0, 0.3, 0.2], [0.3, 1.0, 0.1], [0.2, 0.1, 1.0]])
+    prices = make_prices([4e-4, 5e-4, 6e-4], [0.010, 0.012, 0.014], n=2000, seed=2, corr=corr)
+    expected, covariance, _ = estimate_inputs(prices)
+    tangency = np.linalg.solve(covariance.to_numpy(), expected.to_numpy() - 0.01)
+    assert (tangency > 0).all()  # interior, so the long-only bounds do not bind
+
+    result = max_sharpe_portfolio(prices, risk_free_rate=0.01)
+
+    np.testing.assert_allclose(result.weights, tangency / tangency.sum(), atol=1e-6)
+
+
+@pytest.mark.parametrize("rate", [0.0, 0.03])
+@pytest.mark.parametrize("seed", range(3))
+def test_max_sharpe_is_not_beaten_by_any_sampled_portfolio(seed: int, rate: float) -> None:
+    prices = five_assets(seed)
+    expected, covariance, _ = estimate_inputs(prices)
+    weights = random_portfolios(5)
+    vols = np.sqrt(np.einsum("ij,jk,ik->i", weights, covariance.to_numpy(), weights))
+    sharpes = (weights @ expected.to_numpy() - rate) / vols
+
+    result = max_sharpe_portfolio(prices, risk_free_rate=rate)
+
+    assert result.sharpe_ratio >= sharpes.max() - 1e-9
+    assert result.sharpe_ratio >= min_volatility_portfolio(prices, rate).sharpe_ratio
+
+
+def test_max_sharpe_gives_no_weight_to_a_losing_asset() -> None:
+    prices = make_prices([6e-4, 5e-4, -8e-4], [0.01, 0.01, 0.01], seed=4)
+
+    weights = max_sharpe_portfolio(prices).weights
+
+    assert weights["A2"] == pytest.approx(0.0, abs=1e-9)
+    assert weights[["A0", "A1"]].sum() == pytest.approx(1.0, abs=1e-9)
+
+
+def test_max_sharpe_rejects_when_no_asset_beats_risk_free_rate() -> None:
+    prices = make_prices([1e-4, 2e-4], [0.01, 0.01], seed=5)
+    best = float(estimate_inputs(prices)[0].max())
+
+    with pytest.raises(ValueError, match="exceeds the risk-free rate"):
+        max_sharpe_portfolio(prices, risk_free_rate=best)
