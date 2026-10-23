@@ -161,3 +161,36 @@ def test_single_asset_gets_all_the_weight(optimizer: object) -> None:
     result = optimizer(make_prices([5e-4], [0.01]))  # type: ignore[operator]
 
     assert result.weights.tolist() == [1.0]
+
+
+# --- minimum volatility ---------------------------------------------------------------
+
+
+def test_min_volatility_matches_two_asset_closed_form() -> None:
+    prices = make_prices([3e-4, 5e-4], [0.01, 0.02], seed=1)
+    _, covariance, _ = estimate_inputs(prices)
+    s = covariance.to_numpy()
+    first = (s[1, 1] - s[0, 1]) / (s[0, 0] + s[1, 1] - 2 * s[0, 1])
+
+    result = min_volatility_portfolio(prices)
+
+    np.testing.assert_allclose(result.weights, [first, 1 - first], atol=1e-8)
+
+
+@pytest.mark.parametrize("seed", range(3))
+def test_min_volatility_is_not_beaten_by_any_sampled_portfolio(seed: int) -> None:
+    prices = five_assets(seed)
+    _, covariance, _ = estimate_inputs(prices)
+    weights = random_portfolios(5)
+    vols = np.sqrt(np.einsum("ij,jk,ik->i", weights, covariance.to_numpy(), weights))
+
+    assert min_volatility_portfolio(prices).volatility <= vols.min() * (1 + 1e-9)
+
+
+def test_min_volatility_weights_ignore_risk_free_rate() -> None:
+    prices = five_assets()
+    low = min_volatility_portfolio(prices, risk_free_rate=0.0)
+    high = min_volatility_portfolio(prices, risk_free_rate=0.05)
+
+    pd.testing.assert_series_equal(low.weights, high.weights)
+    assert high.sharpe_ratio == pytest.approx((high.expected_return - 0.05) / high.volatility)
