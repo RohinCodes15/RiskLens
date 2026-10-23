@@ -12,6 +12,7 @@ from risklens.analytics import (
     rolling_max_drawdown,
     rolling_sharpe,
     rolling_volatility,
+    sharpe_ratio,
 )
 
 ROLLING_FUNCTIONS = [rolling_volatility, rolling_sharpe, rolling_drawdown, rolling_max_drawdown]
@@ -126,3 +127,40 @@ def test_constant_window_has_exactly_zero_volatility() -> None:
     returns = dated([0.02, -0.01] + [0.001] * 21)  # last window is constant
 
     assert rolling_volatility(returns, 21).iloc[-1] == 0.0
+
+
+# --- rolling Sharpe ratio --------------------------------------------------------
+
+
+@pytest.mark.parametrize("rate", [0.0, 0.04, -0.01])
+@pytest.mark.parametrize("window", ROLLING_WINDOWS)
+def test_sharpe_matches_sharpe_ratio_on_each_window(window: int, rate: float) -> None:
+    returns = noisy()
+    result = rolling_sharpe(returns, window, risk_free_rate=rate)
+
+    for end in range(window, len(returns) + 1, 17):
+        expected = sharpe_ratio(returns.iloc[end - window : end], rate)
+        assert result.iloc[end - 1] == pytest.approx(expected, rel=1e-12)
+
+
+def test_sharpe_hand_calculation_with_risk_free_rate() -> None:
+    window = [0.01, -0.01, 0.03]
+    result = rolling_sharpe(dated(window), 3, risk_free_rate=0.04)
+
+    vol = np.std(window, ddof=1) * np.sqrt(TRADING_DAYS_PER_YEAR)
+    assert result.iloc[-1] == pytest.approx((np.mean(window) * TRADING_DAYS_PER_YEAR - 0.04) / vol)
+
+
+def test_zero_volatility_window_gives_nan_sharpe() -> None:
+    returns = dated([0.03, -0.02] + [0.001] * 5)
+    result = rolling_sharpe(returns, 5)
+
+    assert np.isnan(result.iloc[-1])
+    assert np.isfinite(result.iloc[4])  # earlier window still had variation
+    assert np.isnan(sharpe_ratio(returns.iloc[-5:]))
+
+
+@pytest.mark.parametrize("rate", ["4%", 4.0, float("nan"), True])
+def test_invalid_risk_free_rate_is_rejected(rate: object) -> None:
+    with pytest.raises(ValueError, match="Risk-free rate"):
+        rolling_sharpe(noisy(30), 21, risk_free_rate=rate)  # type: ignore[arg-type]
