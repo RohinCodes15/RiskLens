@@ -241,3 +241,54 @@ def test_max_sharpe_rejects_when_no_asset_beats_risk_free_rate() -> None:
 
     with pytest.raises(ValueError, match="exceeds the risk-free rate"):
         max_sharpe_portfolio(prices, risk_free_rate=best)
+
+
+# --- singular covariance and zero volatility ----------------------------------------------
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_duplicate_asset_is_flagged_singular_but_still_solved(optimizer: object) -> None:
+    prices = make_prices([4e-4, 5e-4], [0.010, 0.012], seed=3)
+    prices["copy"] = prices["A0"] * 2  # identical returns to A0
+
+    result = optimizer(prices)  # type: ignore[operator]
+    reference = optimizer(prices[["A0", "A1"]])  # type: ignore[operator]
+
+    assert result.diagnostics.singular_covariance
+    assert result.diagnostics.covariance_rank == 2
+    assert result.weights.sum() == pytest.approx(1.0, abs=1e-12)
+    assert result.weights["A0"] + result.weights["copy"] == pytest.approx(
+        reference.weights["A0"], abs=1e-6
+    )
+    assert result.volatility == pytest.approx(reference.volatility, rel=1e-6)
+
+
+def test_constant_price_asset_gives_zero_volatility_and_nan_sharpe() -> None:
+    prices = make_prices([4e-4, 5e-4], [0.010, 0.012], seed=3)
+    prices["cash"] = 100.0
+
+    result = min_volatility_portfolio(prices, risk_free_rate=0.02)
+
+    assert result.weights["cash"] == pytest.approx(1.0, abs=1e-9)
+    assert result.volatility == pytest.approx(0.0, abs=1e-12)
+    assert np.isnan(result.sharpe_ratio)
+    assert result.diagnostics.singular_covariance
+
+
+def test_max_sharpe_rejects_zero_volatility_asset_that_beats_risk_free_rate() -> None:
+    prices = make_prices([4e-4, 5e-4], [0.010, 0.012], seed=3)
+    prices["cash"] = 100.0  # 0% return: beats a negative risk-free rate with zero risk
+
+    with pytest.raises(ValueError, match="Sharpe ratio is unbounded"):
+        max_sharpe_portfolio(prices, risk_free_rate=-0.01)
+
+
+def test_max_sharpe_ignores_zero_volatility_asset_at_the_risk_free_rate() -> None:
+    prices = make_prices([4e-4, 5e-4], [0.010, 0.012], seed=3)
+    prices["cash"] = 100.0  # earns exactly the 0% risk-free rate
+
+    result = max_sharpe_portfolio(prices, risk_free_rate=0.0)
+    reference = max_sharpe_portfolio(prices[["A0", "A1"]], risk_free_rate=0.0)
+
+    assert result.weights["cash"] == pytest.approx(0.0, abs=1e-9)
+    assert result.sharpe_ratio == pytest.approx(reference.sharpe_ratio, rel=1e-6)
