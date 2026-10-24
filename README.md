@@ -188,6 +188,47 @@ returns give VaR equal to CVaR, both equal to minus that return.
 They assume the sample's tail is representative, ignore volatility
 clustering, and are not scaled to longer horizons.
 
+## Rolling risk metrics
+
+```python
+rolling_volatility(returns, window) -> pd.Series
+rolling_sharpe(returns, window, risk_free_rate=0.0) -> pd.Series
+rolling_drawdown(returns, window) -> pd.Series
+rolling_max_drawdown(returns, window) -> pd.Series
+rolling_metrics(returns, window, risk_free_rate=0.0) -> pd.DataFrame
+```
+
+**Windows.** `window` is a whole number of trading days, at least 2.
+`ROLLING_WINDOWS = (21, 63, 126)` holds the standard choices (about one
+month, one quarter, and six months).
+
+**Dates.** Output has exactly the input's index. The value on a date uses the
+`window` returns ending on that date, so there is no look-ahead. The first
+`window - 1` dates are NaN because they do not have a full window yet.
+
+**Conventions.** The same as the whole-sample metrics: volatility is the
+sample standard deviation × √252, Sharpe is (mean daily return × 252 −
+`risk_free_rate`) / volatility with the rate as an annual fraction. On the
+last full window, each function equals `annualized_volatility`,
+`sharpe_ratio`, or `max_drawdown` applied to that slice.
+
+**Rolling drawdown uses a local peak.** `rolling_drawdown` measures each
+date's wealth against the highest level within its own window, counting the
+level just before the window's first return. It is not the drawdown from the
+all-time high; use `drawdown_series` for that. `rolling_max_drawdown` gives
+the worst peak-to-trough fall inside each window. Both are fractions ≤ 0.
+
+**Edge cases.**
+- A window of constant returns (daily std ≤ 1e-12) has volatility exactly 0
+  and Sharpe NaN, matching `sharpe_ratio`.
+- Fewer returns than `window`, NaN/inf, returns below −100%, undated or
+  unsorted returns, a non-integer or too-small window, and an invalid rate
+  raise `ValueError`.
+- A −100% day gives drawdown −1.0.
+
+`rolling_metrics` returns all four as columns `volatility`, `sharpe`,
+`drawdown`, and `max_drawdown`.
+
 ## Simulation and stress testing
 
 Both engines produce **hypothetical** results. They apply the portfolio's
