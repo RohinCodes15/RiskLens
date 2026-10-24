@@ -255,6 +255,23 @@ def test_max_sharpe_rejects_when_no_asset_beats_risk_free_rate() -> None:
         max_sharpe_portfolio(prices, risk_free_rate=best)
 
 
+@pytest.mark.parametrize("scale", [1e-3, 1e-2, 3.0])
+def test_optimizers_stay_optimal_for_very_low_or_high_volatility(scale: float) -> None:
+    # SLSQP's tolerance is absolute; without rescaling, tiny variances stop it early.
+    prices = make_prices(
+        [3e-4 * scale, 5e-4 * scale, 2e-4 * scale], [0.010 * scale, 0.015 * scale, 0.008 * scale],
+        seed=6,
+    )
+    expected, covariance, _ = estimate_inputs(prices)
+    weights = random_portfolios(3)
+    vols = np.sqrt(np.einsum("ij,jk,ik->i", weights, covariance.to_numpy(), weights))
+
+    assert min_volatility_portfolio(prices).volatility <= vols.min() * (1 + 1e-9)
+    assert max_sharpe_portfolio(prices).sharpe_ratio >= (
+        (weights @ expected.to_numpy()) / vols
+    ).max() - 1e-9
+
+
 # --- singular covariance and zero volatility ----------------------------------------------
 
 
