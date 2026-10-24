@@ -228,6 +228,16 @@ def test_max_sharpe_is_not_beaten_by_any_sampled_portfolio(seed: int, rate: floa
     assert result.sharpe_ratio >= min_volatility_portfolio(prices, rate).sharpe_ratio
 
 
+def test_max_sharpe_weights_depend_on_risk_free_rate() -> None:
+    prices = five_assets()
+
+    low = max_sharpe_portfolio(prices, risk_free_rate=0.0)
+    high = max_sharpe_portfolio(prices, risk_free_rate=0.04)
+
+    assert np.abs(low.weights - high.weights).max() > 1e-3
+    assert high.sharpe_ratio == pytest.approx((high.expected_return - 0.04) / high.volatility)
+
+
 def test_max_sharpe_gives_no_weight_to_a_losing_asset() -> None:
     prices = make_prices([6e-4, 5e-4, -8e-4], [0.01, 0.01, 0.01], seed=4)
 
