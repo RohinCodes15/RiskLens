@@ -233,6 +233,53 @@ the worst peak-to-trough fall inside each window. Both are fractions ≤ 0.
 `rolling_metrics` returns all four as columns `volatility`, `sharpe`,
 `drawdown`, and `max_drawdown`.
 
+## Portfolio optimization
+
+```python
+min_volatility_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
+max_sharpe_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
+estimate_inputs(prices) -> (expected_returns, covariance, observations)
+```
+
+**Inputs.** Aligned adjusted prices, one column per asset, as returned by
+`fetch_prices`. Expected returns are mean daily return × 252 and the
+covariance is the sample covariance × 252, the same conventions as
+`analyze_portfolio`. `risk_free_rate` is an annual fraction.
+
+**Portfolios.** Both are long-only and fully invested: each weight is in
+[0, 1] and the weights sum to 1. Both are solved with `scipy.optimize`
+(SLSQP). Minimum volatility minimizes w′Σw and ignores expected returns (the
+rate only sets its reported Sharpe ratio). Maximum Sharpe is solved as an
+equivalent convex problem, so it finds the global optimum, not a local one.
+
+**Result.** `OptimizedPortfolio` holds `weights` (a Series indexed by
+ticker), `expected_return`, `volatility`, `sharpe_ratio` (all annual
+fractions, equal to `analyze_portfolio` on the same weights), and
+`diagnostics`: `converged`, `status`, `message`, `iterations`,
+`observations`, `covariance_rank`, and `singular_covariance`.
+
+**Edge cases.**
+- Fewer daily returns than assets + 1 (the sample covariance is then always
+  singular) and invalid prices or rate raise `ValueError`.
+- A singular covariance from duplicate or constant-price assets is still
+  solved and flagged by `singular_covariance`. The optimum is then not
+  unique: other weights reach the same volatility or Sharpe ratio.
+- A zero-volatility minimum (a constant-price asset) has Sharpe NaN.
+- Maximum Sharpe raises `ValueError` when no asset's expected return beats
+  the risk-free rate, or when a zero-volatility portfolio does (the Sharpe
+  ratio would be unbounded).
+- A solver that fails or returns infeasible weights raises
+  `OptimizationError`, a `ValueError` subclass carrying scipy's message.
+
+**Limitations.** Expected returns estimated from a few years of prices are
+very noisy, and mean-variance optimization amplifies that error: maximum-
+Sharpe weights can swing sharply with small changes to the date range and
+tend to concentrate in recent winners. Minimum volatility depends only on
+the covariance, which is estimated more reliably. All reported figures are
+**in-sample**: the weights are fit to the same history that scores them,
+so they overstate what the portfolio would have earned out of sample and
+are not a forecast.
+
 ## Simulation and stress testing
 
 Both engines produce **hypothetical** results. They apply the portfolio's
