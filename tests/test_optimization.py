@@ -6,11 +6,13 @@ import pytest
 
 from risklens.analytics import (
     TRADING_DAYS_PER_YEAR,
+    OptimizationError,
     OptimizedPortfolio,
     analyze_portfolio,
     estimate_inputs,
     max_sharpe_portfolio,
     min_volatility_portfolio,
+    optimization,
 )
 from risklens.data import to_returns
 
@@ -292,3 +294,40 @@ def test_max_sharpe_ignores_zero_volatility_asset_at_the_risk_free_rate() -> Non
 
     assert result.weights["cash"] == pytest.approx(0.0, abs=1e-9)
     assert result.sharpe_ratio == pytest.approx(reference.sharpe_ratio, rel=1e-6)
+
+
+# --- solver failure -------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_solver_failure_raises_optimization_error(
+    optimizer: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def failing_minimize(fun: object, x0: np.ndarray, **kwargs: object) -> object:
+        return optimization.OptimizeResult(
+            x=x0, success=False, status=9, message="Iteration limit reached", nit=1_000
+        )
+
+    monkeypatch.setattr(optimization, "minimize", failing_minimize)
+
+    with pytest.raises(OptimizationError, match="did not converge: Iteration limit reached"):
+        optimizer(five_assets())  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_infeasible_solver_output_raises_optimization_error(
+    optimizer: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def infeasible_minimize(fun: object, x0: np.ndarray, **kwargs: object) -> object:
+        return optimization.OptimizeResult(
+            x=x0 * 3, success=True, status=0, message="claimed success", nit=1
+        )
+
+    monkeypatch.setattr(optimization, "minimize", infeasible_minimize)
+
+    with pytest.raises(OptimizationError, match="did not converge"):
+        optimizer(five_assets())  # type: ignore[operator]
+
+
+def test_optimization_error_is_a_value_error() -> None:
+    assert issubclass(OptimizationError, ValueError)
