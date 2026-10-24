@@ -43,6 +43,8 @@ There is no separate backend or database: the Streamlit app calls the
   wealth, drawdown series, max drawdown, and per-asset risk contributions.
 - Tail risk: historical VaR and CVaR (Expected Shortfall) at 95% and 99%
   (see [Historical VaR and CVaR](#historical-var-and-cvar)).
+- Dated rolling volatility, Sharpe ratio, and drawdown over 21-, 63-, and
+  126-day windows (see [Rolling risk metrics](#rolling-risk-metrics)).
 - Benchmark comparison against SPY (growth curves plus excess return, beta,
   correlation, and tracking error) and concentration measures (Herfindahl
   index, effective number of holdings, correlation matrix).
@@ -140,7 +142,9 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `correlation_matrix`, `simulate_portfolio`, `stress_test`,
 `run_stress_tests`, `custom_scenario`, `HISTORICAL_SCENARIOS`,
 `historical_cvar`, `tail_risk_summary`, `VAR_CONFIDENCE_LEVELS`,
-`benchmark_statistics`, and `TRADING_DAYS_PER_YEAR`, plus the frozen result
+`benchmark_statistics`, `rolling_volatility`, `rolling_sharpe`,
+`rolling_drawdown`, `rolling_max_drawdown`, `rolling_metrics`,
+`ROLLING_WINDOWS`, and `TRADING_DAYS_PER_YEAR`, plus the frozen result
 types `PortfolioMetrics`, `BenchmarkStatistics`, `MonteCarloResult`,
 `StressScenario`, and `StressResult`. Each function's docstring gives its
 units and sign conventions.
@@ -362,6 +366,7 @@ src/risklens/
   analytics/
     engine.py             analyze_portfolio and PortfolioMetrics
     metrics.py            Return-based metrics (volatility, Sharpe, VaR/CVaR, drawdown, ...)
+    rolling.py            Dated rolling volatility, Sharpe, and drawdown
     benchmark.py          Portfolio vs. SPY growth and benchmark statistics
     concentration.py      Herfindahl index, effective holdings, correlation
     simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio)
