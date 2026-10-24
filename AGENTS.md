@@ -19,6 +19,7 @@ src/risklens/
      benchmark.py     portfolio vs. SPY growth and statistics
      concentration.py HHI, effective holdings, correlation matrix
      rolling.py       daily returns → dated rolling volatility, Sharpe, drawdown
+     optimization.py  adjusted prices → long-only min-vol / max-Sharpe weights
      simulation.py    daily returns → seeded Monte Carlo wealth percentiles
      stress.py        prices + weights → historical stress-window results
 ```
