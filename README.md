@@ -263,6 +263,17 @@ fractions, equal to `analyze_portfolio` on the same weights), and
 `diagnostics`: `converged`, `status`, `message`, `iterations`,
 `observations`, `covariance_rank`, and `singular_covariance`.
 
+Example:
+
+```python
+from risklens import analytics, data
+
+prices = data.fetch_prices(["AAPL", "MSFT", "SPY"], start="2021-01-01", end="2024-01-01")
+safest = analytics.min_volatility_portfolio(prices, risk_free_rate=0.04)
+best = analytics.max_sharpe_portfolio(prices, risk_free_rate=0.04)
+print(best.weights.round(3), best.sharpe_ratio, best.diagnostics.singular_covariance)
+```
+
 **Edge cases.**
 - Fewer daily returns than assets + 1 (the sample covariance is then always
   singular) and invalid prices or rate raise `ValueError`.
