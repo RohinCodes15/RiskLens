@@ -7,7 +7,7 @@ import pytest
 from risklens.analytics import (
     HISTORICAL_SCENARIOS,
     StressScenario,
-    analyze_portfolio,  # noqa: F401 - used by the TODO(human) cross-check below
+    analyze_portfolio,
     custom_scenario,
     stress_test,
 )
@@ -133,5 +133,14 @@ def test_non_scenario_argument_raises_value_error(scenario: object) -> None:
 
 def test_stress_window_matches_analyze_portfolio_on_the_same_prices() -> None:
     """Cross-check: a stress window equals analyze_portfolio on that window."""
-    # TODO(human): Replace the next line with the 11-line cross-check (four spaces).
-    pytest.skip("TODO(human): write the stress vs. analyze_portfolio cross-check.")
+    data = prices("2024-01-02", "2024-03-29", seed=4)
+    scenario = custom_scenario("2024-01-16", "2024-03-15")
+    weights = [0.6, 0.4]
+    stressed = stress_test(data, weights, scenario)
+    expected = analyze_portfolio(data.loc[scenario.start : scenario.end], weights)
+    assert stressed.available
+    assert stressed.n_returns == len(expected.daily_returns)
+    assert stressed.first_date == expected.daily_returns.index[0] - pd.offsets.BDay(1)
+    assert stressed.max_drawdown == pytest.approx(expected.max_drawdown)
+    assert stressed.annualized_volatility == pytest.approx(expected.annualized_volatility)
+    assert stressed.cumulative_return == pytest.approx((1 + expected.daily_returns).prod() - 1)
