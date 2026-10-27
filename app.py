@@ -42,6 +42,7 @@ def render_stress_test(analysis: dict) -> None:
     request = (scenario.name, scenario.start, scenario.end)
     if st.button("Run historical stress test"):
         analysis.pop("stress", None)
+        analysis.pop("stress_error", None)
         try:
             with st.spinner("Loading scenario prices and replaying historical returns…"):
                 history = fetch_prices(list(analysis["prices"].columns), scenario.start.date(), scenario.end.date() + timedelta(days=1))
@@ -53,7 +54,10 @@ def render_stress_test(analysis: dict) -> None:
                     curve = cumulative_wealth(daily).reindex(window.index, fill_value=1.0)
                 analysis["stress"] = (request, result, curve)
         except (ValueError, DataFetchError, NotImplementedError) as exc:
-            st.warning(f"Scenario unavailable: {exc}")
+            analysis["stress_error"] = (request, str(exc))
+    if analysis.get("stress_error", (None,))[0] == request:
+        st.warning(f"Scenario unavailable: {analysis['stress_error'][1]}")
+        return
     saved = analysis.get("stress")
     if saved is None or saved[0] != request:
         st.info("Run the selected scenario to check availability. Every stock needs history spanning the window and at least three common price dates. Recently listed stocks may make older scenarios unavailable; no prices are invented or filled.")
