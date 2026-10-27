@@ -62,11 +62,17 @@ def render_stress_test(analysis: dict) -> None:
     if saved is None or saved[0] != request:
         st.info("Run the selected scenario to check availability. Every stock needs history spanning the window and at least three common price dates. Recently listed stocks may make older scenarios unavailable; no prices are invented or filled.")
         return
-    _, result, curve = saved
+    result = saved[1]
     if not result.available:
         st.warning(f"Scenario unavailable — {result.scenario.name}. {result.reason}")
         st.caption("Try a later custom start date or a portfolio whose stocks traded throughout the window. At least three common price dates are required.")
         return
+    render_stress_result(saved)
+
+
+def render_stress_result(saved: tuple) -> None:
+    """Show backend scenario metrics as fractions and wealth as a multiple."""
+    _, result, curve = saved
     st.caption(f"Actual price dates: {result.first_date:%b %d, %Y} – {result.last_date:%b %d, %Y} · {result.n_returns:,} return observations.")
     # TODO(human): Replace the next line with the 13 UI lines (four spaces).
     return_column, drawdown_column, volatility_column = st.columns(3)
@@ -82,6 +88,7 @@ def render_stress_test(analysis: dict) -> None:
     stress_fig.update_yaxes(title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×")
     stress_fig.update_traces(line_width=2, hovertemplate="%{x|%b %d, %Y}<br>Portfolio wealth: %{y:.3f}×<extra></extra>")
     st.plotly_chart(stress_fig, key="stress_chart")
+    st.caption(result.note + " Daily rebalancing; fees and taxes excluded. Missing trading dates are omitted.")
 
 
 def render_simulation(analysis: dict) -> None:
