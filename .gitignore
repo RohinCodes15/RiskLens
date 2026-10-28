@@ -220,7 +220,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 # RiskLens additions
-.streamlit/secrets.toml
+.serena/
 .DS_Store
 .vscode/
 .idea/

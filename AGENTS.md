@@ -41,7 +41,7 @@ Rules of the layering:
 
 1. **Claude owns financial logic and infrastructure.**
 2. **Codex owns the Streamlit UI, visualization, and tests.**
-3. **Every task leaves 5–10 meaningful Python lines for the human to type.**
+3. **Every task leaves 10–15 meaningful Python lines for the human to type.**
    Mark the insertion point with `TODO(human)`, keep the surrounding code
    importable, and make the gap real logic (not boilerplate).
 4. **Show, don't insert.** In the final response, show the exact code to
