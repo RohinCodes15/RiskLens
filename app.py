@@ -186,7 +186,7 @@ with st.sidebar:
 
 st.caption("PORTFOLIO INTELLIGENCE / OVERVIEW")
 st.title("RiskLens Quant")
-st.markdown("Explore your portfolio’s historical returns and risk.")
+st.markdown("Explore historical risk, diversification, market comparisons, and hypothetical scenarios.")
 
 analysis = st.session_state.get("analysis")
 if analysis is not None and list(analysis["prices"].columns) != tickers:
@@ -278,7 +278,6 @@ else:
     )
     st.plotly_chart(fig)
     st.caption("Daily adjusted closing prices. Use tickers quoted in the same currency; no currency conversion is applied.")
-
 
     st.divider()
     st.subheader("Historical drawdown")
@@ -385,8 +384,11 @@ else:
             st.metric("SPY ending return", f"{ending_returns['S&P 500 (SPY)']:.2%}", help="Cumulative adjusted SPY return over the same shared dates; not annualized.")
         st.caption("Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns.")
 
-    render_simulation(analysis)
-    render_stress_test(analysis)
+    simulation_tab, stress_tab = st.tabs(["Simulated futures", "Historical scenarios"])
+    with simulation_tab:
+        render_simulation(analysis)
+    with stress_tab:
+        render_stress_test(analysis)
 
 st.divider()
 st.caption(
