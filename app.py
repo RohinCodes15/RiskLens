@@ -98,7 +98,7 @@ def render_simulation(analysis: dict) -> None:
     st.caption("Scenarios based on historical returns, not predictions or guarantees.")
     with st.form("simulation_request"):
         horizon = st.number_input("Forecast horizon (trading days)", MIN_HORIZON_DAYS, MAX_HORIZON_DAYS, 252, help="Simulation steps; future dates are weekdays, including exchange holidays.")
-        paths = st.number_input("Simulation count", MIN_PATHS, MAX_PATHS, MIN_PATHS, step=1000)
+        paths = st.number_input("Simulation count", MIN_PATHS, MAX_PATHS, MIN_PATHS, step=1000, help="More paths reduce sampling noise but require more time and memory.")
         seed = st.number_input("Random seed", 0, 2**32 - 1, DEFAULT_SEED, help="Identical history and settings reproduce the same scenarios.")
         run = st.form_submit_button("Run hypothetical simulations")
     if run:
@@ -137,7 +137,7 @@ def render_simulation(analysis: dict) -> None:
     fan.update_xaxes(title_text="Simulation date", rangeslider_visible=True)
     fan.update_yaxes(title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×")
     fan.add_hline(y=1.0, line_dash="dot", line_color="gray")
-    st.plotly_chart(fan, key="simulation_chart")
+    st.plotly_chart(fan, key="simulation_chart", use_container_width=True)
     st.caption("Bands are pointwise percentiles across hypothetical paths, not confidence bounds or individual paths. The median line is not one simulated path.")
     st.caption("Assumes independent normally distributed daily log returns fitted to historical data. Short histories are unreliable; crashes, changing markets, fees, taxes and cash flows are not captured. Dates include weekdays without excluding exchange holidays.")
 
