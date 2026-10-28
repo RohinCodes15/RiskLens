@@ -103,16 +103,19 @@ def render_simulation(analysis: dict) -> None:
         run = st.form_submit_button("Run hypothetical simulations")
     if run:
         analysis.pop("simulation", None)
+        analysis.pop("simulation_error", None)
         try:
             with st.spinner("Generating hypothetical portfolio scenarios…"):
                 result = simulate_portfolio(analysis["daily_returns"], horizon_days=horizon, n_paths=paths, seed=seed)
                 analysis["simulation"] = (result, horizon, paths, seed)
         except (ValueError, NotImplementedError, MemoryError) as exc:
-            st.error(f"Unable to simulate this portfolio. {exc or 'Try fewer simulations or a shorter horizon.'}")
+            analysis["simulation_error"] = str(exc) or "Try fewer simulations or a shorter horizon."
+    if analysis.get("simulation_error"):
+        st.error(f"Unable to simulate this portfolio. {analysis['simulation_error']}")
+        return
     saved = analysis.get("simulation")
     if saved is None:
-        if not run:
-            st.info("Choose simulation settings and run to explore hypothetical outcomes.")
+        st.info("Choose simulation settings and run to explore hypothetical outcomes.")
         return
     result, used_horizon, used_paths, used_seed = saved
     bands = result.percentile_paths
