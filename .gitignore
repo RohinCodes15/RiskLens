@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# RiskLens additions
+.serena/
+.DS_Store
+.vscode/
+.idea/
+.claude/settings.local.json
