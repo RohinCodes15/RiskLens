@@ -52,6 +52,21 @@ def fetch_prices(
     return prices
 
 
+BENCHMARK_TICKER = "SPY"  # SPDR S&P 500 ETF, a tradable S&P 500 proxy
+
+
+def fetch_benchmark_prices(
+    start: str | date,
+    end: str | date | None = None,
+) -> pd.Series:
+    """Return daily adjusted close prices for the S&P 500 benchmark (SPY).
+
+    Raises:
+        DataFetchError: if the download fails or returns too little data.
+    """
+    return fetch_prices([BENCHMARK_TICKER], start, end)[BENCHMARK_TICKER]
+
+
 def to_returns(prices: pd.DataFrame) -> pd.DataFrame:
     """Return simple daily returns (fractions) from a price DataFrame."""
     return prices.pct_change().dropna(how="all")
