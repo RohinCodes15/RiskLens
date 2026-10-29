@@ -27,11 +27,13 @@ pytest
 ```
 app.py                  Streamlit UI (Codex)
 src/risklens/
-  validation.py         Ticker and weight input checks
+  validation.py         Ticker, weight, risk-free rate, and price checks
   data.py               Price download (yfinance) and returns
   analytics/
     metrics.py          Return-based risk metrics (volatility, Sharpe, VaR, drawdown)
     engine.py           analyze_portfolio: adjusted prices + weights -> metrics
+    benchmark.py        Portfolio vs. SPY growth from a common 1.0
+    concentration.py    Herfindahl index, effective holdings, correlation
 tests/                  pytest suite
 ```
 
