@@ -60,21 +60,12 @@ def historical_var(
     return float(-np.quantile(clean, 1 - confidence))
 
 
-def drawdown_series(returns: pd.Series) -> pd.Series:
-    """Daily drawdown of cumulative wealth, as fractions <= 0, indexed by date.
-
-    ``returns`` are simple daily portfolio returns on a sorted, unique
-    ``DatetimeIndex``. Wealth starts at 1.0 before the first date, so a loss
-    on day one shows as a drawdown. -0.25 means wealth is 25% below its peak.
-
-    Raises:
-        ValueError: if returns are empty, not dated, unsorted, contain
-            NaN/inf, or contain a return below -100%.
-    """
+def _validate_dated_returns(returns: pd.Series) -> None:
+    """Raise ValueError unless ``returns`` is a non-empty, finite, dated Series."""
     if not isinstance(returns, pd.Series):
         raise ValueError("returns must be a pandas Series.")
     if returns.empty:
-        raise ValueError("No returns to compute drawdown from.")
+        raise ValueError("No returns provided.")
     if not isinstance(returns.index, pd.DatetimeIndex):
         raise ValueError("returns must be indexed by date.")
     if not (returns.index.is_monotonic_increasing and returns.index.is_unique):
@@ -85,7 +76,29 @@ def drawdown_series(returns: pd.Series) -> pd.Series:
     if np.any(values < -1):
         raise ValueError("A daily return below -100% is not possible.")
 
-    wealth = (1 + returns.astype(float)).cumprod()
+
+def cumulative_wealth(returns: pd.Series) -> pd.Series:
+    """Growth of 1.0 invested before the first date, indexed by return date.
+
+    ``returns`` are simple daily returns on a sorted, unique ``DatetimeIndex``.
+    1.25 on a date means the investment is up 25% since the start.
+
+    Raises:
+        ValueError: if returns are empty, not dated, unsorted, contain
+            NaN/inf, or contain a return below -100%.
+    """
+    _validate_dated_returns(returns)
+    return (1 + returns.astype(float)).cumprod().rename("wealth")
+
+
+def drawdown_series(returns: pd.Series) -> pd.Series:
+    """Daily drawdown of cumulative wealth, as fractions <= 0, indexed by date.
+
+    Wealth starts at 1.0 before the first date, so a loss on day one shows as
+    a drawdown. -0.25 means wealth is 25% below its peak. Input rules and
+    errors match ``cumulative_wealth``.
+    """
+    wealth = cumulative_wealth(returns)
     # Peak starts at 1.0 (initial wealth) so a loss on day one still counts.
     drawdown = wealth / wealth.cummax().clip(lower=1.0) - 1
     return drawdown.rename("drawdown")
