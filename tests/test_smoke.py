@@ -14,8 +14,10 @@ from streamlit.testing.v1 import AppTest
 
 from risklens.analytics import (
     analyze_portfolio, compare_to_benchmark, drawdown_series, effective_holdings, herfindahl_index,
-    simulate_portfolio,
+    HISTORICAL_SCENARIOS, cumulative_wealth, custom_scenario, portfolio_returns,
+    simulate_portfolio, stress_test,
 )
+from risklens.data import to_returns
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
@@ -241,3 +243,74 @@ def test_simulation_failure_clears_stale_chart_and_persists(failure: Exception) 
     app.checkbox[0].uncheck().run()
     assert app.error and not app.exception
     assert app.metric[0].label == "Annualized return"
+
+
+def test_custom_stress_metrics_chart_and_invalid_dates(prices: pd.DataFrame, download: MagicMock) -> None:
+    """Custom replay uses API metrics, dated wealth and inclusive download dates."""
+    app = submit(AppTest.from_file(APP_PATH).run())
+    app.selectbox[0].select("Custom date range").run()
+    expected = stress_test(prices, [0.5, 0.5], custom_scenario(prices.index[0], prices.index[-1]))
+    with patch("risklens.analytics.stress_test", wraps=stress_test) as engine:
+        click_button(app, "Run historical stress test")
+        engine.assert_called_once()
+    assert not app.exception and not app.error
+    assert download.call_args.kwargs["end"] == date(2026, 1, 9)
+    cards = {card.label: card.value for card in app.metric}
+    assert cards["Scenario return"] == f"{expected.cumulative_return:.2%}"
+    assert cards["Scenario maximum drawdown"] == f"{expected.max_drawdown:.2%}"
+    assert cards["Scenario annualized volatility"] == f"{expected.annualized_volatility:.2%}"
+    trace = chart_spec(app, "stress_chart")["data"][0]
+    wealth = cumulative_wealth(portfolio_returns(to_returns(prices), [0.5, 0.5])).reindex(prices.index, fill_value=1.0)
+    np.testing.assert_allclose(chart_values(trace["y"]), wealth)
+    assert pd.to_datetime(trace["x"]).tolist() == prices.index.tolist()
+    assert any("not the portfolio's actual historical holdings" in caption.value for caption in app.caption)
+    calls = download.call_count
+    next(widget for widget in app.date_input if widget.label == "Scenario start date").set_value(date(2026, 1, 9)).run()
+    assert not app.exception and any("before" in note.value for note in app.warning)
+    assert download.call_count == calls
+    assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
+
+
+@pytest.mark.parametrize("scenario", HISTORICAL_SCENARIOS, ids=lambda scenario: scenario.name)
+def test_historical_scenarios_use_their_own_download_window(scenario, prices: pd.DataFrame, download: MagicMock) -> None:
+    """Older scenarios fetch their own history rather than using dashboard dates."""
+    app = submit(AppTest.from_file(APP_PATH).run())
+    history = prices.copy()
+    history.index = pd.DatetimeIndex([scenario.start, scenario.start + pd.offsets.BDay(1), scenario.end - pd.offsets.BDay(1), scenario.end])
+    download.return_value = pd.concat({"Close": history}, axis=1)
+    app.selectbox[0].select(scenario.name).run()
+    click_button(app, "Run historical stress test")
+    assert not app.exception and not app.error and not any("Scenario unavailable" in note.value for note in app.warning)
+    assert download.call_args.kwargs["start"] == scenario.start.date()
+    assert chart_spec(app, "stress_chart")["data"]
+    app.selectbox[0].select("Custom date range").run()
+    assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
+
+
+@pytest.mark.parametrize("failure", ["insufficient", "short", "network"])
+def test_stress_unavailable_preserves_dashboard(failure: str, prices: pd.DataFrame, download: MagicMock) -> None:
+    """Incomplete history and failed downloads never present scenario metrics."""
+    app = submit(AppTest.from_file(APP_PATH).run())
+    if failure == "short":
+        app.selectbox[0].select("Custom date range").run()
+        download.return_value = pd.concat({"Close": prices.iloc[:2]}, axis=1)
+    elif failure == "network":
+        download.side_effect = RuntimeError("Offline")
+    click_button(app, "Run historical stress test")
+    assert not app.exception and any("Scenario unavailable" in note.value for note in app.warning)
+    assert "stress_chart" not in [chart.key for chart in app.get("plotly_chart")]
+    assert app.metric[0].label == "Annualized return"
+    app.checkbox[0].uncheck().run()
+    assert any("Scenario unavailable" in note.value for note in app.warning)
+
+
+def test_new_analysis_resets_both_scenario_tools() -> None:
+    """A new request cannot retain simulations or stress results from old inputs."""
+    app = submit(AppTest.from_file(APP_PATH).run())
+    click_button(app, "Run hypothetical simulations")
+    app.selectbox[0].select("Custom date range").run()
+    click_button(app, "Run historical stress test")
+    assert "simulation" in app.session_state["analysis"] and "stress" in app.session_state["analysis"]
+    click_button(app, "Analyze portfolio")
+    assert not app.exception
+    assert "simulation" not in app.session_state["analysis"] and "stress" not in app.session_state["analysis"]
