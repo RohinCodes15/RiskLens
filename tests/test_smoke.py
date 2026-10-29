@@ -14,6 +14,7 @@ from streamlit.testing.v1 import AppTest
 
 from risklens.analytics import (
     analyze_portfolio, compare_to_benchmark, drawdown_series, effective_holdings, herfindahl_index,
+    simulate_portfolio,
 )
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
@@ -187,3 +188,56 @@ def test_spy_failure_keeps_portfolio_results(download: MagicMock) -> None:
     assert any("Benchmark comparison is unavailable" in note.value for note in app.warning)
     assert "benchmark_chart" not in [chart.key for chart in app.get("plotly_chart")]
     assert [card.label for card in app.metric][0] == "Annualized return"
+
+
+def click_button(app: AppTest, label: str) -> AppTest:
+    """Click a named action independently of sidebar/widget ordering."""
+    return next(button for button in app.button if button.label == label).click().run()
+
+
+def chart_spec(app: AppTest, key: str) -> dict:
+    """Read a named Plotly figure without relying on section order."""
+    return json.loads(next(chart for chart in app.get("plotly_chart") if chart.key == key).proto.spec)
+
+
+def test_simulation_controls_fan_and_persistence(prices: pd.DataFrame, download: MagicMock) -> None:
+    """Settings reach the real engine; every band and card matches its outputs."""
+    with patch("risklens.analytics.simulate_portfolio", wraps=simulate_portfolio) as engine:
+        app = submit(AppTest.from_file(APP_PATH).run())
+        assert [tab.label for tab in app.tabs] == ["Simulated futures", "Historical scenarios"]
+        for label, value in [("Forecast horizon (trading days)", 10), ("Simulation count", 2000), ("Random seed", 7)]:
+            next(widget for widget in app.number_input if widget.label == label).set_value(value)
+        engine.assert_not_called()
+        click_button(app, "Run hypothetical simulations")
+        assert not app.exception and not app.error
+        expected = simulate_portfolio(analyze_portfolio(prices, [0.5, 0.5]).daily_returns, 10, 2000, 7)
+        assert engine.call_args.kwargs == {"horizon_days": 10, "n_paths": 2000, "seed": 7}
+        pd.testing.assert_series_equal(engine.call_args.args[0], analyze_portfolio(prices, [0.5, 0.5]).daily_returns)
+        figure = chart_spec(app, "simulation_chart")
+        assert len(figure["data"]) == 5
+        for trace, column in zip(figure["data"], ["p5", "p95", "p25", "p75", "median"]):
+            np.testing.assert_allclose(chart_values(trace["y"]), expected.percentile_paths[column])
+            assert pd.to_datetime(trace["x"]).tolist() == expected.percentile_paths.index.tolist()
+        assert [figure["data"][i]["fill"] for i in [1, 3]] == ["tonexty", "tonexty"]
+        cards = {card.label: card.value for card in app.metric}
+        assert cards["Hypothetical terminal median return"] == f"{expected.percentile_paths['median'].iloc[-1] - 1:.2%}"
+        assert cards["Hypothetical probability of loss"] == f"{expected.loss_probability:.2%}"
+        assert any("not predictions" in caption.value for caption in app.caption)
+        calls = download.call_count
+        app.checkbox[0].uncheck().run()
+        engine.assert_called_once()
+        assert download.call_count == calls
+
+
+@pytest.mark.parametrize("failure", [ValueError("Invalid settings"), MemoryError()])
+def test_simulation_failure_clears_stale_chart_and_persists(failure: Exception) -> None:
+    """Failed reruns remove previous outcomes without losing the portfolio."""
+    app = submit(AppTest.from_file(APP_PATH).run())
+    click_button(app, "Run hypothetical simulations")
+    with patch("risklens.analytics.simulate_portfolio", side_effect=failure):
+        click_button(app, "Run hypothetical simulations")
+    assert not app.exception and app.error
+    assert "simulation_chart" not in [chart.key for chart in app.get("plotly_chart")]
+    app.checkbox[0].uncheck().run()
+    assert app.error and not app.exception
+    assert app.metric[0].label == "Annualized return"
