@@ -9,39 +9,83 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
-from risklens.validation import validate_weights
+from risklens.validation import validate_risk_free_rate, validate_weights
 
 TRADING_DAYS_PER_YEAR = 252
 DEFAULT_VAR_CONFIDENCE = 0.95
+MIN_VOLATILITY_OBS = 2  # sample std (ddof=1) needs two returns
+
+
+def _as_float_values(returns: pd.Series | pd.DataFrame) -> np.ndarray:
+    """Return ``returns`` as floats, rejecting text, NaN/inf, and < -100% days."""
+    try:
+        values = returns.to_numpy(dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("returns must be numbers.") from exc
+    if not np.all(np.isfinite(values)):
+        raise ValueError("returns contain NaN or infinite values.")
+    if np.any(values < -1):
+        raise ValueError("A daily return below -100% is not possible.")
+    return values
+
+
+def _validate_returns(returns: pd.Series, min_obs: int = 1) -> np.ndarray:
+    """Raise ValueError unless ``returns`` is a finite Series of ``min_obs``+ values."""
+    if not isinstance(returns, pd.Series):
+        raise ValueError("returns must be a pandas Series.")
+    if returns.empty:
+        raise ValueError("No returns provided.")
+    if len(returns) < min_obs:
+        raise ValueError(f"Need at least {min_obs} daily returns; got {len(returns)}.")
+    return _as_float_values(returns)
 
 
 def portfolio_returns(returns: pd.DataFrame, weights: Sequence[float]) -> pd.Series:
-    """Daily portfolio returns for a fixed-weight (daily rebalanced) portfolio."""
+    """Daily portfolio returns for a fixed-weight (daily rebalanced) portfolio.
+
+    Raises:
+        ValueError: if ``returns`` is not a non-empty DataFrame of finite
+            returns >= -100%, or the weights are invalid.
+    """
+    if not isinstance(returns, pd.DataFrame):
+        raise ValueError("returns must be a pandas DataFrame.")
+    if returns.empty:
+        raise ValueError("No returns provided.")
     w = validate_weights(weights, returns.shape[1])
-    return pd.Series(returns.to_numpy() @ w, index=returns.index, name="portfolio")
+    values = _as_float_values(returns)
+    return pd.Series(values @ w, index=returns.index, name="portfolio")
 
 
 def annualized_return(returns: pd.Series) -> float:
-    """Arithmetic mean daily return scaled to one year."""
-    return float(returns.mean() * TRADING_DAYS_PER_YEAR)
+    """Arithmetic mean daily return scaled to one year.
+
+    Raises:
+        ValueError: if returns are empty, non-numeric, or NaN/inf.
+    """
+    return float(_validate_returns(returns).mean() * TRADING_DAYS_PER_YEAR)
 
 
 def annualized_volatility(returns: pd.Series) -> float:
-    """Sample standard deviation of daily returns scaled by sqrt(252)."""
-    return float(returns.std(ddof=1) * np.sqrt(TRADING_DAYS_PER_YEAR))
+    """Sample standard deviation of daily returns scaled by sqrt(252).
+
+    Raises:
+        ValueError: if fewer than 2 returns, non-numeric, or NaN/inf.
+    """
+    values = _validate_returns(returns, MIN_VOLATILITY_OBS)
+    return float(values.std(ddof=1) * np.sqrt(TRADING_DAYS_PER_YEAR))
 
 
 def sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.0) -> float:
     """Annualized Sharpe ratio; ``risk_free_rate`` is an annual fraction (0.04 == 4%).
 
-    Returns NaN when volatility is zero.
+    Returns NaN when volatility is zero. Raises ValueError for an invalid
+    rate (see ``validate_risk_free_rate``) or invalid returns.
     """
-    if not np.isfinite(risk_free_rate):
-        raise ValueError("risk_free_rate must be a finite number.")
+    rate = validate_risk_free_rate(risk_free_rate)
     vol = annualized_volatility(returns)
     if np.isclose(vol, 0.0):  # constant returns leave ~1e-17 float noise, not exact 0
         return float("nan")
-    return (annualized_return(returns) - risk_free_rate) / vol
+    return (annualized_return(returns) - rate) / vol
 
 
 def historical_var(
@@ -50,31 +94,25 @@ def historical_var(
     """One-day historical Value at Risk, reported as a positive loss fraction.
 
     A result of 0.02 means: on (1 - confidence) of days, the loss was at
-    least 2%.
+    least 2%. A negative result means even the worst days were gains.
+    Uses linear interpolation between observed returns.
+
+    Raises:
+        ValueError: if confidence is not in (0, 1) or returns are invalid.
     """
     if not 0 < confidence < 1:
         raise ValueError("confidence must be between 0 and 1.")
-    clean = returns.dropna()
-    if clean.empty:
-        raise ValueError("No returns to compute VaR from.")
-    return float(-np.quantile(clean, 1 - confidence))
+    values = _validate_returns(returns)
+    return float(-np.quantile(values, 1 - confidence))
 
 
 def _validate_dated_returns(returns: pd.Series) -> None:
     """Raise ValueError unless ``returns`` is a non-empty, finite, dated Series."""
-    if not isinstance(returns, pd.Series):
-        raise ValueError("returns must be a pandas Series.")
-    if returns.empty:
-        raise ValueError("No returns provided.")
+    _validate_returns(returns)
     if not isinstance(returns.index, pd.DatetimeIndex):
         raise ValueError("returns must be indexed by date.")
     if not (returns.index.is_monotonic_increasing and returns.index.is_unique):
         raise ValueError("Return dates must be sorted and unique.")
-    values = returns.to_numpy(dtype=float)
-    if not np.all(np.isfinite(values)):
-        raise ValueError("returns contain NaN or infinite values.")
-    if np.any(values < -1):
-        raise ValueError("A daily return below -100% is not possible.")
 
 
 def cumulative_wealth(returns: pd.Series) -> pd.Series:
@@ -116,13 +154,14 @@ def risk_contributions(returns: pd.DataFrame, weights: Sequence[float]) -> pd.Se
     """Each asset's share of annualized portfolio variance (fractions summing to 1).
 
     ``returns`` holds simple daily returns, one column per asset. Raises
-    ValueError on NaNs, fewer than 2 rows, or zero portfolio variance.
+    ValueError on NaN/inf, fewer than 2 rows, or zero portfolio variance.
     """
-    if returns.isna().to_numpy().any():
-        raise ValueError("returns contain NaN values; drop or fill them first")
-    if len(returns) < 2:
+    if not isinstance(returns, pd.DataFrame):
+        raise ValueError("returns must be a pandas DataFrame.")
+    if len(returns) < MIN_VOLATILITY_OBS:
         raise ValueError("need at least 2 rows of returns to estimate covariance")
     w = validate_weights(weights, returns.shape[1])
+    _as_float_values(returns)
     cov = returns.cov().to_numpy() * TRADING_DAYS_PER_YEAR
     marginal = cov @ w
     port_var = float(w @ marginal)
