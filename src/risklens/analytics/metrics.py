@@ -60,12 +60,43 @@ def historical_var(
     return float(-np.quantile(clean, 1 - confidence))
 
 
-def max_drawdown(returns: pd.Series) -> float:
-    """Largest peak-to-trough decline of cumulative wealth, as a negative fraction."""
-    wealth = (1 + returns).cumprod()
+def drawdown_series(returns: pd.Series) -> pd.Series:
+    """Daily drawdown of cumulative wealth, as fractions <= 0, indexed by date.
+
+    ``returns`` are simple daily portfolio returns on a sorted, unique
+    ``DatetimeIndex``. Wealth starts at 1.0 before the first date, so a loss
+    on day one shows as a drawdown. -0.25 means wealth is 25% below its peak.
+
+    Raises:
+        ValueError: if returns are empty, not dated, unsorted, contain
+            NaN/inf, or contain a return below -100%.
+    """
+    if not isinstance(returns, pd.Series):
+        raise ValueError("returns must be a pandas Series.")
+    if returns.empty:
+        raise ValueError("No returns to compute drawdown from.")
+    if not isinstance(returns.index, pd.DatetimeIndex):
+        raise ValueError("returns must be indexed by date.")
+    if not (returns.index.is_monotonic_increasing and returns.index.is_unique):
+        raise ValueError("Return dates must be sorted and unique.")
+    values = returns.to_numpy(dtype=float)
+    if not np.all(np.isfinite(values)):
+        raise ValueError("returns contain NaN or infinite values.")
+    if np.any(values < -1):
+        raise ValueError("A daily return below -100% is not possible.")
+
+    wealth = (1 + returns.astype(float)).cumprod()
     # Peak starts at 1.0 (initial wealth) so a loss on day one still counts.
     drawdown = wealth / wealth.cummax().clip(lower=1.0) - 1
-    return float(drawdown.min())
+    return drawdown.rename("drawdown")
+
+
+def max_drawdown(returns: pd.Series) -> float:
+    """Largest peak-to-trough decline of cumulative wealth, as a negative fraction.
+
+    Same input rules as ``drawdown_series``; 0.0 means no decline.
+    """
+    return float(drawdown_series(returns).min())
 
 
 def risk_contributions(returns: pd.DataFrame, weights: Sequence[float]) -> pd.Series:
