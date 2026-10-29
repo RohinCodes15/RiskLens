@@ -129,3 +129,39 @@ def test_prices_reject_bad_input(raw: object, message: str) -> None:
 def test_prices_honour_min_rows() -> None:
     with pytest.raises(ValueError, match="at least 3 price dates"):
         validate_prices(prices({"A": [1.0, 2.0]}), min_rows=3)
+
+
+# The tests below cover the TODO(human) in validate_date_range. They are
+# expected failures until it is written; delete the xfail marks after.
+TODO_HUMAN = pytest.mark.xfail(raises=NotImplementedError, reason="TODO(human): validate_date_range")
+
+
+@TODO_HUMAN
+def test_date_range_parses_strings_and_dates() -> None:
+    from datetime import date
+
+    from risklens.validation import validate_date_range
+
+    assert validate_date_range("2024-01-02", date(2024, 2, 1)) == (
+        pd.Timestamp("2024-01-02"), pd.Timestamp("2024-02-01"),
+    )
+    assert validate_date_range(date(2024, 1, 2)) == (pd.Timestamp("2024-01-02"), None)
+
+
+@TODO_HUMAN
+@pytest.mark.parametrize(
+    ("start", "end", "message"),
+    [
+        ("not a date", None, "valid date"),
+        (None, "2024-01-02", "valid date"),
+        ("2024-01-02", "31/31/2024", "valid date"),
+        ("2024-02-01", "2024-01-02", "before"),
+        ("2024-01-02", "2024-01-02", "before"),
+        ("2999-01-01", None, "future"),
+    ],
+)
+def test_date_range_rejects_bad_input(start: object, end: object, message: str) -> None:
+    from risklens.validation import validate_date_range
+
+    with pytest.raises(ValueError, match=message):
+        validate_date_range(start, end)  # type: ignore[arg-type]

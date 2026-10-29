@@ -117,3 +117,11 @@ def test_to_returns_rejects_prices_that_give_nonfinite_returns(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         to_returns(pd.DataFrame({"A": values}, index=dates(3)))
+
+
+@pytest.mark.xfail(reason="TODO(human): call validate_date_range in fetch_prices", strict=False)
+def test_bad_date_range_is_rejected_before_download() -> None:
+    with patch("yfinance.download") as download:
+        with pytest.raises(ValueError, match="before"):
+            fetch_prices(["A"], "2024-02-01", "2024-01-02")
+    download.assert_not_called()

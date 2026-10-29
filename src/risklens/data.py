@@ -58,6 +58,7 @@ def fetch_prices(
     tickers = list(tickers)
     if not tickers:
         raise ValueError("Enter at least one ticker.")
+    # TODO(human): validate the dates here with validate_date_range (one line).
     try:
         raw = yf.download(
             tickers, start=start, end=end, auto_adjust=True, progress=False

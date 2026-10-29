@@ -6,6 +6,7 @@ All functions raise ``ValueError`` with a message suitable for showing in the UI
 import numbers
 import re
 from collections.abc import Iterable, Sequence
+from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -134,3 +135,19 @@ def validate_prices(prices: pd.DataFrame, min_rows: int = MIN_PRICE_ROWS) -> pd.
     if np.any(values <= 0):
         raise ValueError("Prices must be positive.")
     return prices.astype(float)
+
+
+def validate_date_range(
+    start: str | date, end: str | date | None = None
+) -> tuple[pd.Timestamp, pd.Timestamp | None]:
+    """Return ``(start, end)`` as timestamps after checking they form a range.
+
+    ``end`` is optional (``None`` means "up to today"). Rules: both parse as
+    dates ("2024-01-31", ``date`` objects), neither is missing (NaT), the
+    start is strictly before the end, and the start is not in the future.
+
+    Raises:
+        ValueError: describing the first rule that is broken.
+    """
+    # TODO(human): parse start/end with pd.Timestamp and enforce the rules above.
+    raise NotImplementedError("validate_date_range is left for the human to write.")
