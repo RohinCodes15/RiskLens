@@ -13,11 +13,14 @@ app.py (Streamlit UI)
 src/risklens/
    validation.py   user input → clean tickers / weights (raises ValueError)
    data.py         tickers → price DataFrame (yfinance) → daily returns
-   risk.py         returns + weights → portfolio returns → risk metrics
+   analytics/
+     metrics.py    returns + weights → portfolio returns → risk metrics
+     engine.py     adjusted prices + weights → PortfolioMetrics
 ```
 
 Data flow: raw input → `validation` → `data.fetch_prices` → `data.to_returns`
-→ `risk.portfolio_returns` → metric functions → UI charts/tables.
+→ `analytics.analyze_portfolio` (→ `portfolio_returns` → metric functions)
+→ UI charts/tables.
 
 Rules of the layering:
 - `risklens` modules never import Streamlit or Plotly. They return plain
