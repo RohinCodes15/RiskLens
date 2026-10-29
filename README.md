@@ -29,20 +29,22 @@ app.py                  Streamlit UI (Codex)
 src/risklens/
   validation.py         Ticker and weight input checks
   data.py               Price download (yfinance) and returns
-  risk.py               Portfolio risk metrics
+  analytics/
+    metrics.py          Return-based risk metrics (volatility, Sharpe, VaR, drawdown)
+    engine.py           analyze_portfolio: adjusted prices + weights -> metrics
 tests/                  pytest suite
 ```
 
 ## Library usage
 
 ```python
-from risklens import data, risk, validation
+from risklens import analytics, data, validation
 
 tickers = validation.validate_tickers("AAPL, msft, SPY")
 weights = validation.validate_weights([0.4, 0.4, 0.2], len(tickers))
 prices = data.fetch_prices(tickers, start="2023-01-01", end="2024-01-01")
-port = risk.portfolio_returns(data.to_returns(prices), weights)
-print(risk.annualized_volatility(port), risk.historical_var(port))
+result = analytics.analyze_portfolio(prices, weights, risk_free_rate=0.04)
+print(result.annualized_volatility, result.sharpe_ratio, result.max_drawdown)
 ```
 
 See [AGENTS.md](AGENTS.md) for architecture, ownership, and coding rules.

@@ -32,10 +32,12 @@ def annualized_volatility(returns: pd.Series) -> float:
 
 
 def sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.0) -> float:
-    """Annualized Sharpe ratio; ``risk_free_rate`` is an annual fraction.
+    """Annualized Sharpe ratio; ``risk_free_rate`` is an annual fraction (0.04 == 4%).
 
     Returns NaN when volatility is zero.
     """
+    if not np.isfinite(risk_free_rate):
+        raise ValueError("risk_free_rate must be a finite number.")
     vol = annualized_volatility(returns)
     if np.isclose(vol, 0.0):  # constant returns leave ~1e-17 float noise, not exact 0
         return float("nan")
