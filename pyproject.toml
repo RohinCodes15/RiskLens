@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/risklens"]
@@ -25,3 +25,12 @@ packages = ["src/risklens"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+addopts = "-ra"  # list skip/xfail reasons, e.g. pending TODO(human) work
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["graphify-out"]
+
+[tool.ruff.lint]
+extend-select = ["I", "B", "UP"]  # import order, likely bugs, modern syntax
