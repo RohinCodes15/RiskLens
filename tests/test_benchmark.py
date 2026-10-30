@@ -96,3 +96,104 @@ def test_rejects_invalid_weights() -> None:
 
     with pytest.raises(ValueError, match="sum to 1"):
         compare_to_benchmark(assets, [0.7, 0.7], spy)
+
+
+def test_unsorted_inputs_are_aligned_in_date_order() -> None:
+    assets = pd.DataFrame({"A": [100.0, 110.0, 121.0]}, index=dates(3))
+    spy = pd.Series([400.0, 440.0, 484.0], index=dates(3))
+
+    result = compare_to_benchmark(assets.iloc[::-1], [1.0], spy.iloc[::-1])
+
+    assert result.index.equals(dates(3))
+    np.testing.assert_allclose(result["portfolio"], [1.0, 1.10, 1.21])
+    np.testing.assert_allclose(result["benchmark"], [1.0, 1.10, 1.21])
+
+
+@pytest.mark.parametrize(
+    ("assets", "spy", "message"),
+    [
+        (pd.DataFrame({"A": [1.0, 2.0]}, index=dates(2)),
+         pd.DataFrame({"SPY": [1.0, 2.0]}, index=dates(2)), "benchmark_prices must be"),
+        ([1.0, 2.0], pd.Series([1.0, 2.0], index=dates(2)), "asset_prices must be"),
+        (pd.DataFrame({"A": [1.0, 2.0]}, index=dates(2)),
+         pd.Series([1.0, 2.0], index=pd.bdate_range("2024-01-02", periods=2, tz="UTC")),
+         "time zone"),
+        (pd.DataFrame({"A": [1.0, 2.0]}), pd.Series([1.0, 2.0]), "indexed by date"),
+        (pd.DataFrame({"A": [1.0, 2.0, 3.0]}, index=dates(3)),
+         pd.Series([400.0, 0.0, 410.0], index=dates(3)), "positive"),
+        (pd.DataFrame({"A": [1.0, 2.0, 3.0]}, index=dates(3)),
+         pd.Series([400.0, -1.0, 410.0], index=dates(3)), "positive"),
+    ],
+)
+def test_rejects_malformed_inputs(assets: object, spy: object, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        compare_to_benchmark(assets, [1.0], spy)  # type: ignore[arg-type]
+
+
+# The tests below cover the TODO(human) in benchmark_statistics. They are
+# expected failures until it is written; delete the xfail marks after.
+TODO_HUMAN = pytest.mark.xfail(
+    raises=NotImplementedError, reason="TODO(human): benchmark_statistics"
+)
+
+
+@TODO_HUMAN
+def test_statistics_match_hand_calculation() -> None:
+    from risklens.analytics import TRADING_DAYS_PER_YEAR, benchmark_statistics
+
+    # Portfolio daily returns: +2%, -1%, +3%. SPY: +1%, -1%, +2%.
+    assets = pd.DataFrame({"A": [100.0, 102.0, 100.98, 104.0094]}, index=dates(4))
+    spy = pd.Series([400.0, 404.0, 399.96, 407.9592], index=dates(4))
+    port, bench = np.array([0.02, -0.01, 0.03]), np.array([0.01, -0.01, 0.02])
+
+    result = benchmark_statistics(assets, [1.0], spy)
+
+    assert result.excess_return == pytest.approx((port - bench).mean() * TRADING_DAYS_PER_YEAR)
+    assert result.beta == pytest.approx(np.cov(port, bench)[0, 1] / np.var(bench, ddof=1))
+    assert result.correlation == pytest.approx(np.corrcoef(port, bench)[0, 1])
+    assert result.tracking_error == pytest.approx(
+        np.std(port - bench, ddof=1) * np.sqrt(TRADING_DAYS_PER_YEAR)
+    )
+
+
+@TODO_HUMAN
+def test_portfolio_equal_to_benchmark_has_beta_one_and_no_tracking_error() -> None:
+    from risklens.analytics import benchmark_statistics
+
+    spy = pd.Series([400.0, 410.0, 405.0, 420.0], index=dates(4))
+
+    result = benchmark_statistics(spy.to_frame("A"), [1.0], spy)
+
+    assert result.beta == pytest.approx(1.0)
+    assert result.correlation == pytest.approx(1.0)
+    assert result.excess_return == pytest.approx(0.0)
+    assert result.tracking_error == pytest.approx(0.0, abs=1e-12)
+
+
+@TODO_HUMAN
+def test_statistics_use_only_shared_dates() -> None:
+    from risklens.analytics import benchmark_statistics
+
+    spy = pd.Series([400.0, 410.0, 405.0, 420.0], index=dates(4))
+    # An extra asset-only date before SPY starts must be ignored.
+    assets = pd.concat([pd.Series([1.0], index=dates(1, "2024-01-01")), spy]).to_frame("A")
+
+    assert benchmark_statistics(assets, [1.0], spy).beta == pytest.approx(1.0)
+
+
+@TODO_HUMAN
+@pytest.mark.parametrize(
+    ("spy_values", "message"),
+    [
+        ([400.0, 404.0], "at least 2 shared daily returns"),
+        ([400.0, 400.0, 400.0], "constant"),
+    ],
+)
+def test_statistics_reject_short_or_flat_benchmark(spy_values: list[float], message: str) -> None:
+    from risklens.analytics import benchmark_statistics
+
+    n = len(spy_values)
+    assets = pd.DataFrame({"A": np.linspace(100.0, 110.0, n)}, index=dates(n))
+
+    with pytest.raises(ValueError, match=message):
+        benchmark_statistics(assets, [1.0], pd.Series(spy_values, index=dates(n)))

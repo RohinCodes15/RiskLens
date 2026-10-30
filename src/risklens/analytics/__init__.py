@@ -1,6 +1,10 @@
 """Portfolio risk analytics built on simple daily returns."""
 
-from risklens.analytics.benchmark import compare_to_benchmark
+from risklens.analytics.benchmark import (
+    BenchmarkStatistics,
+    benchmark_statistics,
+    compare_to_benchmark,
+)
 from risklens.analytics.concentration import (
     correlation_matrix,
     effective_holdings,
@@ -22,10 +26,12 @@ from risklens.analytics.metrics import (
 
 __all__ = [
     "TRADING_DAYS_PER_YEAR",
+    "BenchmarkStatistics",
     "PortfolioMetrics",
     "analyze_portfolio",
     "annualized_return",
     "annualized_volatility",
+    "benchmark_statistics",
     "compare_to_benchmark",
     "correlation_matrix",
     "cumulative_wealth",
