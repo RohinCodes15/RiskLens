@@ -10,7 +10,8 @@ import streamlit as st
 from risklens.analytics import (
     analyze_portfolio, compare_to_benchmark, correlation_matrix, drawdown_series,
     effective_holdings, herfindahl_index, simulate_portfolio,
-    HISTORICAL_SCENARIOS, custom_scenario,
+    HISTORICAL_SCENARIOS, custom_scenario, stress_test,
+    cumulative_wealth, portfolio_returns,
 )
 from risklens.analytics.simulation import (
     DEFAULT_SEED, MAX_HORIZON_DAYS, MAX_PATHS, MIN_HORIZON_DAYS, MIN_PATHS,
@@ -38,6 +39,31 @@ def render_stress_test(analysis: dict) -> None:
         scenario = HISTORICAL_SCENARIOS[names.index(selected)]
         st.caption(scenario.description)
     st.caption(f"Requested window: {scenario.start:%b %d, %Y} – {scenario.end:%b %d, %Y} (inclusive).")
+    request = (scenario.name, scenario.start, scenario.end)
+    if st.button("Run historical stress test"):
+        analysis.pop("stress", None)
+        try:
+            with st.spinner("Loading scenario prices and replaying historical returns…"):
+                history = fetch_prices(list(analysis["prices"].columns), scenario.start.date(), scenario.end.date() + timedelta(days=1))
+                result = stress_test(history, analysis["weights"], scenario)
+                curve = None
+                if result.available:
+                    window = history.loc[result.first_date:result.last_date]
+                    daily = portfolio_returns(to_returns(window), analysis["weights"])
+                    curve = cumulative_wealth(daily).reindex(window.index, fill_value=1.0)
+                analysis["stress"] = (request, result, curve)
+        except (ValueError, DataFetchError, NotImplementedError) as exc:
+            st.warning(f"Scenario unavailable: {exc}")
+    saved = analysis.get("stress")
+    if saved is None or saved[0] != request:
+        st.info("Run the selected scenario to check availability. Every stock needs history spanning the window and at least three common price dates. Recently listed stocks may make older scenarios unavailable; no prices are invented or filled.")
+        return
+    _, result, curve = saved
+    if not result.available:
+        st.warning(f"Scenario unavailable — {result.scenario.name}. {result.reason}")
+        st.caption("Try a later custom start date or a portfolio whose stocks traded throughout the window. At least three common price dates are required.")
+        return
+    st.caption(f"Actual price dates: {result.first_date:%b %d, %Y} – {result.last_date:%b %d, %Y} · {result.n_returns:,} return observations.")
 
 
 def render_simulation(analysis: dict) -> None:
