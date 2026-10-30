@@ -7,10 +7,10 @@ import plotly.express as px
 import streamlit as st
 
 from risklens.analytics import (
-    analyze_portfolio, correlation_matrix, drawdown_series,
+    analyze_portfolio, compare_to_benchmark, correlation_matrix, drawdown_series,
     effective_holdings, herfindahl_index,
 )
-from risklens.data import DataFetchError, fetch_prices, to_returns
+from risklens.data import DataFetchError, fetch_benchmark_prices, fetch_prices, to_returns
 from risklens.validation import validate_tickers, validate_weights
 
 
@@ -93,6 +93,13 @@ if submitted:
                 "prices": prices, "weights": weights, "metrics": metrics,
                 "drawdown": drawdown_series(result.daily_returns),
             }
+            try:
+                benchmark_prices = fetch_benchmark_prices(start, end + timedelta(days=1))
+                st.session_state["analysis"]["benchmark"] = compare_to_benchmark(
+                    prices, weights, benchmark_prices,
+                )
+            except (ValueError, DataFetchError, NotImplementedError) as exc:
+                st.session_state["analysis"]["benchmark_error"] = str(exc)
     except NotImplementedError:
         st.error("Portfolio analytics is not ready. Save Claude’s completed analytics engine and try again.")
     except (ValueError, DataFetchError) as exc:
@@ -214,6 +221,30 @@ else:
             correlation_fig.update_layout(template="plotly_white", height=500)
             st.plotly_chart(correlation_fig, key="correlation_heatmap")
             st.caption("Based on adjusted daily returns over the selected period, using dates shared by every stock. Includes entered stocks with zero allocation; this is not a weighted portfolio correlation.")
+
+    st.divider()
+    st.subheader("Portfolio vs. S&P 500 (SPY)")
+    st.caption("SPY is an ETF tracking the S&P 500. Both series use adjusted prices, including splits and dividends.")
+    comparison = analysis.get("benchmark")
+    if comparison is None:
+        reason = analysis.get("benchmark_error", "Select Analyze portfolio to load SPY history.")
+        st.warning(f"Benchmark comparison is unavailable. {reason}")
+    else:
+        # The analytics API returns growth from 1.0; display it as return from 0%.
+        performance = (comparison - 1.0).rename(
+            columns={"portfolio": "Portfolio", "benchmark": "S&P 500 (SPY)"},
+        )
+        ending_returns = performance.iloc[-1]
+        st.caption(
+            f"Shared period: {performance.index.min():%b %d, %Y} – "
+            f"{performance.index.max():%b %d, %Y} · {len(performance):,} aligned price dates. "
+            "Both curves start at 0% on the first shared date; no missing dates are filled."
+        )
+        if len(performance) == 2:
+            st.info("Only one shared return interval is available. Choose a longer period for a more useful comparison.")
+        # TODO(human): Replace the next line with the 12 UI lines (eight spaces).
+        st.info("Benchmark data is ready; complete the chart and ending-return cards here.")
+        st.caption("Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns.")
 
 st.divider()
 st.caption(
