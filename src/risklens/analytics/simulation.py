@@ -90,9 +90,9 @@ def _estimate_parameters(returns: pd.Series) -> tuple[float, float]:
     if np.any(values <= -1):
         raise ValueError("A -100% daily return leaves no wealth to simulate.")
     log_returns = np.log1p(values)
-    sigma = float(log_returns.std(ddof=1))
-    if np.isclose(sigma, 0.0):
-        sigma = 0.0  # constant history: every path follows the same curve
+    # Only an exactly constant history is deterministic; std() of equal values
+    # can leave ~1e-19 float noise, while a tiny real sigma must be kept.
+    sigma = 0.0 if np.ptp(log_returns) == 0 else float(log_returns.std(ddof=1))
     return float(log_returns.mean()), sigma
 
 
