@@ -3,18 +3,11 @@
 from datetime import date, timedelta
 from math import isfinite
 
-import numpy as np
 import plotly.express as px
 import streamlit as st
 
-from risklens.analytics import (
-    annualized_return,
-    annualized_volatility,
-    max_drawdown,
-    portfolio_returns,
-    sharpe_ratio,
-)
-from risklens.data import DataFetchError, fetch_prices, to_returns
+from risklens.analytics import analyze_portfolio, drawdown_series
+from risklens.data import DataFetchError, fetch_prices
 from risklens.validation import validate_tickers, validate_weights
 
 
@@ -82,23 +75,23 @@ if submitted:
         with st.spinner("Loading prices and calculating portfolio metrics…"):
             # Yahoo's end date is exclusive; the UI includes the selected day.
             prices = fetch_prices(tickers, start, end + timedelta(days=1))
-            if not np.isfinite(prices.to_numpy()).all() or (prices <= 0).to_numpy().any():
-                raise ValueError("Price history contains invalid prices. Try another ticker or period.")
-            returns = to_returns(prices)
-            if len(returns) < 2:
-                raise ValueError("Choose a longer period: at least three overlapping price dates are needed.")
-            daily_returns = portfolio_returns(returns, weights)
+            if prices.empty:
+                raise ValueError("No price history was returned. Try different tickers or dates.")
+            result = analyze_portfolio(prices, weights)
             metrics = (
-                annualized_return(daily_returns),
-                annualized_volatility(daily_returns),
-                sharpe_ratio(daily_returns),
-                max_drawdown(daily_returns),
+                result.annualized_return,
+                result.annualized_volatility,
+                result.sharpe_ratio,
+                result.max_drawdown,
             )
             if not all(isfinite(value) for value in (metrics[0], metrics[1], metrics[3])):
-                raise ValueError("These prices could not produce finite metrics. Try a different period.")
+                raise ValueError("Choose a longer period: these prices could not produce finite risk metrics.")
             st.session_state["analysis"] = {
                 "prices": prices, "weights": weights, "metrics": metrics,
+                "drawdown": drawdown_series(result.daily_returns),
             }
+    except NotImplementedError:
+        st.error("Portfolio analytics is not ready. Save Claude’s completed analytics engine and try again.")
     except (ValueError, DataFetchError) as exc:
         st.error(f"Unable to analyze this portfolio. {exc}")
 
@@ -135,9 +128,42 @@ else:
     st.divider()
     st.subheader("Historical prices")
     fig = px.line(prices, labels={"index": "Date", "value": "Adjusted closing price", "variable": "Ticker"})
-    # TODO(human): Add the 12 optional chart-formatting lines here (four spaces).
+    fig.update_layout(
+        title="Historical adjusted closing prices", template="plotly_white",
+        hovermode="x unified", legend_title_text="Ticker", height=450,
+    )
+    fig.update_xaxes(title_text="Date", showgrid=False)
+    fig.update_yaxes(title_text="Adjusted closing price", tickformat=".2f")
+    fig.update_traces(
+        line_width=2, hovertemplate="%{y:.2f}<extra>%{fullData.name}</extra>",
+    )
     st.plotly_chart(fig)
     st.caption("Daily adjusted closing prices. Use tickers quoted in the same currency; no currency conversion is applied.")
+
+
+    st.divider()
+    st.subheader("Historical drawdown")
+    drawdown = analysis.get("drawdown")
+    if drawdown is None or drawdown.empty:
+        st.info("No drawdown history is available. Select Analyze portfolio to reload it.")
+    else:
+        drawdown_fig = px.area(
+            x=drawdown.index, y=drawdown,
+            labels={"x": "Date", "y": "Drawdown"},
+            color_discrete_sequence=["#e76f51"],
+        )
+        st.caption("Drawdown measures the decline below the portfolio’s prior peak.")
+        show_slider = st.checkbox("Show date range slider", value=True)
+        drawdown_fig.update_xaxes(rangeslider_visible=show_slider)
+        drawdown_fig.update_yaxes(tickformat=".0%", title_text="Drawdown")
+        drawdown_fig.update_traces(
+            hovertemplate="%{x|%b %d, %Y}<br>%{y:.2%}<extra></extra>",
+        )
+        drawdown_fig.update_layout(hovermode="x unified", height=380, showlegend=False)
+        drawdown_fig.add_hline(y=0, line_dash="dot", line_color="gray")
+        st.plotly_chart(drawdown_fig, key="drawdown_chart")
+        st.caption("Drag to zoom; double-click to reset.")
+        st.caption("Initial wealth is included, so a first-day loss counts.")
 
 st.divider()
 st.caption(
