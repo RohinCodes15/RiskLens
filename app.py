@@ -242,8 +242,18 @@ else:
         )
         if len(performance) == 2:
             st.info("Only one shared return interval is available. Choose a longer period for a more useful comparison.")
-        # TODO(human): Replace the next line with the 12 UI lines (eight spaces).
-        st.info("Benchmark data is ready; complete the chart and ending-return cards here.")
+        benchmark_fig = px.line(performance, labels={"index": "Date", "value": "Cumulative return", "variable": "Investment"}, color_discrete_sequence=["#264653", "#e76f51"])
+        benchmark_fig.update_layout(template="plotly_white", hovermode="x unified", height=450, legend_title_text="Investment")
+        benchmark_fig.update_xaxes(title_text="Date", showgrid=False, rangeslider_visible=True)
+        benchmark_fig.update_yaxes(title_text="Cumulative return", tickformat=".1%")
+        benchmark_fig.update_traces(line_width=2, hovertemplate="%{x|%b %d, %Y}<br>%{y:.2%}<extra>%{fullData.name}</extra>")
+        benchmark_fig.add_hline(y=0, line_dash="dot", line_color="gray")
+        st.plotly_chart(benchmark_fig, key="benchmark_chart")
+        portfolio_column, benchmark_column = st.columns(2)
+        with portfolio_column.container(border=True):
+            st.metric("Portfolio ending return", f"{ending_returns['Portfolio']:.2%}", help="Cumulative portfolio return over the shared dates; not annualized.")
+        with benchmark_column.container(border=True):
+            st.metric("SPY ending return", f"{ending_returns['S&P 500 (SPY)']:.2%}", help="Cumulative adjusted SPY return over the same shared dates; not annualized.")
         st.caption("Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns.")
 
 st.divider()
