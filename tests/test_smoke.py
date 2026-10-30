@@ -12,7 +12,9 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from risklens.analytics import analyze_portfolio, drawdown_series, effective_holdings, herfindahl_index
+from risklens.analytics import (
+    analyze_portfolio, compare_to_benchmark, drawdown_series, effective_holdings, herfindahl_index,
+)
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
@@ -154,3 +156,34 @@ def test_single_stock_shows_full_concentration_without_heatmap(
     assert [card.value for card in app.metric][4:] == ["1.000", "1.00"]
     assert "correlation_heatmap" not in [chart.key for chart in app.get("plotly_chart")]
     assert any("single-stock portfolio" in note.value for note in app.info)
+
+
+def test_spy_comparison_shows_chart_and_ending_returns(
+    download: MagicMock, prices: pd.DataFrame,
+) -> None:
+    """With SPY available, the chart and cards match the date-aligned API."""
+    spy = pd.Series([500.0, 505.0, 495.0, 510.0], index=prices.index, name="SPY")
+
+    def fake_download(tickers: list[str], **_: object) -> pd.DataFrame:
+        frame = spy.to_frame() if list(tickers) == ["SPY"] else prices
+        return pd.concat({"Close": frame}, axis=1)
+
+    download.side_effect = fake_download
+    expected = compare_to_benchmark(prices, [0.5, 0.5], spy).iloc[-1] - 1.0
+    app = submit(AppTest.from_file(APP_PATH).run())
+    assert not app.exception and not app.error and not app.warning
+    assert "benchmark_chart" in [chart.key for chart in app.get("plotly_chart")]
+    assert [(card.label, card.value) for card in app.metric][-2:] == [
+        ("Portfolio ending return", f"{expected['portfolio']:.2%}"),
+        ("SPY ending return", f"{expected['benchmark']:.2%}"),
+    ]
+    assert expected["benchmark"] == pytest.approx(0.02)
+
+
+def test_spy_failure_keeps_portfolio_results(download: MagicMock) -> None:
+    """A missing SPY download warns without hiding the portfolio analysis."""
+    app = submit(AppTest.from_file(APP_PATH).run())
+    assert not app.exception and not app.error
+    assert any("Benchmark comparison is unavailable" in note.value for note in app.warning)
+    assert "benchmark_chart" not in [chart.key for chart in app.get("plotly_chart")]
+    assert [card.label for card in app.metric][0] == "Annualized return"
