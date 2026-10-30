@@ -4,14 +4,66 @@ from datetime import date, timedelta
 from math import isfinite
 
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from risklens.analytics import (
     analyze_portfolio, compare_to_benchmark, correlation_matrix, drawdown_series,
-    effective_holdings, herfindahl_index,
+    effective_holdings, herfindahl_index, simulate_portfolio,
+)
+from risklens.analytics.simulation import (
+    DEFAULT_SEED, MAX_HORIZON_DAYS, MAX_PATHS, MIN_HORIZON_DAYS, MIN_PATHS,
 )
 from risklens.data import DataFetchError, fetch_benchmark_prices, fetch_prices, to_returns
 from risklens.validation import validate_tickers, validate_weights
+
+
+def render_simulation(analysis: dict) -> None:
+    """Display hypothetical wealth multiples and cumulative terminal return fractions."""
+    st.divider()
+    st.subheader("Monte Carlo · hypothetical simulations")
+    st.caption("Scenarios based on historical returns, not predictions or guarantees.")
+    with st.form("simulation_request"):
+        horizon = st.number_input("Forecast horizon (trading days)", MIN_HORIZON_DAYS, MAX_HORIZON_DAYS, 252, help="Simulation steps; future dates are weekdays, including exchange holidays.")
+        paths = st.number_input("Simulation count", MIN_PATHS, MAX_PATHS, MIN_PATHS, step=1000)
+        seed = st.number_input("Random seed", 0, 2**32 - 1, DEFAULT_SEED, help="Identical history and settings reproduce the same scenarios.")
+        run = st.form_submit_button("Run hypothetical simulations")
+    if run:
+        analysis.pop("simulation", None)
+        try:
+            with st.spinner("Generating hypothetical portfolio scenarios…"):
+                result = simulate_portfolio(analysis["daily_returns"], horizon_days=horizon, n_paths=paths, seed=seed)
+                analysis["simulation"] = (result, horizon, paths, seed)
+        except (ValueError, NotImplementedError, MemoryError) as exc:
+            st.error(f"Unable to simulate this portfolio. {exc or 'Try fewer simulations or a shorter horizon.'}")
+    saved = analysis.get("simulation")
+    if saved is None:
+        if not run:
+            st.info("Choose simulation settings and run to explore hypothetical outcomes.")
+        return
+    result, used_horizon, used_paths, used_seed = saved
+    bands = result.percentile_paths
+    st.caption(f"Displayed run: {used_horizon:,} trading days · {used_paths:,} simulations · seed {used_seed}. Run again to apply changes.")
+    median_column, loss_column = st.columns(2)
+    with median_column.container(border=True):
+        st.metric("Hypothetical terminal median return", f"{bands['median'].iloc[-1] - 1.0:.2%}", help="Ending median wealth from the simulation API, displayed as cumulative return from the starting wealth of 1.0.")
+    with loss_column.container(border=True):
+        st.metric("Hypothetical probability of loss", f"{result.loss_probability:.2%}", help="Share of simulated paths ending below their starting wealth; not a real-world loss forecast.")
+    fan = go.Figure()
+    for lower, upper, label, color in (
+        ("p5", "p95", "5th–95th percentiles", "rgba(42,157,143,0.15)"),
+        ("p25", "p75", "25th–75th percentiles", "rgba(42,157,143,0.35)"),
+    ):
+        fan.add_trace(go.Scatter(x=bands.index, y=bands[lower], mode="lines", line_width=0, showlegend=False, name=lower, hovertemplate="%{x|%b %d, %Y}<br>Wealth: %{y:.3f}×<extra>%{fullData.name}</extra>"))
+        fan.add_trace(go.Scatter(x=bands.index, y=bands[upper], mode="lines", line_width=0, fill="tonexty", fillcolor=color, name=label, hovertemplate="%{x|%b %d, %Y}<br>Upper wealth: %{y:.3f}×<extra>%{fullData.name}</extra>"))
+    fan.add_trace(go.Scatter(x=bands.index, y=bands["median"], mode="lines", line={"color": "#264653", "width": 3}, name="Median", hovertemplate="%{x|%b %d, %Y}<br>Median wealth: %{y:.3f}×<extra></extra>"))
+    fan.update_layout(template="plotly_white", title="Hypothetical portfolio wealth scenarios", hovermode="x unified", height=450, legend_title_text="Simulated percentiles")
+    fan.update_xaxes(title_text="Simulation date", rangeslider_visible=True)
+    fan.update_yaxes(title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×")
+    fan.add_hline(y=1.0, line_dash="dot", line_color="gray")
+    st.plotly_chart(fan, key="simulation_chart")
+    st.caption("Bands are pointwise percentiles across hypothetical paths, not confidence bounds or individual paths. The median line is not one simulated path.")
+    st.caption("Assumes independent normally distributed daily log returns fitted to historical data. Short histories are unreliable; crashes, changing markets, fees, taxes and cash flows are not captured. Dates include weekdays without excluding exchange holidays.")
 
 
 st.set_page_config(page_title="RiskLens Quant", page_icon="◈", layout="wide")
@@ -92,6 +144,7 @@ if submitted:
             st.session_state["analysis"] = {
                 "prices": prices, "weights": weights, "metrics": metrics,
                 "drawdown": drawdown_series(result.daily_returns),
+                "daily_returns": result.daily_returns,
             }
             try:
                 benchmark_prices = fetch_benchmark_prices(start, end + timedelta(days=1))
@@ -255,6 +308,8 @@ else:
         with benchmark_column.container(border=True):
             st.metric("SPY ending return", f"{ending_returns['S&P 500 (SPY)']:.2%}", help="Cumulative adjusted SPY return over the same shared dates; not annualized.")
         st.caption("Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns.")
+
+    render_simulation(analysis)
 
 st.divider()
 st.caption(
