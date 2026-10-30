@@ -97,8 +97,14 @@ def _estimate_parameters(returns: pd.Series) -> tuple[float, float]:
 
 
 def _future_dates(last_date: pd.Timestamp, horizon_days: int) -> pd.DatetimeIndex:
-    """The start date plus ``horizon_days`` weekdays strictly after it."""
-    future = pd.bdate_range(last_date + pd.offsets.BDay(1), periods=horizon_days, tz=last_date.tz)
+    """The start date plus ``horizon_days`` weekdays strictly after it.
+
+    Future dates keep the start date's time of day, so the index is evenly
+    spaced even when prices are stamped at the close (e.g. 16:00).
+    """
+    future = pd.bdate_range(
+        last_date + pd.offsets.BDay(1), periods=horizon_days, tz=last_date.tz, normalize=False
+    )
     return pd.DatetimeIndex([last_date]).append(future)
 
 
