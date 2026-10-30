@@ -46,12 +46,30 @@ HYPOTHETICAL_NOTE = (
 
 @dataclass(frozen=True)
 class StressScenario:
-    """A named historical window; ``start`` and ``end`` are inclusive dates."""
+    """A named historical window; ``start`` and ``end`` are inclusive dates.
+
+    Dates are stored as timezone-naive midnight timestamps.
+
+    Raises:
+        ValueError: if the name is blank, a date does not parse, or start
+            is not before end.
+    """
 
     name: str
     start: pd.Timestamp
     end: pd.Timestamp
     description: str = ""
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("Scenario name must not be blank.")
+        start, end = _parse_date(self.start, "Start"), _parse_date(self.end, "End")
+        if start >= end:
+            raise ValueError("Start date must be before end date.")
+        # Frozen dataclass: normalized values are set once, at construction.
+        object.__setattr__(self, "name", self.name.strip())
+        object.__setattr__(self, "start", start)
+        object.__setattr__(self, "end", end)
 
 
 @dataclass(frozen=True)
@@ -107,12 +125,7 @@ def custom_scenario(
         ValueError: if a date does not parse, start is not before end, or
             the name is blank.
     """
-    if not isinstance(name, str) or not name.strip():
-        raise ValueError("Scenario name must not be blank.")
-    start_ts, end_ts = _parse_date(start, "Start"), _parse_date(end, "End")
-    if start_ts >= end_ts:
-        raise ValueError("Start date must be before end date.")
-    return StressScenario(name.strip(), start_ts, end_ts)
+    return StressScenario(name, start, end)
 
 
 # Peak-to-trough windows of the S&P 500 (closing levels).
@@ -215,6 +228,8 @@ def stress_test(
         ValueError: on invalid prices or weights. Missing history is not an
             error: it returns ``available=False`` with a reason.
     """
+    if not isinstance(scenario, StressScenario):
+        raise ValueError("scenario must be a StressScenario (see custom_scenario).")
     clean = _validate_price_history(prices)
     w = validate_weights(weights, clean.shape[1])
     gaps = _coverage_gaps(clean, scenario)
