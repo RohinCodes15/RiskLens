@@ -83,3 +83,34 @@ def test_constant_asset_has_nan_correlation() -> None:
 def test_correlation_rejects_invalid_input(returns: object, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         correlation_matrix(returns)  # type: ignore[arg-type]
+
+
+def test_concentration_accepts_numpy_weights_and_ignores_zero_weights() -> None:
+    weights = np.array([0.5, 0.5, 0.0])
+
+    assert herfindahl_index(weights) == pytest.approx(0.5)
+    assert effective_holdings(weights) == pytest.approx(2.0)
+
+
+def test_correlation_of_dated_stock_returns_keeps_ticker_labels() -> None:
+    prices = pd.DataFrame(
+        {"AAPL": [100.0, 102.0, 101.0, 104.0], "MSFT": [50.0, 51.0, 50.5, 52.0]},
+        index=pd.bdate_range("2024-01-02", periods=4),
+    )
+    returns = prices.pct_change().dropna()
+
+    result = correlation_matrix(returns)
+
+    assert list(result.index) == list(result.columns) == ["AAPL", "MSFT"]
+    assert result.loc["AAPL", "MSFT"] == pytest.approx(returns["AAPL"].corr(returns["MSFT"]))
+
+
+def test_single_asset_correlation_is_one() -> None:
+    result = correlation_matrix(pd.DataFrame({"A": [0.01, -0.02, 0.03]}))
+
+    assert result.to_numpy().tolist() == [[1.0]]
+
+
+def test_correlation_rejects_text_returns() -> None:
+    with pytest.raises(ValueError, match="must be numbers"):
+        correlation_matrix(pd.DataFrame({"A": ["x", "y"], "B": [0.01, 0.02]}))

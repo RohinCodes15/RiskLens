@@ -47,7 +47,10 @@ def correlation_matrix(returns: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("returns must be a pandas DataFrame.")
     if returns.shape[1] == 0:
         raise ValueError("returns must have at least one asset column.")
-    complete = returns.astype(float).dropna()
+    try:
+        complete = returns.astype(float).dropna()
+    except (TypeError, ValueError) as exc:
+        raise ValueError("returns must be numbers.") from exc
     if np.isinf(complete.to_numpy()).any():
         raise ValueError("returns contain infinite values.")
     if len(complete) < MIN_CORRELATION_ROWS:
