@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from risklens.analytics import analyze_portfolio, drawdown_series
+from risklens.analytics import analyze_portfolio, drawdown_series, effective_holdings, herfindahl_index
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
@@ -71,10 +71,12 @@ def test_analyze_matches_engine_and_drawdown(prices: pd.DataFrame, download: Mag
         assert not app.exception and not app.error
         assert [card.label for card in app.metric] == [
             "Annualized return", "Annualized volatility", "Sharpe ratio", "Maximum drawdown",
+            "HHI concentration", "Effective number of holdings",
         ]
         assert [card.value for card in app.metric] == [
             f"{expected.annualized_return:.2%}", f"{expected.annualized_volatility:.2%}",
             f"{expected.sharpe_ratio:.2f}", f"{expected.max_drawdown:.2%}",
+            f"{herfindahl_index([0.6, 0.4]):.3f}", f"{effective_holdings([0.6, 0.4]):.2f}",
         ]
         pd.testing.assert_frame_equal(engine.call_args.args[0], prices)
         np.testing.assert_allclose(engine.call_args.args[1], [0.6, 0.4])
@@ -135,5 +137,20 @@ def test_constant_prices_show_undefined_sharpe(download: MagicMock, prices: pd.D
     app = AppTest.from_file(APP_PATH).run()
     submit(app)
     assert not app.exception and not app.error
-    assert [card.value for card in app.metric] == ["0.00%", "0.00%", "N/A", "0.00%"]
-    assert len(app.get("plotly_chart")) == 2
+    assert [card.value for card in app.metric] == ["0.00%", "0.00%", "N/A", "0.00%", "0.500", "2.00"]
+    assert len(app.get("plotly_chart")) == 3
+    assert any("undefined correlation" in note.value for note in app.info)
+
+
+def test_single_stock_shows_full_concentration_without_heatmap(
+    download: MagicMock, prices: pd.DataFrame,
+) -> None:
+    """One holding is fully concentrated and has no correlation heatmap."""
+    download.return_value = pd.concat({"Close": prices[["AAPL"]]}, axis=1)
+    app = AppTest.from_file(APP_PATH).run()
+    app.text_input[0].set_value("AAPL").run()
+    submit(app)
+    assert not app.exception and not app.error
+    assert [card.value for card in app.metric][4:] == ["1.000", "1.00"]
+    assert "correlation_heatmap" not in [chart.key for chart in app.get("plotly_chart")]
+    assert any("single-stock portfolio" in note.value for note in app.info)
