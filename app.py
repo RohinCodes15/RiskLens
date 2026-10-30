@@ -64,6 +64,20 @@ def render_stress_test(analysis: dict) -> None:
         st.caption("Try a later custom start date or a portfolio whose stocks traded throughout the window. At least three common price dates are required.")
         return
     st.caption(f"Actual price dates: {result.first_date:%b %d, %Y} – {result.last_date:%b %d, %Y} · {result.n_returns:,} return observations.")
+    # TODO(human): Replace the next line with the 13 UI lines (four spaces).
+    return_column, drawdown_column, volatility_column = st.columns(3)
+    with return_column.container(border=True):
+        st.metric("Scenario return", f"{result.cumulative_return:.2%}", help="Cumulative return over the actual scenario price dates.")
+    with drawdown_column.container(border=True):
+        st.metric("Scenario maximum drawdown", f"{result.max_drawdown:.2%}", help="Worst peak-to-trough decline; negative values represent losses.")
+    with volatility_column.container(border=True):
+        st.metric("Scenario annualized volatility", f"{result.annualized_volatility:.2%}", help="Sample daily volatility annualized using 252 trading days.")
+    stress_fig = px.line(x=curve.index, y=curve, labels={"x": "Date", "y": "Portfolio wealth"}, color_discrete_sequence=["#264653"])
+    stress_fig.update_layout(template="plotly_white", title=f"Hypothetical replay · {result.scenario.name}", hovermode="x unified", height=450, showlegend=False)
+    stress_fig.update_xaxes(title_text="Historical date", rangeslider_visible=True)
+    stress_fig.update_yaxes(title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×")
+    stress_fig.update_traces(line_width=2, hovertemplate="%{x|%b %d, %Y}<br>Portfolio wealth: %{y:.3f}×<extra></extra>")
+    st.plotly_chart(stress_fig, key="stress_chart")
 
 
 def render_simulation(analysis: dict) -> None:
