@@ -24,12 +24,23 @@ from risklens.analytics.metrics import (
     sharpe_ratio,
 )
 from risklens.analytics.simulation import MonteCarloResult, simulate_portfolio
+from risklens.analytics.stress import (
+    HISTORICAL_SCENARIOS,
+    StressResult,
+    StressScenario,
+    custom_scenario,
+    run_stress_tests,
+    stress_test,
+)
 
 __all__ = [
+    "HISTORICAL_SCENARIOS",
     "TRADING_DAYS_PER_YEAR",
     "BenchmarkStatistics",
     "MonteCarloResult",
     "PortfolioMetrics",
+    "StressResult",
+    "StressScenario",
     "analyze_portfolio",
     "annualized_return",
     "annualized_volatility",
@@ -37,6 +48,7 @@ __all__ = [
     "compare_to_benchmark",
     "correlation_matrix",
     "cumulative_wealth",
+    "custom_scenario",
     "drawdown_series",
     "effective_holdings",
     "herfindahl_index",
@@ -44,6 +56,8 @@ __all__ = [
     "max_drawdown",
     "portfolio_returns",
     "risk_contributions",
+    "run_stress_tests",
     "sharpe_ratio",
     "simulate_portfolio",
+    "stress_test",
 ]
