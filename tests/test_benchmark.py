@@ -130,14 +130,6 @@ def test_rejects_malformed_inputs(assets: object, spy: object, message: str) -> 
         compare_to_benchmark(assets, [1.0], spy)  # type: ignore[arg-type]
 
 
-# The tests below cover the TODO(human) in benchmark_statistics. They are
-# expected failures until it is written; delete the xfail marks after.
-TODO_HUMAN = pytest.mark.xfail(
-    raises=NotImplementedError, reason="TODO(human): benchmark_statistics"
-)
-
-
-@TODO_HUMAN
 def test_statistics_match_hand_calculation() -> None:
     from risklens.analytics import TRADING_DAYS_PER_YEAR, benchmark_statistics
 
@@ -156,7 +148,6 @@ def test_statistics_match_hand_calculation() -> None:
     )
 
 
-@TODO_HUMAN
 def test_portfolio_equal_to_benchmark_has_beta_one_and_no_tracking_error() -> None:
     from risklens.analytics import benchmark_statistics
 
@@ -170,7 +161,6 @@ def test_portfolio_equal_to_benchmark_has_beta_one_and_no_tracking_error() -> No
     assert result.tracking_error == pytest.approx(0.0, abs=1e-12)
 
 
-@TODO_HUMAN
 def test_statistics_use_only_shared_dates() -> None:
     from risklens.analytics import benchmark_statistics
 
@@ -181,7 +171,6 @@ def test_statistics_use_only_shared_dates() -> None:
     assert benchmark_statistics(assets, [1.0], spy).beta == pytest.approx(1.0)
 
 
-@TODO_HUMAN
 @pytest.mark.parametrize(
     ("spy_values", "message"),
     [

@@ -121,5 +121,17 @@ def benchmark_statistics(
             than ``MIN_STATISTIC_RETURNS`` shared daily returns, or constant
             benchmark returns (beta is undefined).
     """
-    # TODO(human): align returns, then build BenchmarkStatistics (see the docstring).
-    raise NotImplementedError("benchmark_statistics is left for the human to write.")
+    port, bench, _ = _aligned_returns(asset_prices, weights, benchmark_prices)
+    if len(port) < MIN_STATISTIC_RETURNS:
+        raise ValueError(
+            f"Need at least {MIN_STATISTIC_RETURNS} shared daily returns for benchmark statistics."
+        )
+    bench_variance = float(np.var(bench, ddof=1))
+    if np.isclose(bench_variance, 0.0):
+        raise ValueError("Benchmark returns are constant, so beta is undefined.")
+    return BenchmarkStatistics(
+        excess_return=annualized_return(port) - annualized_return(bench),
+        beta=float(np.cov(port, bench, ddof=1)[0, 1]) / bench_variance,
+        correlation=float(port.corr(bench)),
+        tracking_error=annualized_volatility(port - bench),
+    )
