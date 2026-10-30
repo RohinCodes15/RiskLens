@@ -34,9 +34,10 @@ from risklens.data import to_returns
 from risklens.validation import validate_weights
 
 MIN_WINDOW_PRICES = MIN_VOLATILITY_OBS + 1  # three prices give two returns
-# A window edge may fall on a weekend or holiday, so allow this many calendar
-# days between the edge and an asset's first or last actual price.
-EDGE_TOLERANCE = pd.Timedelta(days=4)
+# A window edge may fall on a weekend or an exchange holiday. Weekends are
+# never counted; allow at most this many weekdays (one holiday) between the
+# edge and an asset's first or last actual price.
+MAX_EDGE_WEEKDAYS = 1
 HYPOTHETICAL_NOTE = (
     "Hypothetical: current fixed weights applied to past returns, "
     "not the portfolio's actual historical holdings."
@@ -170,6 +171,16 @@ def _naive_dates(index: pd.DatetimeIndex) -> pd.DatetimeIndex:
     return (index.tz_localize(None) if index.tz else index).normalize()
 
 
+ONE_DAY = pd.Timedelta(days=1)
+
+
+def _weekdays_between(first: pd.Timestamp, last: pd.Timestamp) -> int:
+    """Number of Monday-Friday dates in ``[first, last)``; 0 if last <= first."""
+    if last <= first:
+        return 0
+    return int(np.busday_count(first.date(), last.date()))
+
+
 def _coverage_gaps(prices: pd.DataFrame, scenario: StressScenario) -> list[str]:
     """Describe each asset whose actual history does not span the window."""
     dates = _naive_dates(prices.index)
@@ -178,9 +189,9 @@ def _coverage_gaps(prices: pd.DataFrame, scenario: StressScenario) -> list[str]:
         observed = dates[prices[asset].notna().to_numpy()]
         if observed.empty:
             gaps.append(f"{asset} has no price data")
-        elif observed[0] > scenario.start + EDGE_TOLERANCE:
+        elif _weekdays_between(scenario.start, observed[0]) > MAX_EDGE_WEEKDAYS:
             gaps.append(f"{asset} history starts {observed[0].date()}")
-        elif observed[-1] < scenario.end - EDGE_TOLERANCE:
+        elif _weekdays_between(observed[-1] + ONE_DAY, scenario.end + ONE_DAY) > MAX_EDGE_WEEKDAYS:
             gaps.append(f"{asset} history ends {observed[-1].date()}")
     return gaps
 
