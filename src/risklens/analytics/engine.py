@@ -17,8 +17,9 @@ from risklens.analytics.metrics import (
     sharpe_ratio,
 )
 from risklens.data import to_returns
+from risklens.validation import validate_prices, validate_risk_free_rate
 
-MIN_PRICE_ROWS = 2
+MIN_PRICE_ROWS = 3  # three prices give two returns, the minimum for sample volatility
 
 
 @dataclass(frozen=True)
@@ -55,5 +56,13 @@ def analyze_portfolio(
         ValueError: if prices are too short, contain missing or non-positive
             values, or the weights / risk-free rate are invalid.
     """
-    # TODO(human): validate prices, build daily returns, return PortfolioMetrics.
-    raise NotImplementedError("analyze_portfolio body is left for the human to write.")
+    rate = validate_risk_free_rate(risk_free_rate)
+    clean = validate_prices(prices, min_rows=MIN_PRICE_ROWS)
+    daily = portfolio_returns(to_returns(clean), weights)
+    return PortfolioMetrics(
+        daily_returns=daily,
+        annualized_return=annualized_return(daily),
+        annualized_volatility=annualized_volatility(daily),
+        sharpe_ratio=sharpe_ratio(daily, rate),
+        max_drawdown=max_drawdown(daily),
+    )
