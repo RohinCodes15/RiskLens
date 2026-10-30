@@ -128,6 +128,17 @@ def simulate_portfolio(
     n_paths = _validate_int(n_paths, "n_paths", MIN_PATHS, MAX_PATHS)
     seed = _validate_int(seed, "seed", 0, 2**32 - 1)
     dates = _future_dates(daily_returns.index[-1], horizon_days)
-    # TODO(human): simulate wealth paths and build the MonteCarloResult (13 lines).
-    raise NotImplementedError("simulate_portfolio is left for the human to write.")
+    rng = np.random.default_rng(seed)
+    daily_log_returns = rng.normal(mu, sigma, size=(n_paths, horizon_days))
+    growth = np.exp(np.cumsum(daily_log_returns, axis=1))
+    wealth = np.hstack([np.ones((n_paths, 1)), growth])
+    bands = np.percentile(wealth, PERCENTILES, axis=0)
+    terminal_returns = wealth[:, -1] - 1.0
+    return MonteCarloResult(
+        percentile_paths=pd.DataFrame(bands.T, index=dates, columns=PERCENTILE_LABELS),
+        terminal_returns=terminal_returns,
+        loss_probability=float(np.mean(terminal_returns < 0.0)),
+        daily_mean=mu,
+        daily_volatility=sigma,
+    )
  

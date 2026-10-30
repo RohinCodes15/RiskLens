@@ -6,9 +6,6 @@ import pytest
 
 from risklens.analytics import MonteCarloResult, simulate_portfolio
 
-TODO_HUMAN = pytest.mark.xfail(
-    raises=NotImplementedError, reason="TODO(human): simulate_portfolio body", strict=False,
-)
 LABELS = ["p5", "p25", "median", "p75", "p95"]
 
 
@@ -21,7 +18,6 @@ def returns() -> pd.Series:
     return history(np.random.default_rng(7).normal(0.0005, 0.01, 120))
 
 
-@TODO_HUMAN
 def test_paths_start_at_one_on_last_date_and_move_forward(returns: pd.Series) -> None:
     result = simulate_portfolio(returns, horizon_days=10, n_paths=1_000)
 
@@ -36,7 +32,6 @@ def test_paths_start_at_one_on_last_date_and_move_forward(returns: pd.Series) ->
     assert (paths.index[1:].day_of_week < 5).all()
 
 
-@TODO_HUMAN
 def test_same_seed_reproduces_and_new_seed_differs(returns: pd.Series) -> None:
     first = simulate_portfolio(returns, horizon_days=20, seed=1)
     again = simulate_portfolio(returns, horizon_days=20, seed=1)
@@ -47,7 +42,6 @@ def test_same_seed_reproduces_and_new_seed_differs(returns: pd.Series) -> None:
     assert not np.array_equal(first.terminal_returns, other.terminal_returns)
 
 
-@TODO_HUMAN
 def test_percentiles_are_ordered_and_terminal_stats_agree(returns: pd.Series) -> None:
     result = simulate_portfolio(returns, horizon_days=30, n_paths=2_000)
 
@@ -60,7 +54,6 @@ def test_percentiles_are_ordered_and_terminal_stats_agree(returns: pd.Series) ->
     assert final["p5"] == pytest.approx(np.percentile(1.0 + result.terminal_returns, 5))
 
 
-@TODO_HUMAN
 def test_terminal_log_wealth_matches_model_moments(returns: pd.Series) -> None:
     horizon, paths = 60, 10_000
     result = simulate_portfolio(returns, horizon_days=horizon, n_paths=paths)
@@ -72,7 +65,6 @@ def test_terminal_log_wealth_matches_model_moments(returns: pd.Series) -> None:
     assert log_wealth.std(ddof=1) == pytest.approx(expected_sd, rel=0.05)
 
 
-@TODO_HUMAN
 @pytest.mark.parametrize(("daily", "loss"), [(0.001, 0.0), (-0.001, 1.0)])
 def test_zero_volatility_gives_one_deterministic_curve(daily: float, loss: float) -> None:
     result = simulate_portfolio(history([daily] * 30), horizon_days=5, n_paths=1_000)
@@ -85,7 +77,6 @@ def test_zero_volatility_gives_one_deterministic_curve(daily: float, loss: float
     assert result.loss_probability == loss
 
 
-@TODO_HUMAN
 def test_uses_only_history_before_start(returns: pd.Series) -> None:
     past = returns.iloc[:60]
 
@@ -96,7 +87,6 @@ def test_uses_only_history_before_start(returns: pd.Series) -> None:
     assert result.percentile_paths.index[0] == past.index[-1]
 
 
-@TODO_HUMAN
 def test_does_not_mutate_returns(returns: pd.Series) -> None:
     before = returns.copy()
 
