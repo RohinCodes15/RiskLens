@@ -23,10 +23,12 @@ from risklens.analytics.metrics import (
     risk_contributions,
     sharpe_ratio,
 )
+from risklens.analytics.simulation import MonteCarloResult, simulate_portfolio
 
 __all__ = [
     "TRADING_DAYS_PER_YEAR",
     "BenchmarkStatistics",
+    "MonteCarloResult",
     "PortfolioMetrics",
     "analyze_portfolio",
     "annualized_return",
@@ -43,4 +45,5 @@ __all__ = [
     "portfolio_returns",
     "risk_contributions",
     "sharpe_ratio",
+    "simulate_portfolio",
 ]
