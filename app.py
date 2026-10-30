@@ -10,12 +10,34 @@ import streamlit as st
 from risklens.analytics import (
     analyze_portfolio, compare_to_benchmark, correlation_matrix, drawdown_series,
     effective_holdings, herfindahl_index, simulate_portfolio,
+    HISTORICAL_SCENARIOS, custom_scenario,
 )
 from risklens.analytics.simulation import (
     DEFAULT_SEED, MAX_HORIZON_DAYS, MAX_PATHS, MIN_HORIZON_DAYS, MIN_PATHS,
 )
 from risklens.data import DataFetchError, fetch_benchmark_prices, fetch_prices, to_returns
 from risklens.validation import validate_tickers, validate_weights
+
+
+def render_stress_test(analysis: dict) -> None:
+    """Display historical stress outcomes as fractions and normalized wealth."""
+    st.divider()
+    st.subheader("Historical Stress Testing")
+    st.caption("Hypothetical replay: current fixed weights applied to past adjusted prices, not your actual historical holdings. Not a prediction.")
+    names = [scenario.name for scenario in HISTORICAL_SCENARIOS]
+    selected = st.selectbox("Historical scenario", names + ["Custom date range"])
+    if selected == "Custom date range":
+        start_date = st.date_input("Scenario start date", analysis["prices"].index.min().date(), min_value=date(1900, 1, 1), max_value=date.today())
+        end_date = st.date_input("Scenario end date (inclusive)", analysis["prices"].index.max().date(), min_value=date(1900, 1, 1), max_value=date.today())
+        try:
+            scenario = custom_scenario(start_date, end_date)
+        except ValueError as exc:
+            st.warning(str(exc))
+            return
+    else:
+        scenario = HISTORICAL_SCENARIOS[names.index(selected)]
+        st.caption(scenario.description)
+    st.caption(f"Requested window: {scenario.start:%b %d, %Y} – {scenario.end:%b %d, %Y} (inclusive).")
 
 
 def render_simulation(analysis: dict) -> None:
@@ -310,6 +332,7 @@ else:
         st.caption("Ending returns are cumulative over this shared period, not annualized. The portfolio uses fixed weights rebalanced on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns.")
 
     render_simulation(analysis)
+    render_stress_test(analysis)
 
 st.divider()
 st.caption(
