@@ -6,8 +6,11 @@ from math import isfinite
 import plotly.express as px
 import streamlit as st
 
-from risklens.analytics import analyze_portfolio, drawdown_series
-from risklens.data import DataFetchError, fetch_prices
+from risklens.analytics import (
+    analyze_portfolio, correlation_matrix, drawdown_series,
+    effective_holdings, herfindahl_index,
+)
+from risklens.data import DataFetchError, fetch_prices, to_returns
 from risklens.validation import validate_tickers, validate_weights
 
 
@@ -164,6 +167,53 @@ else:
         st.plotly_chart(drawdown_fig, key="drawdown_chart")
         st.caption("Drag to zoom; double-click to reset.")
         st.caption("Initial wealth is included, so a first-day loss counts.")
+
+    st.divider()
+    st.subheader("Portfolio Diversification")
+    st.caption("Allocation balance and how your stocks move together.")
+    try:
+        hhi = herfindahl_index(analysis["weights"])
+        holdings = effective_holdings(analysis["weights"])
+    except ValueError as exc:
+        st.warning(f"Diversification metrics are unavailable. {exc}")
+    else:
+        concentration_column, holdings_column = st.columns(2)
+        with concentration_column.container(border=True):
+            st.metric(
+                "HHI concentration", f"{hhi:.3f}",
+                help="Sum of squared allocation weights, on a 0–1 scale. Lower means more evenly spread; 1 means one holding has all the weight.",
+            )
+        with holdings_column.container(border=True):
+            st.metric(
+                "Effective number of holdings", f"{holdings:.2f}",
+                help="1 / HHI: the number of equally weighted holdings with the same allocation concentration. Zero-weight stocks do not count.",
+            )
+        st.caption("These measures describe allocation balance, not stock independence. Similar stocks can still carry similar risks.")
+
+    if len(prices.columns) == 1:
+        st.info("A single-stock portfolio has no cross-stock diversification. Add another stock to compare return correlations.")
+    else:
+        try:
+            correlations = correlation_matrix(to_returns(prices))
+        except ValueError as exc:
+            st.warning(f"Stock-return correlation is unavailable. {exc}")
+        else:
+            st.markdown("**Daily stock-return correlation**")
+            st.caption("Pearson correlation: +1 = move together, 0 = no linear relationship, −1 = move oppositely. Historical correlations can change.")
+            if correlations.isna().any().any():
+                st.info("Blank cells indicate undefined correlation, usually because a stock's returns are constant. They do not mean zero correlation.")
+            correlation_fig = px.imshow(
+                correlations, zmin=-1, zmax=1, color_continuous_scale="RdBu",
+                labels={"x": "Stock", "y": "Stock", "color": "Correlation"},
+                text_auto=".2f", aspect="equal",
+            )
+            correlation_fig.update_traces(
+                hovertemplate="%{y} / %{x}<br>Daily return correlation: %{z:.2f}<extra></extra>",
+                hoverongaps=False,
+            )
+            correlation_fig.update_layout(template="plotly_white", height=500)
+            st.plotly_chart(correlation_fig, key="correlation_heatmap")
+            st.caption("Based on adjusted daily returns over the selected period, using dates shared by every stock. Includes entered stocks with zero allocation; this is not a weighted portfolio correlation.")
 
 st.divider()
 st.caption(
