@@ -27,9 +27,11 @@ from risklens.analytics.metrics import (
     tail_risk_summary,
 )
 from risklens.analytics.optimization import (
+    EfficientFrontier,
     OptimizationError,
     OptimizedPortfolio,
     SolverDiagnostics,
+    efficient_frontier,
     estimate_inputs,
     max_sharpe_portfolio,
     min_volatility_portfolio,
@@ -58,6 +60,7 @@ __all__ = [
     "TRADING_DAYS_PER_YEAR",
     "VAR_CONFIDENCE_LEVELS",
     "BenchmarkStatistics",
+    "EfficientFrontier",
     "MonteCarloResult",
     "OptimizationError",
     "OptimizedPortfolio",
@@ -75,6 +78,7 @@ __all__ = [
     "custom_scenario",
     "drawdown_series",
     "effective_holdings",
+    "efficient_frontier",
     "estimate_inputs",
     "herfindahl_index",
     "historical_cvar",
