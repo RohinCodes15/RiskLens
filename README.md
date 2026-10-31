@@ -45,8 +45,8 @@ There is no separate backend or database: the Streamlit app calls the
   (see [Historical VaR and CVaR](#historical-var-and-cvar)).
 - Dated rolling volatility, Sharpe ratio, and drawdown over 21-, 63-, and
   126-day windows (see [Rolling risk metrics](#rolling-risk-metrics)).
-- Long-only minimum-volatility and maximum-Sharpe portfolios (see
-  [Portfolio optimization](#portfolio-optimization)).
+- Long-only minimum-volatility and maximum-Sharpe portfolios and the
+  efficient frontier (see [Portfolio optimization](#portfolio-optimization)).
 - Benchmark comparison against SPY (growth curves plus excess return, beta,
   correlation, and tracking error) and concentration measures (Herfindahl
   index, effective number of holdings, correlation matrix).
@@ -148,10 +148,10 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `benchmark_statistics`, `rolling_volatility`, `rolling_sharpe`,
 `rolling_drawdown`, `rolling_max_drawdown`, `rolling_metrics`,
 `ROLLING_WINDOWS`, `estimate_inputs`, `min_volatility_portfolio`,
-`max_sharpe_portfolio`, and `TRADING_DAYS_PER_YEAR`, plus the frozen result
-types `PortfolioMetrics`, `BenchmarkStatistics`, `MonteCarloResult`,
-`StressScenario`, `StressResult`, `OptimizedPortfolio`, and
-`SolverDiagnostics`, and the `OptimizationError` exception. Each function's
+`max_sharpe_portfolio`, `efficient_frontier`, and `TRADING_DAYS_PER_YEAR`,
+plus the frozen result types `PortfolioMetrics`, `BenchmarkStatistics`,
+`MonteCarloResult`, `StressScenario`, `StressResult`, `OptimizedPortfolio`,
+`SolverDiagnostics`, and `EfficientFrontier`, and the `OptimizationError` exception. Each function's
 docstring gives its units and sign conventions.
 
 `risklens.validation` provides `validate_tickers`, `validate_weights`,
@@ -243,6 +243,7 @@ the worst peak-to-trough fall inside each window. Both are fractions ≤ 0.
 ```python
 min_volatility_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
 max_sharpe_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
+efficient_frontier(prices, n_points=40, risk_free_rate=0.0) -> EfficientFrontier
 estimate_inputs(prices) -> (expected_returns, covariance, observations)
 ```
 
@@ -272,6 +273,24 @@ prices = data.fetch_prices(["AAPL", "MSFT", "SPY"], start="2021-01-01", end="202
 safest = analytics.min_volatility_portfolio(prices, risk_free_rate=0.04)
 best = analytics.max_sharpe_portfolio(prices, risk_free_rate=0.04)
 print(best.weights.round(3), best.sharpe_ratio, best.diagnostics.singular_covariance)
+```
+
+**Efficient frontier.** `efficient_frontier` solves `n_points` (2 to 100)
+long-only minimum-volatility portfolios at evenly spaced target returns,
+from the minimum-volatility portfolio's return up to the best single
+asset's. Lower targets are inefficient and left out. `points` has
+`expected_return`, `volatility`, and `sharpe_ratio` per point, in
+increasing target order; `weights` has the matching weights, one column per
+asset. Targets the solver cannot reach are dropped and counted in
+`infeasible_targets`; if none can be solved it raises `OptimizationError`.
+When every asset has the same expected return, the frontier is the single
+minimum-volatility point. For reference markers, plot
+`min_volatility_portfolio`, `max_sharpe_portfolio`, and the current weights
+(via `analyze_portfolio`) on the same axes.
+
+```python
+frontier = analytics.efficient_frontier(prices, n_points=40, risk_free_rate=0.04)
+print(frontier.points.head(), frontier.infeasible_targets)
 ```
 
 **Edge cases.**
