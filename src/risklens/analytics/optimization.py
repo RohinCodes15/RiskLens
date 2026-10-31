@@ -285,3 +285,18 @@ def max_sharpe_portfolio(prices: pd.DataFrame, risk_free_rate: float = 0.0) -> O
             "unbounded. Remove constant-price assets or raise the risk-free rate."
         )
     return portfolio
+
+
+def _target_return_solve(
+    covariance: np.ndarray, expected: np.ndarray, target: float
+) -> OptimizeResult:
+    """Minimum-variance weights in [0, 1] summing to 1 with expected @ w == ``target``.
+
+    Raises:
+        OptimizationError: if the solver fails or the target is unreachable.
+    """
+    n = len(expected)
+    directions = np.vstack([np.ones(n), expected])
+    return _solve(
+        covariance, np.full(n, 1.0 / n), [(0.0, 1.0)] * n, directions, np.array([1.0, target])
+    )
