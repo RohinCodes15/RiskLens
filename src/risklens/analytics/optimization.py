@@ -36,6 +36,9 @@ SOLVER_METHOD = "SLSQP"
 SOLVER_TOLERANCE = 1e-12
 SOLVER_MAX_ITERATIONS = 1_000
 CONSTRAINT_TOLERANCE = 1e-6  # accepted violation of the solver's constraints
+DEFAULT_FRONTIER_POINTS = 40
+MIN_FRONTIER_POINTS = 2
+MAX_FRONTIER_POINTS = 100  # each point is one solve; bounds run time
 
 
 class OptimizationError(ValueError):
@@ -92,6 +95,36 @@ class OptimizedPortfolio:
     volatility: float
     sharpe_ratio: float
     diagnostics: SolverDiagnostics
+
+
+@dataclass(frozen=True)
+class EfficientFrontier:
+    """Long-only minimum-volatility portfolios across target returns.
+
+    Attributes:
+        points: one row per feasible target, sorted by expected return, with
+            columns ``expected_return``, ``volatility``, ``sharpe_ratio``
+            (annual fractions; Sharpe is NaN when volatility is zero).
+        weights: one row per point (same index as ``points``), one column
+            per asset; each row lies in [0, 1] and sums to 1.
+        infeasible_targets: targets dropped because the solver failed.
+    """
+
+    points: pd.DataFrame
+    weights: pd.DataFrame
+    infeasible_targets: int
+
+
+def _validate_points(n_points: object) -> int:
+    """Return ``n_points`` as int if it is a whole number in the allowed range."""
+    if isinstance(n_points, (bool, np.bool_)) or not isinstance(n_points, (int, np.integer)):
+        raise ValueError("n_points must be a whole number.")
+    if not MIN_FRONTIER_POINTS <= n_points <= MAX_FRONTIER_POINTS:
+        raise ValueError(
+            f"n_points must be between {MIN_FRONTIER_POINTS} and {MAX_FRONTIER_POINTS}; "
+            f"got {n_points}."
+        )
+    return int(n_points)
 
 
 def estimate_inputs(prices: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame, int]:
