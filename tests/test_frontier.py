@@ -7,10 +7,12 @@ from test_optimization import five_assets, random_portfolios
 
 from risklens.analytics import (
     EfficientFrontier,
+    OptimizationError,
     analyze_portfolio,
     efficient_frontier,
     estimate_inputs,
     min_volatility_portfolio,
+    optimization,
 )
 
 # --- shape and endpoints ------------------------------------------------------------
@@ -102,3 +104,34 @@ def test_equal_expected_returns_give_the_single_min_volatility_point() -> None:
 
     assert len(frontier.points) == 1
     assert frontier.weights.iloc[0]["calm"] == pytest.approx(1.0, abs=1e-6)
+
+
+# --- solver failure -------------------------------------------------------------------
+
+
+def test_infeasible_targets_are_dropped_and_counted(monkeypatch: pytest.MonkeyPatch) -> None:
+    solve = optimization._target_return_solve
+    calls = iter(range(100))
+
+    def every_third_fails(*args: object) -> object:
+        if next(calls) % 3 == 1:
+            raise OptimizationError("target unreachable")
+        return solve(*args)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(optimization, "_target_return_solve", every_third_fails)
+
+    frontier = efficient_frontier(five_assets(), n_points=30)
+
+    assert frontier.infeasible_targets == 10
+    assert len(frontier.points) == len(frontier.weights) == 20
+    assert frontier.points["expected_return"].is_monotonic_increasing
+
+
+def test_frontier_with_no_solvable_point_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    def always_fails(*args: object) -> object:
+        raise OptimizationError("target unreachable")
+
+    monkeypatch.setattr(optimization, "_target_return_solve", always_fails)
+
+    with pytest.raises(OptimizationError, match="No efficient frontier point"):
+        efficient_frontier(five_assets())
