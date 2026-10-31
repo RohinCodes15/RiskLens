@@ -102,7 +102,7 @@ class EfficientFrontier:
     """Long-only minimum-volatility portfolios across target returns.
 
     Attributes:
-        points: one row per feasible target, sorted by expected return, with
+        points: one row per feasible target, in increasing target order, with
             columns ``expected_return``, ``volatility``, ``sharpe_ratio``
             (annual fractions; Sharpe is NaN when volatility is zero).
         weights: one row per point (same index as ``points``), one column
@@ -300,3 +300,54 @@ def _target_return_solve(
     return _solve(
         covariance, np.full(n, 1.0 / n), [(0.0, 1.0)] * n, directions, np.array([1.0, target])
     )
+
+
+def efficient_frontier(
+    prices: pd.DataFrame,
+    n_points: int = DEFAULT_FRONTIER_POINTS,
+    risk_free_rate: float = 0.0,
+) -> EfficientFrontier:
+    """Long-only efficient frontier from the minimum-volatility return to the best asset.
+
+    Targets are ``n_points`` evenly spaced expected returns from the
+    minimum-volatility portfolio's return up to the highest single-asset
+    expected return; returns below the minimum-volatility point are
+    inefficient and left out. Each point minimizes w' covariance w subject to
+    sum(w) = 1, expected @ w = target, and 0 <= w <= 1. Targets the solver
+    cannot reach are dropped and counted. If every asset has the same
+    expected return, the frontier is the single minimum-volatility point.
+    ``risk_free_rate`` (annual fraction) only sets the Sharpe column.
+
+    Raises:
+        ValueError: on invalid prices, too few returns, an invalid rate, or
+            an invalid ``n_points``.
+        OptimizationError: if the minimum-volatility solve or every
+            frontier solve fails.
+    """
+    rate = validate_risk_free_rate(risk_free_rate)
+    n_points = _validate_points(n_points)
+    expected, covariance, n_obs = estimate_inputs(prices)
+    lowest = min_volatility_portfolio(prices, rate).expected_return
+    highest = float(expected.max())
+    targets = [lowest] if np.isclose(lowest, highest) else np.linspace(lowest, highest, n_points)
+
+    portfolios, infeasible = [], 0
+    for target in targets:
+        try:
+            result = _target_return_solve(covariance.to_numpy(), expected.to_numpy(), target)
+        except OptimizationError:
+            infeasible += 1
+            continue
+        portfolios.append(_portfolio("target_return", result, expected, covariance, rate, n_obs))
+    if not portfolios:
+        raise OptimizationError("No efficient frontier point could be solved.")
+
+    points = pd.DataFrame(
+        {
+            "expected_return": [p.expected_return for p in portfolios],
+            "volatility": [p.volatility for p in portfolios],
+            "sharpe_ratio": [p.sharpe_ratio for p in portfolios],
+        }
+    )
+    weights = pd.DataFrame([p.weights.to_numpy() for p in portfolios], columns=expected.index)
+    return EfficientFrontier(points, weights, infeasible)
