@@ -121,13 +121,14 @@ def _solve(
     covariance: np.ndarray,
     x0: np.ndarray,
     bounds: list[tuple[float, float | None]],
-    direction: np.ndarray,
+    directions: np.ndarray,
+    targets: np.ndarray,
 ) -> OptimizeResult:
-    """Minimize x' covariance x s.t. direction @ x == 1 and ``bounds``.
+    """Minimize x' covariance x s.t. directions @ x == targets and ``bounds``.
 
-    The covariance is divided by its largest variance first: SLSQP's
-    tolerance is absolute, and rescaling the objective leaves the
-    minimizer unchanged.
+    ``directions`` has one row per linear equality constraint. The
+    covariance is divided by its largest variance first: SLSQP's tolerance
+    is absolute, and rescaling the objective leaves the minimizer unchanged.
 
     Raises:
         OptimizationError: unless SLSQP reports success with a finite,
@@ -136,11 +137,11 @@ def _solve(
     largest_variance = float(np.max(np.diag(covariance)))
     cov = covariance / largest_variance if largest_variance > 0 else covariance
 
-    def constraint(x: np.ndarray) -> float:
-        return float(direction @ x) - 1.0
+    def constraint(x: np.ndarray) -> np.ndarray:
+        return directions @ x - targets
 
     def constraint_gradient(x: np.ndarray) -> np.ndarray:
-        return direction
+        return directions
 
     result = minimize(
         lambda x: float(x @ cov @ x),
@@ -155,7 +156,7 @@ def _solve(
     feasible = (
         np.all(np.isfinite(x))
         and np.all(x >= -CONSTRAINT_TOLERANCE)
-        and abs(constraint(x)) <= CONSTRAINT_TOLERANCE
+        and np.all(np.abs(constraint(x)) <= CONSTRAINT_TOLERANCE)
     )
     if not result.success or not feasible:
         raise OptimizationError(f"Portfolio optimizer did not converge: {result.message}")
@@ -208,7 +209,9 @@ def min_volatility_portfolio(
     rate = validate_risk_free_rate(risk_free_rate)
     expected, covariance, n_obs = estimate_inputs(prices)
     n = len(expected)
-    result = _solve(covariance.to_numpy(), np.full(n, 1.0 / n), [(0.0, 1.0)] * n, np.ones(n))
+    result = _solve(
+        covariance.to_numpy(), np.full(n, 1.0 / n), [(0.0, 1.0)] * n, np.ones((1, n)), np.ones(1)
+    )
     return _portfolio("min_volatility", result, expected, covariance, rate, n_obs)
 
 
@@ -239,7 +242,9 @@ def max_sharpe_portfolio(prices: pd.DataFrame, risk_free_rate: float = 0.0) -> O
     direction = excess / excess.max()  # unit scale keeps y near 1; w = y / sum(y) is unchanged
     beats_rate = (excess > 0).astype(float)
     start = beats_rate / float(direction @ beats_rate)  # feasible: direction @ start == 1
-    result = _solve(covariance.to_numpy(), start, [(0.0, None)] * len(excess), direction)
+    result = _solve(
+        covariance.to_numpy(), start, [(0.0, None)] * len(excess), direction[None, :], np.ones(1)
+    )
     portfolio = _portfolio("max_sharpe", result, expected, covariance, rate, n_obs)
     if np.isclose(portfolio.volatility, 0.0):
         raise ValueError(
