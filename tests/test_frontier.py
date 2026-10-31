@@ -1,6 +1,7 @@
 """Deterministic tests for the long-only efficient frontier."""
 
 import numpy as np
+import pandas as pd
 import pytest
 from test_optimization import five_assets, random_portfolios
 
@@ -69,3 +70,35 @@ def test_no_sampled_portfolio_beats_a_frontier_point() -> None:
     for _, point in frontier.points.iterrows():
         reaches = sample_returns >= point["expected_return"]
         assert sample_vols[reaches].min() >= point["volatility"] - 1e-8
+
+
+# --- validation and edge cases -------------------------------------------------------
+
+
+@pytest.mark.parametrize("n_points", [1, 101, 2.5, True, "40"])
+def test_invalid_point_counts_are_rejected(n_points: object) -> None:
+    with pytest.raises(ValueError, match="n_points must be"):
+        efficient_frontier(five_assets(), n_points=n_points)  # type: ignore[arg-type]
+
+
+def test_invalid_risk_free_rate_is_rejected() -> None:
+    with pytest.raises(ValueError, match="annual fraction"):
+        efficient_frontier(five_assets(), risk_free_rate=4.0)
+
+
+def test_equal_expected_returns_give_the_single_min_volatility_point() -> None:
+    swings = np.tile([0.01, -0.01], 100)
+    returns = np.column_stack([swings, 2 * swings]) + 5e-4  # same mean, different risk
+    growth = np.vstack([np.ones((1, 2)), np.cumprod(1 + returns, axis=0)])  # keep every return
+    prices = pd.DataFrame(
+        100 * growth,
+        index=pd.bdate_range("2022-01-03", periods=len(growth)),
+        columns=["calm", "wild"],
+    )
+    expected, _, _ = estimate_inputs(prices)
+    assert expected["calm"] == pytest.approx(expected["wild"])
+
+    frontier = efficient_frontier(prices)
+
+    assert len(frontier.points) == 1
+    assert frontier.weights.iloc[0]["calm"] == pytest.approx(1.0, abs=1e-6)
