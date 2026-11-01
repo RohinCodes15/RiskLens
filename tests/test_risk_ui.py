@@ -148,13 +148,31 @@ def test_least_risky_current_portfolio_has_no_same_risk_point(prices: pd.DataFra
     assert any("no same-risk alternative" in note.value for note in app.info)
 
 
-def test_optimizer_failure_shows_a_warning(prices: pd.DataFrame) -> None:
+@pytest.mark.parametrize(
+    ("optimizer", "missing_column", "has_frontier"),
+    [
+        ("min_volatility_portfolio", "Minimum volatility", True),
+        ("max_sharpe_portfolio", "Maximum Sharpe", True),
+        ("efficient_frontier", None, False),
+    ],
+)
+def test_optimizer_failure_shows_a_warning(
+    prices: pd.DataFrame, optimizer: str, missing_column: str | None, has_frontier: bool
+) -> None:
     error = OptimizationError("Solver did not converge.")
-    with patch("risklens.analytics.max_sharpe_portfolio", side_effect=error):
+    with patch(f"risklens.analytics.{optimizer}", side_effect=error):
         app = click_button(analyzed_app(prices), "Optimize portfolio")
-    assert not app.exception
+    assert not app.exception and not app.error
     assert any("Solver did not converge" in note.value for note in app.warning)
-    assert not any(chart.key == "frontier_chart" for chart in app.get("plotly_chart"))
+    columns = app.dataframe[0].value.columns
+    assert "Current" in columns
+    for label in ["Minimum volatility", "Maximum Sharpe"]:
+        assert (label in columns) == (label != missing_column)
+    assert any(chart.key == "frontier_chart" for chart in app.get("plotly_chart")) == has_frontier
+    if has_frontier:
+        names = [trace["name"] for trace in chart_spec(app, "frontier_chart")["data"]]
+        assert missing_column not in names
+        assert "Current" in names and "Efficient frontier" in names
 
 
 def test_single_stock_skips_optimization(prices: pd.DataFrame) -> None:
