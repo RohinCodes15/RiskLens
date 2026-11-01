@@ -1,5 +1,8 @@
 """Validate user-supplied tickers, weights, rates, dates, and price tables.
 
+Price tables come in two forms: ``validate_prices`` for aligned prices with
+no gaps, and ``validate_price_history`` for per-asset histories with NaN.
+
 All functions raise ``ValueError`` with a message suitable for showing in the UI.
 """
 
@@ -133,6 +136,38 @@ def validate_prices(prices: pd.DataFrame, min_rows: int = MIN_PRICE_ROWS) -> pd.
     if np.any(values <= 0):
         raise ValueError("Prices must be positive.")
     return prices.astype(float)
+
+
+def validate_price_history(prices: pd.DataFrame) -> pd.DataFrame:
+    """Return a float copy of dated prices where NaN means "no observation".
+
+    Unlike ``validate_prices``, missing values are allowed, so each asset
+    keeps its own trading-date coverage (for example before it listed).
+    Rules: a DataFrame with at least one uniquely named asset column, a
+    sorted and unique ``DatetimeIndex``, numeric (non-boolean) columns, and
+    every observed price finite and strictly positive.
+
+    Raises:
+        ValueError: describing the first rule that is broken.
+    """
+    if not isinstance(prices, pd.DataFrame) or prices.shape[1] == 0:
+        raise ValueError("Prices must be a pandas DataFrame with at least one asset column.")
+    if not prices.columns.is_unique:
+        raise ValueError("Price columns must be unique.")
+    if not isinstance(prices.index, pd.DatetimeIndex):
+        raise ValueError("Prices must be indexed by date.")
+    if not (prices.index.is_monotonic_increasing and prices.index.is_unique):
+        raise ValueError("Price dates must be sorted and unique.")
+    if any(pd.api.types.is_bool_dtype(t) for t in prices.dtypes):
+        raise ValueError("Prices must be numbers.")
+    try:
+        clean = prices.astype(float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Prices must be numbers.") from exc
+    observed = clean.to_numpy()[~clean.isna().to_numpy()]
+    if not np.all(np.isfinite(observed)) or np.any(observed <= 0):
+        raise ValueError("Prices must be finite and positive where present.")
+    return clean
 
 
 def validate_date_range(
