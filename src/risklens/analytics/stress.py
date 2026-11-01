@@ -175,9 +175,15 @@ def _coverage_gaps(prices: pd.DataFrame, scenario: StressScenario) -> list[str]:
         if observed.empty:
             gaps.append(f"{asset} has no price data")
         elif _weekdays_between(scenario.start, observed[0]) > MAX_EDGE_WEEKDAYS:
-            gaps.append(f"{asset} history starts {observed[0].date()}")
+            gaps.append(
+                f"{asset} history starts {observed[0].date()}, "
+                f"after the scenario start {scenario.start.date()}"
+            )
         elif _weekdays_between(observed[-1] + ONE_DAY, scenario.end + ONE_DAY) > MAX_EDGE_WEEKDAYS:
-            gaps.append(f"{asset} history ends {observed[-1].date()}")
+            gaps.append(
+                f"{asset} history ends {observed[-1].date()}, "
+                f"before the scenario end {scenario.end.date()}"
+            )
     return gaps
 
 
