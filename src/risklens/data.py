@@ -9,7 +9,7 @@ from datetime import date
 import pandas as pd
 import yfinance as yf
 
-from risklens.validation import validate_date_range, validate_prices
+from risklens.validation import validate_date_range, validate_price_history, validate_prices
 
 
 class DataFetchError(RuntimeError):
@@ -84,6 +84,38 @@ def fetch_prices(
         raise DataFetchError("Not enough overlapping price history to compute returns.")
     try:
         return validate_prices(prices)
+    except ValueError as exc:
+        raise DataFetchError(f"Downloaded prices are unusable: {exc}") from exc
+
+
+def fetch_price_history(
+    tickers: Sequence[str],
+    start: str | date,
+    end: str | date | None = None,
+) -> pd.DataFrame:
+    """Return daily adjusted close prices with each ticker's own date coverage.
+
+    Unlike ``fetch_prices``, dates are not cut down to those shared by every
+    ticker. The index is every date on which at least one ticker traded, and
+    NaN marks a date a ticker has no price (before it listed, after it
+    delisted, or a missing day). A ticker with no data at all in the range
+    is kept as an all-NaN column. Prices are never filled or interpolated.
+    Columns follow the order of ``tickers``. Use this when coverage matters,
+    as in ``risklens.analytics.stress_test``.
+
+    Raises:
+        ValueError: if ``tickers`` is empty or the dates fail
+            ``validate_date_range``.
+        DataFetchError: if the download fails, is malformed, no ticker has
+            any price, or an observed price is not a finite positive number.
+    """
+    tickers = list(tickers)
+    close = _download_close(tickers, start, end)
+    history = close.reindex(columns=tickers).dropna(how="all")
+    if history.empty:
+        raise DataFetchError(f"No price data for: {', '.join(tickers)}.")
+    try:
+        return validate_price_history(history)
     except ValueError as exc:
         raise DataFetchError(f"Downloaded prices are unusable: {exc}") from exc
 
