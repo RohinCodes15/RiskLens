@@ -6,6 +6,7 @@ import pytest
 
 from risklens.validation import (
     MAX_TICKERS,
+    validate_price_history,
     validate_prices,
     validate_risk_free_rate,
     validate_tickers,
@@ -168,3 +169,45 @@ def test_date_range_rejects_bad_input(start: object, end: object, message: str) 
 
     with pytest.raises(ValueError, match=message):
         validate_date_range(start, end)  # type: ignore[arg-type]
+
+
+def test_price_history_keeps_missing_values_without_mutating_input() -> None:
+    raw = prices({"OLD": [1, 2, 3], "NEW": [np.nan, np.nan, 4]})
+    before = raw.copy()
+
+    result = validate_price_history(raw)
+
+    assert result is not raw
+    assert all(pd.api.types.is_float_dtype(dtype) for dtype in result.dtypes)
+    assert result["NEW"].isna().tolist() == [True, True, False]
+    pd.testing.assert_frame_equal(raw, before)
+
+
+def test_price_history_allows_an_asset_with_no_observations() -> None:
+    result = validate_price_history(prices({"A": [1.0, 2.0], "B": [np.nan, np.nan]}))
+
+    assert result["B"].isna().all()
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        ([1.0, 2.0], "DataFrame"),
+        (pd.DataFrame(index=pd.bdate_range("2024-01-02", periods=2)), "at least one asset"),
+        (
+            pd.DataFrame(
+                [[1.0, 2.0]], columns=["A", "A"], index=pd.bdate_range("2024-01-02", periods=1)
+            ),
+            "unique",
+        ),
+        (pd.DataFrame({"A": [1.0, 2.0]}), "indexed by date"),
+        (prices({"A": [1.0, 2.0]}).iloc[::-1], "sorted and unique"),
+        (prices({"A": [True, False]}), "numbers"),
+        (prices({"A": ["1.0", "x"]}), "numbers"),
+        (prices({"A": [1.0, np.nan, 0.0]}), "positive where present"),
+        (prices({"A": [np.nan, np.inf]}), "finite"),
+    ],
+)
+def test_price_history_rejects_bad_input(raw: object, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        validate_price_history(raw)  # type: ignore[arg-type]
