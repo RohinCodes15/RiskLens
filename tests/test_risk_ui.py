@@ -175,6 +175,32 @@ def test_optimizer_failure_shows_a_warning(
         assert "Current" in names and "Efficient frontier" in names
 
 
+def test_negative_returns_keep_minimum_volatility_and_frontier() -> None:
+    """Undefined maximum Sharpe must not hide valid lower-risk allocations."""
+    daily = np.random.default_rng(11).uniform(-0.02, -0.001, (80, 3))
+    prices = pd.DataFrame(
+        100 * np.cumprod(1 + daily, axis=0),
+        columns=["AAPL", "MSFT", "KO"],
+        index=pd.bdate_range("2025-01-02", periods=80),
+    )
+    app = click_button(analyzed_app(prices), "Optimize portfolio")
+    assert not app.exception and not app.error
+    assert any(
+        "Maximum Sharpe" in note.value and "risk-free rate" in note.value
+        for note in app.warning
+    )
+    table = app.dataframe[0].value
+    assert list(table.columns) == ["Current", "Minimum volatility"]
+    expected = min_volatility_portfolio(prices)
+    np.testing.assert_allclose(table["Minimum volatility"].iloc[:3], expected.weights)
+    frontier = efficient_frontier(prices)
+    traces = {trace["name"]: trace for trace in chart_spec(app, "frontier_chart")["data"]}
+    assert "Maximum Sharpe" not in traces and "Minimum volatility" in traces
+    np.testing.assert_allclose(
+        chart_values(traces["Efficient frontier"]["y"]), frontier.points["expected_return"]
+    )
+
+
 def test_single_stock_skips_optimization(prices: pd.DataFrame) -> None:
     app = analyzed_app(prices[["AAPL"]], tickers="AAPL")
     assert not app.exception
