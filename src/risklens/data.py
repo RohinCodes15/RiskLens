@@ -40,6 +40,23 @@ def _close_prices(raw: object, tickers: list[str]) -> pd.DataFrame:
     return close
 
 
+def _download_close(tickers: list[str], start: str | date, end: str | date | None) -> pd.DataFrame:
+    """Validate the request, download it, and return the raw adjusted Close table.
+
+    Raises:
+        ValueError: if ``tickers`` is empty or the dates fail ``validate_date_range``.
+        DataFetchError: if the download fails or the response is malformed.
+    """
+    if not tickers:
+        raise ValueError("Enter at least one ticker.")
+    validate_date_range(start, end)
+    try:
+        raw = yf.download(tickers, start=start, end=end, auto_adjust=True, progress=False)
+    except Exception as exc:  # yfinance raises many unrelated exception types
+        raise DataFetchError(f"Price download failed: {exc}") from exc
+    return _close_prices(raw, tickers)
+
+
 def fetch_prices(
     tickers: Sequence[str],
     start: str | date,
@@ -57,15 +74,7 @@ def fetch_prices(
             has no data, or the prices are not finite positive numbers.
     """
     tickers = list(tickers)
-    if not tickers:
-        raise ValueError("Enter at least one ticker.")
-    validate_date_range(start, end)
-    try:
-        raw = yf.download(tickers, start=start, end=end, auto_adjust=True, progress=False)
-    except Exception as exc:  # yfinance raises many unrelated exception types
-        raise DataFetchError(f"Price download failed: {exc}") from exc
-
-    close = _close_prices(raw, tickers)
+    close = _download_close(tickers, start, end)
     missing = [t for t in tickers if t not in close.columns or close[t].isna().all()]
     if missing:
         raise DataFetchError(f"No price data for: {', '.join(missing)}.")
