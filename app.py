@@ -202,41 +202,48 @@ def render_optimization(analysis: dict) -> None:
     if st.button("Optimize portfolio"):
         analysis.pop("optimization", None)
         analysis.pop("optimization_error", None)
+        analysis["optimization_errors"] = {}
+        results = []
         with st.spinner("Solving optimized portfolios…"):
-            try:
-                analysis["optimization"] = (
-                    min_volatility_portfolio(prices),
-                    max_sharpe_portfolio(prices),
-                    efficient_frontier(prices),
-                )
-            except ValueError as exc:
-                analysis["optimization_error"] = str(exc)
-    if "optimization_error" in analysis:
-        st.warning(f"Optimization is unavailable. {analysis['optimization_error']}")
-        return
+            for label, optimizer in (
+                ("Minimum volatility", min_volatility_portfolio),
+                ("Maximum Sharpe", max_sharpe_portfolio),
+                ("Efficient frontier", efficient_frontier),
+            ):
+                try:
+                    results.append(optimizer(prices))
+                except ValueError as exc:
+                    results.append(None)
+                    analysis["optimization_errors"][label] = str(exc)
+        analysis["optimization"] = tuple(results)
+    for label, message in analysis.get("optimization_errors", {}).items():
+        st.warning(f"{label} is unavailable. {message}")
     if "optimization" not in analysis:
         st.info("Select Optimize portfolio to compare your weights with optimized allocations.")
         return
+    if any(result is not None for result in analysis["optimization"]):
+        render_optimization_results(analysis)
+
+
+def render_optimization_results(analysis: dict) -> None:
+    """Show successful allocations and frontier with annualized fractional rates."""
     min_vol, max_sharpe, frontier = analysis["optimization"]
     current_return, current_volatility, current_sharpe, _ = analysis["metrics"]
+    allocations = {
+        "Current": [*analysis["weights"], current_return, current_volatility, current_sharpe],
+    }
+    for label, result in (("Minimum volatility", min_vol), ("Maximum Sharpe", max_sharpe)):
+        if result is not None:
+            allocations[label] = [
+                *result.weights,
+                result.expected_return,
+                result.volatility,
+                result.sharpe_ratio,
+            ]
     table = pd.DataFrame(
-        {
-            "Current": [*analysis["weights"], current_return, current_volatility, current_sharpe],
-            "Minimum volatility": [
-                *min_vol.weights,
-                min_vol.expected_return,
-                min_vol.volatility,
-                min_vol.sharpe_ratio,
-            ],
-            "Maximum Sharpe": [
-                *max_sharpe.weights,
-                max_sharpe.expected_return,
-                max_sharpe.volatility,
-                max_sharpe.sharpe_ratio,
-            ],
-        },
+        allocations,
         index=[
-            *(f"{ticker} weight" for ticker in prices.columns),
+            *(f"{ticker} weight" for ticker in analysis["prices"].columns),
             "Annualized return",
             "Annualized volatility",
             "Sharpe ratio",
@@ -246,22 +253,31 @@ def render_optimization(analysis: dict) -> None:
         table.style.format("{:.2%}").format("{:.2f}", subset=pd.IndexSlice[["Sharpe ratio"], :]),
         key="optimization_table",
     )
-    if min_vol.diagnostics.singular_covariance or max_sharpe.diagnostics.singular_covariance:
+    if any(
+        result is not None and result.diagnostics.singular_covariance
+        for result in (min_vol, max_sharpe)
+    ):
         st.warning(
             "The covariance matrix is singular (duplicate or constant-price stocks), so these weights are not unique."
         )
     st.caption(
         "In-sample results: weights are fit to the same history used to score them, so these figures are optimistic and not a forecast. Maximum-Sharpe weights are especially sensitive to the chosen period."
     )
-    render_frontier(
-        frontier, min_vol, max_sharpe, current_return, current_volatility, list(prices.columns)
-    )
+    if frontier is not None:
+        render_frontier(
+            frontier,
+            min_vol,
+            max_sharpe,
+            current_return,
+            current_volatility,
+            list(analysis["prices"].columns),
+        )
 
 
 def render_frontier(
     frontier: EfficientFrontier,
-    min_vol: OptimizedPortfolio,
-    max_sharpe: OptimizedPortfolio,
+    min_vol: OptimizedPortfolio | None,
+    max_sharpe: OptimizedPortfolio | None,
     current_return: float,
     current_volatility: float,
     tickers: list[str],
@@ -280,9 +296,13 @@ def render_frontier(
     )
     markers = [
         ("Current", current_volatility, current_return, "#e76f51", "x"),
-        ("Minimum volatility", min_vol.volatility, min_vol.expected_return, "#2a9d8f", "diamond"),
-        ("Maximum Sharpe", max_sharpe.volatility, max_sharpe.expected_return, "#e9c46a", "star"),
     ]
+    for label, result, color, symbol in (
+        ("Minimum volatility", min_vol, "#2a9d8f", "diamond"),
+        ("Maximum Sharpe", max_sharpe, "#e9c46a", "star"),
+    ):
+        if result is not None:
+            markers.append((label, result.volatility, result.expected_return, color, symbol))
     suggested = frontier_point_within_risk(frontier, current_volatility)
     if suggested is not None:
         point = points.loc[suggested]
