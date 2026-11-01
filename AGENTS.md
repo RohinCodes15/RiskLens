@@ -21,12 +21,16 @@ src/risklens/
      rolling.py       daily returns → dated rolling volatility, Sharpe, drawdown
      optimization.py  adjusted prices → long-only min-vol / max-Sharpe weights, efficient frontier
      simulation.py    daily returns → seeded Monte Carlo wealth percentiles
-     stress.py        prices + weights → historical stress-window results
+     stress.py        per-ticker price history + weights → historical stress-window results
 ```
 
 Data flow: raw input → `validation` → `data.fetch_prices` → `data.to_returns`
 → `analytics.analyze_portfolio` (→ `portfolio_returns` → metric functions)
 → UI charts/tables.
+
+Stress testing uses `data.fetch_price_history` instead, which keeps each
+ticker's own dates (NaN where it has no price) so `stress_test` can name the
+asset that does not cover a scenario. `fetch_prices` keeps only shared dates.
 
 Rules of the layering:
 - `risklens` modules never import Streamlit or Plotly. They return plain
