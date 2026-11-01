@@ -1,17 +1,17 @@
-# Graph Report - RiskLens  (2026-10-31)
+# Graph Report - RiskLens  (2026-11-01)
 
 ## Corpus Check
-- 37 files · ~24,931 words
+- 38 files · ~111,589 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 2 file(s) not represented in the graph (top: (none) 2)
 
 ## Summary
-- 662 nodes · 1996 edges · 19 communities (17 shown, 2 thin omitted)
-- Extraction: 83% EXTRACTED · 17% INFERRED · 0% AMBIGUOUS · INFERRED: 342 edges (avg confidence: 0.88)
+- 698 nodes · 2138 edges · 22 communities (19 shown, 3 thin omitted)
+- Extraction: 83% EXTRACTED · 17% INFERRED · 0% AMBIGUOUS · INFERRED: 362 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `20c9a3de`
+- Built from commit: `d4674470`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -21,29 +21,32 @@
 - numpy
 - data.py
 - test_smoke.py
-- analytics/__init__.py
+- test_concentration.py
 - test_risk_ui.py
 - pandas
 - pytest
 - risklens
 - test_optimization.py
-- test_rolling.py
-- app.py
-- analyze_portfolio
-- test_tail_risk_ui.py
-- DataFrame
-- test_stress_unavailable_preserves_dashboard
-- chart_spec
+- pytest
+- efficient_frontier
+- historical_cvar
+- test_invalid_tail_data_hides_risk_results
+- submit
+- RiskLens Quant
+- min_volatility_portfolio
+- optimization.py
+- OptimizationError
+- render_frontier
 
 ## God Nodes (most connected - your core abstractions)
-1. `Analytics API` - 50 edges
-2. `simulate_portfolio()` - 39 edges
-3. `stress_test()` - 38 edges
-4. `efficient_frontier()` - 33 edges
+1. `Analytics API` - 52 edges
+2. `stress_test()` - 46 edges
+3. `simulate_portfolio()` - 39 edges
+4. `efficient_frontier()` - 34 edges
 5. `five_assets()` - 32 edges
 6. `analyze_portfolio()` - 29 edges
-7. `custom_scenario()` - 24 edges
-8. `min_volatility_portfolio()` - 23 edges
+7. `custom_scenario()` - 25 edges
+8. `min_volatility_portfolio()` - 24 edges
 9. `max_sharpe_portfolio()` - 23 edges
 10. `to_returns()` - 23 edges
 
@@ -52,105 +55,113 @@
   README.md → src/risklens/analytics/metrics.py
 - `Monte Carlo (`simulate_portfolio`)` --references--> `simulate_portfolio()`  [INFERRED]
   README.md → src/risklens/analytics/simulation.py
+- `Coding standards` --references--> `DataFetchError`  [INFERRED]
+  AGENTS.md → src/risklens/data.py
+- `Usage` --references--> `fetch_price_history()`  [INFERRED]
+  README.md → src/risklens/data.py
 - `Analytics API` --references--> `compare_to_benchmark()`  [INFERRED]
   README.md → src/risklens/analytics/benchmark.py
-- `Analytics API` --references--> `benchmark_statistics()`  [INFERRED]
-  README.md → src/risklens/analytics/benchmark.py
-- `Analytics API` --references--> `correlation_matrix()`  [INFERRED]
-  README.md → src/risklens/analytics/concentration.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (19 total, 2 thin omitted)
+## Communities (22 total, 3 thin omitted)
 
 ### Community 0 - "stress_test"
-Cohesion: 0.07
-Nodes (35): _coverage_gaps(), custom_scenario(), _naive_dates(), _parse_date(), stress_test(), StressScenario, _validate_price_history(), _weekdays_between() (+27 more)
+Cohesion: 0.06
+Nodes (44): _coverage_gaps(), custom_scenario(), _naive_dates(), _parse_date(), stress_test(), StressScenario, _weekdays_between(), _window() (+36 more)
 
 ### Community 1 - "stress.py"
-Cohesion: 0.06
-Nodes (25): _validate_points(), to_returns(), _parse_date(), validate_date_range(), validate_prices(), validate_tickers(), validate_weights(), test_matching_time_zones_are_accepted() (+17 more)
+Cohesion: 0.05
+Nodes (31): render_rolling(), render_simulation(), render_stress_result(), render_tail_risk(), _parse_date(), validate_date_range(), validate_price_history(), validate_prices() (+23 more)
 
 ### Community 2 - "numpy"
-Cohesion: 0.12
-Nodes (31): _estimate_parameters(), simulate_portfolio(), dated(), noisy(), test_bad_settings_raise_value_error(), test_close_stamped_history_keeps_time_of_day(), test_constant_growth_prices_give_exactly_zero_volatility(), test_constant_history_is_deterministic() (+23 more)
+Cohesion: 0.11
+Nodes (32): _estimate_parameters(), simulate_portfolio(), _validate_int(), dated(), noisy(), test_bad_settings_raise_value_error(), test_close_stamped_history_keeps_time_of_day(), test_constant_growth_prices_give_exactly_zero_volatility() (+24 more)
 
 ### Community 3 - "data.py"
-Cohesion: 0.06
-Nodes (33): Agent rules, AGENTS.md — RiskLens Quant, Architecture, Coding standards, Ownership, render_stress_test(), Features, File structure (+25 more)
+Cohesion: 0.10
+Nodes (28): _close_prices(), DataFetchError, _download_close(), fetch_benchmark_prices(), fetch_price_history(), fetch_prices(), dates(), fetch() (+20 more)
 
 ### Community 4 - "test_smoke.py"
 Cohesion: 0.12
-Nodes (9): chart_values(), submit(), test_analyze_matches_engine_and_drawdown(), test_constant_prices_show_undefined_sharpe(), test_custom_stress_metrics_chart_and_invalid_dates(), test_initial_dashboard_has_inputs_and_no_fake_results(), test_new_analysis_resets_both_scenario_tools(), test_simulation_controls_fan_and_persistence() (+1 more)
+Nodes (6): chart_values(), test_analyze_matches_engine_and_drawdown(), test_initial_dashboard_has_inputs_and_no_fake_results(), test_simulation_controls_fan_and_persistence(), app_data(), test_confidence_switch_uses_api_and_actual_histogram()
 
-### Community 5 - "analytics/__init__.py"
-Cohesion: 0.08
-Nodes (27): Analytics API, Rolling risk metrics, BenchmarkStatistics, effective_holdings(), herfindahl_index(), PortfolioMetrics, max_drawdown(), SolverDiagnostics (+19 more)
+### Community 5 - "test_concentration.py"
+Cohesion: 0.14
+Nodes (15): correlation_matrix(), effective_holdings(), herfindahl_index(), test_concentration_accepts_numpy_weights_and_ignores_zero_weights(), test_concentration_rejects_invalid_weights(), test_constant_asset_has_nan_correlation(), test_correlation_drops_rows_with_missing_returns(), test_correlation_matrix_is_symmetric_with_unit_diagonal() (+7 more)
 
 ### Community 6 - "test_risk_ui.py"
-Cohesion: 0.20
-Nodes (14): analyzed_app(), make_prices(), prices(), select(), test_constant_prices_show_attribution_unavailable(), test_least_risky_current_portfolio_has_no_same_risk_point(), test_optimization_table_and_frontier_match_the_api(), test_optimization_waits_for_the_button() (+6 more)
+Cohesion: 0.16
+Nodes (17): analyzed_app(), make_prices(), prices(), select(), test_constant_prices_show_attribution_unavailable(), test_failed_optimization_rerun_clears_stale_results_and_recovers(), test_least_risky_current_portfolio_has_no_same_risk_point(), test_negative_returns_keep_minimum_volatility_and_frontier() (+9 more)
 
 ### Community 7 - "pandas"
-Cohesion: 0.08
-Nodes (31): _aligned_returns(), benchmark_statistics(), compare_to_benchmark(), correlation_matrix(), _future_dates(), series_from_returns(), test_constant_benchmark_returns_are_rejected(), test_low_volatility_benchmark_still_gives_beta() (+23 more)
+Cohesion: 0.09
+Nodes (26): _aligned_returns(), benchmark_statistics(), compare_to_benchmark(), _future_dates(), series_from_returns(), test_constant_benchmark_returns_are_rejected(), test_low_volatility_benchmark_still_gives_beta(), dates() (+18 more)
 
 ### Community 8 - "pytest"
-Cohesion: 0.06
-Nodes (45): Historical stress testing (`stress_test`, `run_stress_tests`), annualized_return(), annualized_volatility(), _as_float_values(), cumulative_wealth(), historical_cvar(), historical_var(), portfolio_returns() (+37 more)
+Cohesion: 0.05
+Nodes (47): Architecture, render_risk_attribution(), render_stress_test(), Analytics API, Historical stress testing (`stress_test`, `run_stress_tests`), Rolling risk metrics, BenchmarkStatistics, analyze_portfolio() (+39 more)
 
 ### Community 11 - "test_optimization.py"
-Cohesion: 0.05
-Nodes (60): render_frontier(), render_optimization(), Portfolio optimization, efficient_frontier(), EfficientFrontier, estimate_inputs(), frontier_point_within_risk(), max_sharpe_portfolio() (+52 more)
+Cohesion: 0.12
+Nodes (23): max_sharpe_portfolio(), make_prices(), random_portfolios(), test_diagnostics_report_a_converged_full_rank_solve(), test_duplicate_asset_is_flagged_singular_but_still_solved(), test_infeasible_solver_output_raises_optimization_error(), test_invalid_prices_are_rejected(), test_invalid_risk_free_rate_is_rejected() (+15 more)
 
-### Community 12 - "test_rolling.py"
-Cohesion: 0.11
-Nodes (33): drawdown_series(), dated(), test_does_not_mutate_input(), test_first_day_loss_counts_against_initial_wealth(), test_max_drawdown_is_minimum_of_series(), test_rejects_invalid_input(), test_tracks_peak_and_recovery_with_matching_dates(), dated() (+25 more)
+### Community 12 - "pytest"
+Cohesion: 0.08
+Nodes (43): _annualized_volatility(), _dated(), rolling_drawdown(), rolling_max_drawdown(), rolling_metrics(), rolling_sharpe(), rolling_volatility(), _validate_window() (+35 more)
 
-### Community 13 - "app.py"
+### Community 13 - "efficient_frontier"
+Cohesion: 0.21
+Nodes (17): efficient_frontier(), EfficientFrontier, frontier_point_within_risk(), test_equal_expected_returns_give_the_single_min_volatility_point(), test_frontier_has_requested_points_in_increasing_return_order(), test_frontier_runs_from_min_volatility_to_best_single_asset(), test_frontier_weights_are_long_only_and_metrics_match_engine(), test_invalid_point_counts_are_rejected() (+9 more)
+
+### Community 14 - "historical_cvar"
+Cohesion: 0.25
+Nodes (14): historical_cvar(), series(), test_cvar_averages_returns_at_or_below_var_threshold(), test_cvar_does_not_mutate_input(), test_cvar_is_negative_when_every_day_gains(), test_cvar_is_never_below_var(), test_cvar_rejects_bad_confidence(), test_cvar_rejects_bad_returns() (+6 more)
+
+### Community 16 - "submit"
+Cohesion: 0.08
+Nodes (14): download(), prices(), submit(), test_constant_prices_show_undefined_sharpe(), test_custom_stress_metrics_chart_and_invalid_dates(), test_failed_analysis_clears_previous_results(), test_historical_scenarios_use_their_own_download_window(), test_invalid_inputs_do_not_download() (+6 more)
+
+### Community 17 - "RiskLens Quant"
+Cohesion: 0.12
+Nodes (14): Agent rules, AGENTS.md — RiskLens Quant, Coding standards, Ownership, Features, File structure, Historical VaR and CVaR, Installation (+6 more)
+
+### Community 18 - "min_volatility_portfolio"
 Cohesion: 0.17
-Nodes (5): render_risk_attribution(), render_rolling(), render_simulation(), render_stress_result(), render_tail_risk()
+Nodes (10): Portfolio optimization, estimate_inputs(), min_volatility_portfolio(), OptimizedPortfolio, _portfolio(), test_constant_price_asset_gives_zero_volatility_and_nan_sharpe(), test_estimate_inputs_annualizes_mean_and_sample_covariance(), test_estimate_inputs_needs_more_returns_than_assets() (+2 more)
 
-### Community 14 - "analyze_portfolio"
-Cohesion: 0.26
-Nodes (7): analyze_portfolio(), prices(), test_constant_prices_give_zero_rates_and_nan_sharpe(), test_does_not_mutate_prices(), test_first_day_loss_counts_in_max_drawdown(), test_metrics_match_hand_calculation(), test_rejects_invalid_inputs()
+### Community 19 - "optimization.py"
+Cohesion: 0.16
+Nodes (4): _solve(), SolverDiagnostics, _target_return_solve(), _validate_points()
 
-### Community 15 - "test_tail_risk_ui.py"
-Cohesion: 0.17
-Nodes (3): app_data(), test_invalid_tail_data_hides_risk_results(), test_small_sample_warning_and_zero_returns()
+### Community 20 - "OptimizationError"
+Cohesion: 0.31
+Nodes (6): OptimizationError, test_frontier_with_no_solvable_point_raises(), always_fails(), test_infeasible_targets_are_dropped_and_counted(), every_third_fails(), test_optimization_error_is_a_value_error()
 
-### Community 16 - "DataFrame"
-Cohesion: 0.20
-Nodes (4): download(), prices(), test_single_stock_shows_full_concentration_without_heatmap(), test_spy_comparison_shows_chart_and_ending_returns()
-
-### Community 17 - "test_stress_unavailable_preserves_dashboard"
-Cohesion: 0.20
-Nodes (4): test_failed_analysis_clears_previous_results(), test_invalid_inputs_do_not_download(), test_simulation_failure_clears_stale_chart_and_persists(), test_stress_unavailable_preserves_dashboard()
-
-### Community 18 - "chart_spec"
-Cohesion: 0.29
-Nodes (3): chart_spec(), test_historical_scenarios_use_their_own_download_window(), test_confidence_switch_uses_api_and_actual_histogram()
+### Community 21 - "render_frontier"
+Cohesion: 0.33
+Nodes (3): render_frontier(), render_optimization(), render_optimization_results()
 
 ## Knowledge Gaps
 - **1 isolated node(s):** `risklens`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 199 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 204 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **3 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Analytics API` connect `analytics/__init__.py` to `stress_test`, `stress.py`, `numpy`, `data.py`, `pandas`, `pytest`, `test_optimization.py`, `test_rolling.py`, `analyze_portfolio`?**
+- **Why does `Analytics API` connect `pytest` to `stress_test`, `stress.py`, `numpy`, `data.py`, `test_concentration.py`, `pandas`, `test_optimization.py`, `pytest`, `efficient_frontier`, `historical_cvar`, `RiskLens Quant`, `min_volatility_portfolio`, `optimization.py`, `OptimizationError`?**
   _High betweenness centrality (0.083) - this node is a cross-community bridge._
-- **Are the 49 inferred relationships involving `Analytics API` (e.g. with `benchmark_statistics()` and `BenchmarkStatistics`) actually correct?**
-  _`Analytics API` has 49 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 51 inferred relationships involving `Analytics API` (e.g. with `benchmark_statistics()` and `BenchmarkStatistics`) actually correct?**
+  _`Analytics API` has 51 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `risklens` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `stress_test` be split into smaller, more focused modules?**
-  _Cohesion score 0.07199032062915911 - nodes in this community are weakly interconnected._
-- **Why does `simulate_portfolio()` connect `numpy` to `data.py`, `test_smoke.py`, `analytics/__init__.py`, `pandas`, `pytest`, `app.py`?**
-  _High betweenness centrality (0.040) - this node is a cross-community bridge._
-- **Are the 12 inferred relationships involving `simulate_portfolio()` (e.g. with `Analytics API` and `Monte Carlo (`simulate_portfolio`)`) actually correct?**
-  _`simulate_portfolio()` has 12 INFERRED edges - model-reasoned connections that need verification._
+  _Cohesion score 0.06335403726708075 - nodes in this community are weakly interconnected._
+- **Why does `simulate_portfolio()` connect `numpy` to `stress.py`, `test_smoke.py`, `pandas`, `pytest`, `RiskLens Quant`?**
+  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Are the 30 inferred relationships involving `stress_test()` (e.g. with `Architecture` and `render_stress_test()`) actually correct?**
+  _`stress_test()` has 30 INFERRED edges - model-reasoned connections that need verification._
 - **Should `stress.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.05901639344262295 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.051715309779825906 - nodes in this community are weakly interconnected._
