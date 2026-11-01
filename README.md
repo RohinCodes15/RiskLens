@@ -433,11 +433,18 @@ by closing level. `custom_scenario` builds any other inclusive range.
 - its last actual price is more than one weekday before the window end, or
 - fewer than 3 common price dates fall inside the window.
 
+The reason names only the assets that fall short and the edge they miss,
+for example `NEW history starts 2020-03-02, after the scenario start
+2020-02-19` or `OLD has no price data`.
+
 Weekends never count against coverage, and one missing weekday is allowed at
 each edge for an exchange holiday.
 
 **Inputs.** `prices` is a dated, sorted, unique DataFrame of positive
 prices. NaN means "no observation", for example before an asset listed.
+Fetch it with `fetch_price_history` so each asset keeps its own coverage;
+prices from `fetch_prices` are cut to shared dates, so one late listing
+makes every asset look short.
 Invalid prices, weights or scenarios raise `ValueError`. Scenario dates are
 stored as timezone-naive midnight timestamps, and timezone-aware price
 indexes are matched by calendar date.
@@ -461,19 +468,20 @@ metrics = analytics.analyze_portfolio(prices, [0.6, 0.4])
 sim = analytics.simulate_portfolio(metrics.daily_returns, horizon_days=252, seed=7)
 print(sim.loss_probability, sim.percentile_paths.iloc[-1])
 
-for result in analytics.run_stress_tests(prices, [0.6, 0.4]):
+history = data.fetch_price_history(["SPY", "TLT"], start="2007-01-01", end="2023-01-01")
+for result in analytics.run_stress_tests(history, [0.6, 0.4]):
     if result.available:
         print(result.scenario.name, result.cumulative_return, result.max_drawdown)
     else:
         print(result.scenario.name, "unavailable:", result.reason)
 
 covid_tail = analytics.custom_scenario("2020-02-19", "2020-06-30", name="COVID and rebound")
-print(analytics.stress_test(prices, [0.6, 0.4], covid_tail))
+print(analytics.stress_test(history, [0.6, 0.4], covid_tail))
 ```
 
-`fetch_prices` keeps only dates where every ticker has a price. Fetch from
-before the earliest scenario so coverage can be checked, and expect older
-scenarios to be unavailable for recently listed tickers.
+Fetch from before the earliest scenario so coverage can be checked. With
+`fetch_price_history`, a recently listed ticker makes only the older
+scenarios it missed unavailable, and the reason names that ticker alone.
 
 ## File structure
 
