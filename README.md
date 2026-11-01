@@ -489,7 +489,8 @@ scenarios it missed unavailable, and the reason names that ticker alone.
 app.py                    Streamlit dashboard
 src/risklens/
   validation.py           Ticker, weight, risk-free rate, price, and date checks
-  data.py                 Price download (yfinance), SPY benchmark, daily returns
+  data.py                 Price download (yfinance): aligned prices, per-ticker history,
+                          SPY benchmark, daily returns
   analytics/
     engine.py             analyze_portfolio and PortfolioMetrics
     metrics.py            Return-based metrics (volatility, Sharpe, VaR/CVaR, drawdown, ...)
