@@ -45,7 +45,8 @@ There is no separate backend or database: the Streamlit app calls the
 - Input validation for tickers, weights, risk-free rate, date ranges, and
   price tables.
 - Price download (yfinance, auto-adjusted closes) with date checks before
-  any request, and simple daily returns.
+  any request, either aligned to shared dates or as per-ticker history that
+  keeps each ticker's own coverage, and simple daily returns.
 - Risk metrics: annualized return and volatility, Sharpe ratio, cumulative
   wealth, drawdown series, max drawdown, and per-asset risk contributions.
 - Tail risk: historical VaR and CVaR (Expected Shortfall) at 95% and 99%
@@ -164,9 +165,22 @@ plus the frozen result types `PortfolioMetrics`, `BenchmarkStatistics`,
 docstring gives its units and sign conventions.
 
 `risklens.validation` provides `validate_tickers`, `validate_weights`,
-`validate_risk_free_rate`, `validate_prices`, and `validate_date_range`;
-`risklens.data` provides `fetch_prices`, `fetch_benchmark_prices`,
-`to_returns`, and `DataFetchError`.
+`validate_risk_free_rate`, `validate_prices`, `validate_price_history`, and
+`validate_date_range`; `risklens.data` provides `fetch_prices`,
+`fetch_price_history`, `fetch_benchmark_prices`, `to_returns`, and
+`DataFetchError`.
+
+**Two ways to fetch prices.**
+
+| Function | Dates kept | Missing prices | Use for |
+|----------|------------|----------------|---------|
+| `fetch_prices` | only dates every ticker traded | rows dropped; raises if any ticker has no data | metrics, benchmark, optimization |
+| `fetch_price_history` | every date at least one ticker traded | NaN, never filled; a ticker with no data is an all-NaN column | stress testing and other coverage checks |
+
+Both take `(tickers, start, end=None)`, download auto-adjusted closes, keep
+the ticker order, and raise `DataFetchError` for failed or unusable
+downloads. `fetch_prices` is unchanged; on the dates every ticker shares,
+the two return the same prices.
 
 Errors: `ValueError` for bad input, `risklens.data.DataFetchError` for
 download problems.
