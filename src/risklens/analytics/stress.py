@@ -9,8 +9,10 @@ Method:
     3. Report cumulative return, max drawdown, and annualized volatility with
        the existing metric functions.
 
-A scenario is marked unavailable, with a reason, when any asset's price
-history does not cover the whole window or too few common prices remain.
+A scenario is marked unavailable, with a reason naming each asset whose
+price history does not cover the whole window, or when too few common
+prices remain. Pass prices from ``risklens.data.fetch_price_history`` so
+each asset's own coverage is visible.
 
 Limitation: this applies today's weights to past returns. It is not the
 portfolio's actual historical holdings, trades, fees, or taxes.
@@ -201,6 +203,9 @@ def stress_test(
 
     ``prices`` are adjusted closes, one column per asset in ``weights`` order;
     NaN marks dates an asset has no observation (for example before listing).
+    Fetch them with ``risklens.data.fetch_price_history``, which keeps each
+    asset's own coverage. ``fetch_prices`` keeps only dates shared by every
+    asset, so one late listing would make every asset look short.
 
     Raises:
         ValueError: on invalid prices or weights. Missing history is not an
