@@ -201,6 +201,29 @@ def test_negative_returns_keep_minimum_volatility_and_frontier() -> None:
     )
 
 
+def test_failed_optimization_rerun_clears_stale_results_and_recovers(prices: pd.DataFrame) -> None:
+    """Failed reruns remove obsolete outputs; a later success clears all warnings."""
+    app = click_button(analyzed_app(prices), "Optimize portfolio")
+    error = OptimizationError("Solver did not converge.")
+    with (
+        patch("risklens.analytics.min_volatility_portfolio", side_effect=error),
+        patch("risklens.analytics.max_sharpe_portfolio", side_effect=error),
+        patch("risklens.analytics.efficient_frontier", side_effect=error),
+    ):
+        click_button(app, "Optimize portfolio")
+    assert not app.exception and not app.error
+    assert not app.dataframe
+    assert "frontier_chart" not in [chart.key for chart in app.get("plotly_chart")]
+    assert sum("Solver did not converge" in note.value for note in app.warning) == 3
+    app.run()
+    assert sum("Solver did not converge" in note.value for note in app.warning) == 3
+    click_button(app, "Optimize portfolio")
+    assert not app.exception and not app.error
+    assert "Maximum Sharpe" in app.dataframe[0].value.columns
+    assert chart_spec(app, "frontier_chart")["data"]
+    assert not any("Solver did not converge" in note.value for note in app.warning)
+
+
 def test_single_stock_skips_optimization(prices: pd.DataFrame) -> None:
     app = analyzed_app(prices[["AAPL"]], tickers="AAPL")
     assert not app.exception
