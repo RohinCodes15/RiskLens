@@ -31,7 +31,7 @@ from risklens.analytics.metrics import (
     portfolio_returns,
 )
 from risklens.data import to_returns
-from risklens.validation import validate_weights
+from risklens.validation import validate_price_history, validate_weights
 
 MIN_WINDOW_PRICES = MIN_VOLATILITY_OBS + 1  # three prices give two returns
 # A window edge may fall on a weekend or an exchange holiday. Weekends are
@@ -151,34 +151,6 @@ HISTORICAL_SCENARIOS: tuple[StressScenario, ...] = (
 )
 
 
-def _validate_price_history(prices: pd.DataFrame) -> pd.DataFrame:
-    """Return a float copy of dated prices; NaN means "no observation".
-
-    Raises:
-        ValueError: if prices are not a DataFrame with unique columns and a
-            sorted, unique DatetimeIndex, or an observed price is
-            non-numeric, infinite, or not positive.
-    """
-    if not isinstance(prices, pd.DataFrame) or prices.shape[1] == 0:
-        raise ValueError("Prices must be a pandas DataFrame with at least one asset column.")
-    if not prices.columns.is_unique:
-        raise ValueError("Price columns must be unique.")
-    if not isinstance(prices.index, pd.DatetimeIndex):
-        raise ValueError("Prices must be indexed by date.")
-    if not (prices.index.is_monotonic_increasing and prices.index.is_unique):
-        raise ValueError("Price dates must be sorted and unique.")
-    if any(pd.api.types.is_bool_dtype(t) for t in prices.dtypes):
-        raise ValueError("Prices must be numbers.")
-    try:
-        clean = prices.astype(float)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("Prices must be numbers.") from exc
-    observed = clean.to_numpy()[~clean.isna().to_numpy()]
-    if not np.all(np.isfinite(observed)) or np.any(observed <= 0):
-        raise ValueError("Prices must be finite and positive where present.")
-    return clean
-
-
 def _naive_dates(index: pd.DatetimeIndex) -> pd.DatetimeIndex:
     """Calendar dates of ``index`` without timezone, for comparing to windows."""
     return (index.tz_localize(None) if index.tz else index).normalize()
@@ -230,7 +202,7 @@ def stress_test(
     """
     if not isinstance(scenario, StressScenario):
         raise ValueError("scenario must be a StressScenario (see custom_scenario).")
-    clean = _validate_price_history(prices)
+    clean = validate_price_history(prices)
     w = validate_weights(weights, clean.shape[1])
     gaps = _coverage_gaps(clean, scenario)
     if gaps:
