@@ -309,10 +309,25 @@ def _target_return_solve(
     )
 
 
+def _reused_min_volatility_return(portfolio: object, expected: pd.Series, n_obs: int) -> float:
+    """Expected return of a ``min_volatility_portfolio`` result for these same prices."""
+    if not isinstance(portfolio, OptimizedPortfolio) or portfolio.objective != "min_volatility":
+        raise ValueError("min_volatility must be a min_volatility_portfolio result.")
+    if (
+        not portfolio.weights.index.equals(expected.index)
+        or portfolio.diagnostics.observations != n_obs
+        or not np.isclose(portfolio.expected_return, portfolio.weights @ expected)
+    ):
+        raise ValueError("min_volatility was computed from different prices.")
+    return portfolio.expected_return
+
+
 def efficient_frontier(
     prices: pd.DataFrame,
     n_points: int = DEFAULT_FRONTIER_POINTS,
     risk_free_rate: float = 0.0,
+    *,
+    min_volatility: OptimizedPortfolio | None = None,
 ) -> EfficientFrontier:
     """Long-only efficient frontier from the minimum-volatility return to the best asset.
 
@@ -325,16 +340,21 @@ def efficient_frontier(
     expected return, the frontier is the single minimum-volatility point.
     ``risk_free_rate`` (annual fraction) only sets the Sharpe column.
 
+    Pass ``min_volatility=min_volatility_portfolio(prices)`` to reuse it.
+
     Raises:
-        ValueError: on invalid prices, too few returns, an invalid rate, or
-            an invalid ``n_points``.
+        ValueError: on invalid prices, too few returns, an invalid rate, an
+            invalid ``n_points``, or a ``min_volatility`` from other prices.
         OptimizationError: if the minimum-volatility solve or every
             frontier solve fails.
     """
     rate = validate_risk_free_rate(risk_free_rate)
     n_points = _validate_points(n_points)
     expected, covariance, n_obs = estimate_inputs(prices)
-    lowest = _min_volatility(expected, covariance, rate, n_obs).expected_return
+    if min_volatility is None:
+        lowest = _min_volatility(expected, covariance, rate, n_obs).expected_return
+    else:
+        lowest = _reused_min_volatility_return(min_volatility, expected, n_obs)
     highest = float(expected.max())
     targets = [lowest] if np.isclose(lowest, highest) else np.linspace(lowest, highest, n_points)
 
