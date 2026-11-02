@@ -191,3 +191,17 @@ def test_reused_min_volatility_gives_the_same_frontier() -> None:
     pd.testing.assert_frame_equal(reused.points, computed.points)
     pd.testing.assert_frame_equal(reused.weights, computed.weights)
     assert reused.infeasible_targets == computed.infeasible_targets
+
+
+def test_reused_min_volatility_is_not_solved_again(monkeypatch: pytest.MonkeyPatch) -> None:
+    prices = five_assets()
+    lowest = min_volatility_portfolio(prices)
+
+    def must_not_run(*args: object) -> object:
+        raise AssertionError("minimum-volatility portfolio solved again")
+
+    monkeypatch.setattr(optimization, "_min_volatility", must_not_run)
+
+    frontier = efficient_frontier(prices, n_points=5, min_volatility=lowest)
+
+    assert frontier.points["expected_return"].iloc[0] == pytest.approx(lowest.expected_return)
