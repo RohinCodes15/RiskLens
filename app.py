@@ -214,7 +214,8 @@ def render_optimization(analysis: dict) -> None:
             for label, optimizer in (
                 ("Minimum volatility", min_volatility_portfolio),
                 ("Maximum Sharpe", max_sharpe_portfolio),
-                ("Efficient frontier", efficient_frontier),
+                # Reuse the minimum-volatility result; None makes the frontier solve it.
+                ("Efficient frontier", lambda p: efficient_frontier(p, min_volatility=results[0])),
             ):
                 try:
                     results.append(optimizer(prices))
