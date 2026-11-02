@@ -334,7 +334,7 @@ def efficient_frontier(
     rate = validate_risk_free_rate(risk_free_rate)
     n_points = _validate_points(n_points)
     expected, covariance, n_obs = estimate_inputs(prices)
-    lowest = min_volatility_portfolio(prices, rate).expected_return
+    lowest = _min_volatility(expected, covariance, rate, n_obs).expected_return
     highest = float(expected.max())
     targets = [lowest] if np.isclose(lowest, highest) else np.linspace(lowest, highest, n_points)
 
