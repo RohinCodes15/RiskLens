@@ -237,3 +237,20 @@ def test_frontier_reuses_the_minimum_volatility_result(prices: pd.DataFrame) -> 
     min_vol = app.session_state["analysis"]["optimization"][0]
     assert frontier.call_count == 1
     assert frontier.call_args.kwargs["min_volatility"] is min_vol
+
+
+def test_frontier_solves_its_own_minimum_volatility_after_a_failure(prices: pd.DataFrame) -> None:
+    error = OptimizationError("Solver did not converge.")
+    with (
+        patch("risklens.analytics.min_volatility_portfolio", side_effect=error),
+        patch("risklens.analytics.efficient_frontier", wraps=efficient_frontier) as frontier,
+    ):
+        app = click_button(analyzed_app(prices), "Optimize portfolio")
+    assert not app.exception and not app.error
+    assert frontier.call_args.kwargs["min_volatility"] is None
+    traces = {trace["name"]: trace for trace in chart_spec(app, "frontier_chart")["data"]}
+    np.testing.assert_allclose(
+        chart_values(traces["Efficient frontier"]["x"]),
+        efficient_frontier(prices).points["volatility"],
+        rtol=1e-6,
+    )
