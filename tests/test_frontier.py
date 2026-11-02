@@ -248,3 +248,15 @@ def test_reused_portfolio_must_be_min_volatility(portfolio: object) -> None:
     prices = five_assets()
     with pytest.raises(ValueError, match="must be a min_volatility_portfolio"):
         efficient_frontier(prices, min_volatility=portfolio(prices))  # type: ignore[operator]
+
+
+@pytest.mark.parametrize(
+    "columns",
+    [["A0", "A1", "A2", "A3"], ["A4", "A3", "A2", "A1", "A0"]],
+    ids=["subset", "reordered"],
+)
+def test_reused_min_volatility_must_cover_the_same_assets(columns: list[str]) -> None:
+    prices = five_assets()
+    other = min_volatility_portfolio(prices[columns])
+    with pytest.raises(ValueError, match="different prices"):
+        efficient_frontier(prices, min_volatility=other)
