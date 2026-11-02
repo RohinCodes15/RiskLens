@@ -267,3 +267,9 @@ def test_reused_min_volatility_must_use_the_same_observations() -> None:
     shorter = min_volatility_portfolio(prices.iloc[1:])
     with pytest.raises(ValueError, match="different prices"):
         efficient_frontier(prices, min_volatility=shorter)
+
+
+def test_reused_min_volatility_must_come_from_the_same_prices() -> None:
+    other = min_volatility_portfolio(five_assets(seed=1))
+    with pytest.raises(ValueError, match="different prices"):
+        efficient_frontier(five_assets(), min_volatility=other)
