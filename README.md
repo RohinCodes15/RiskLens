@@ -311,10 +311,16 @@ asset. Targets the solver cannot reach are dropped and counted in
 When every asset has the same expected return, the frontier is the single
 minimum-volatility point. For reference markers, plot
 `min_volatility_portfolio`, `max_sharpe_portfolio`, and the current weights
-(via `analyze_portfolio`) on the same axes.
+(via `analyze_portfolio`) on the same axes. If you already have
+`min_volatility_portfolio(prices)`, pass it as `min_volatility=` so the
+frontier does not solve it again; a result from other prices or assets
+raises `ValueError`.
 
 ```python
-frontier = analytics.efficient_frontier(prices, n_points=40, risk_free_rate=0.04)
+safest = analytics.min_volatility_portfolio(prices)
+frontier = analytics.efficient_frontier(
+    prices, n_points=40, risk_free_rate=0.04, min_volatility=safest
+)
 print(frontier.points.head(), frontier.infeasible_targets)
 ```
 
