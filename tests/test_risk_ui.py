@@ -228,3 +228,12 @@ def test_single_stock_skips_optimization(prices: pd.DataFrame) -> None:
     assert not app.exception
     assert not any(button.label == "Optimize portfolio" for button in app.button)
     assert any("at least two stocks" in note.value for note in app.info)
+
+
+def test_frontier_reuses_the_minimum_volatility_result(prices: pd.DataFrame) -> None:
+    with patch("risklens.analytics.efficient_frontier", wraps=efficient_frontier) as frontier:
+        app = click_button(analyzed_app(prices), "Optimize portfolio")
+    assert not app.exception and not app.error
+    min_vol = app.session_state["analysis"]["optimization"][0]
+    assert frontier.call_count == 1
+    assert frontier.call_args.kwargs["min_volatility"] is min_vol
