@@ -205,3 +205,21 @@ def test_reused_min_volatility_is_not_solved_again(monkeypatch: pytest.MonkeyPat
     frontier = efficient_frontier(prices, n_points=5, min_volatility=lowest)
 
     assert frontier.points["expected_return"].iloc[0] == pytest.approx(lowest.expected_return)
+
+
+def test_frontier_estimates_inputs_and_solves_min_volatility_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = {"estimate_inputs": 0, "_min_volatility": 0}
+    for name in calls:
+        original = getattr(optimization, name)
+
+        def counted(*args: object, _name: str = name, _original: object = original) -> object:
+            calls[_name] += 1
+            return _original(*args)  # type: ignore[operator]
+
+        monkeypatch.setattr(optimization, name, counted)
+
+    efficient_frontier(five_assets(), n_points=5)
+
+    assert calls == {"estimate_inputs": 1, "_min_volatility": 1}
