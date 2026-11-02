@@ -223,3 +223,16 @@ def test_frontier_estimates_inputs_and_solves_min_volatility_once(
     efficient_frontier(five_assets(), n_points=5)
 
     assert calls == {"estimate_inputs": 1, "_min_volatility": 1}
+
+
+def test_reused_min_volatility_risk_free_rate_does_not_matter() -> None:
+    prices = five_assets()
+    computed = efficient_frontier(prices, n_points=8, risk_free_rate=0.03)
+    reused = efficient_frontier(
+        prices,
+        n_points=8,
+        risk_free_rate=0.03,
+        min_volatility=min_volatility_portfolio(prices, risk_free_rate=0.0),
+    )
+
+    pd.testing.assert_frame_equal(reused.points, computed.points)
