@@ -273,3 +273,21 @@ def test_reused_min_volatility_must_come_from_the_same_prices() -> None:
     other = min_volatility_portfolio(five_assets(seed=1))
     with pytest.raises(ValueError, match="different prices"):
         efficient_frontier(five_assets(), min_volatility=other)
+
+
+def test_reused_min_volatility_with_equal_expected_returns_gives_one_point() -> None:
+    swings = np.tile([0.01, -0.01], 100)
+    returns = np.column_stack([swings, 2 * swings]) + 5e-4
+    growth = np.vstack([np.ones((1, 2)), np.cumprod(1 + returns, axis=0)])
+    prices = pd.DataFrame(
+        100 * growth,
+        index=pd.bdate_range("2022-01-03", periods=len(growth)),
+        columns=["calm", "wild"],
+    )
+    lowest = min_volatility_portfolio(prices)
+
+    frontier = efficient_frontier(prices, min_volatility=lowest)
+
+    assert len(frontier.points) == 1
+    assert frontier.points["volatility"].iloc[0] == pytest.approx(lowest.volatility, rel=1e-6)
+    np.testing.assert_allclose(frontier.weights.iloc[0], lowest.weights, atol=1e-6)
