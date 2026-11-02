@@ -1,8 +1,8 @@
 {
   "app.py": {
-    "mtime": 1793572704.782087,
-    "seen": 1793572788.395436,
-    "ast_hash": "13513d508966bdda7d9c8e329e6ca1df",
+    "mtime": 1793652309.7427907,
+    "seen": 1793652436.407201,
+    "ast_hash": "69b5f309dfbe0ff7d1e78e7fe25be1a2",
     "semantic_hash": ""
   },
   "pyproject.toml": {
@@ -168,15 +168,15 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793575155.5744996,
-    "seen": 1793575217.75535,
-    "ast_hash": "7e6b19ef153458c0b0767d298733c585",
+    "mtime": 1793652388.9119544,
+    "seen": 1793652436.407258,
+    "ast_hash": "8a557ad96c4eac7fe6a5a42bb2334dd4",
     "semantic_hash": ""
   },
   "src/risklens/analytics/optimization.py": {
-    "mtime": 1793479418.5928187,
-    "seen": 1793479456.12335,
-    "ast_hash": "fa74cb53849ee692a5dff41e89378696",
+    "mtime": 1793652187.9275613,
+    "seen": 1793652436.40722,
+    "ast_hash": "8552112c398393c4a8004207867870d5",
     "semantic_hash": ""
   },
   "src/risklens/analytics/rolling.py": {
@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "tests/test_frontier.py": {
-    "mtime": 1793477111.4994338,
-    "seen": 1793479456.1233659,
-    "ast_hash": "3017a5da0b87c5cf6881e06a743024fe",
+    "mtime": 1793652281.0030053,
+    "seen": 1793652436.407236,
+    "ast_hash": "54a386ede870593d7e8b6d0811b4f3b5",
     "semantic_hash": ""
   },
   "tests/test_optimization.py": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "tests/test_risk_ui.py": {
-    "mtime": 1793580020.2309115,
-    "seen": 1793580145.159206,
-    "ast_hash": "9e7f70d484e2086bc3330ea45bdaee16",
+    "mtime": 1793652368.674296,
+    "seen": 1793652436.40724,
+    "ast_hash": "9b10d8fcecbca2ecefbc74a5a3677c90",
     "semantic_hash": ""
   },
   "tests/test_stress_history.py": {
