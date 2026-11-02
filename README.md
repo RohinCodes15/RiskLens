@@ -267,7 +267,7 @@ the worst peak-to-trough fall inside each window. Both are fractions ≤ 0.
 ```python
 min_volatility_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
 max_sharpe_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
-efficient_frontier(prices, n_points=40, risk_free_rate=0.0) -> EfficientFrontier
+efficient_frontier(prices, n_points=40, risk_free_rate=0.0, *, min_volatility=None) -> EfficientFrontier
 frontier_point_within_risk(frontier, current_volatility) -> int | None
 estimate_inputs(prices) -> (expected_returns, covariance, observations)
 ```
