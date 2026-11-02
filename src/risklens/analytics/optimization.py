@@ -241,6 +241,13 @@ def min_volatility_portfolio(
     """
     rate = validate_risk_free_rate(risk_free_rate)
     expected, covariance, n_obs = estimate_inputs(prices)
+    return _min_volatility(expected, covariance, rate, n_obs)
+
+
+def _min_volatility(
+    expected: pd.Series, covariance: pd.DataFrame, rate: float, n_obs: int
+) -> OptimizedPortfolio:
+    """Minimum-volatility portfolio from already estimated, validated inputs."""
     n = len(expected)
     result = _solve(
         covariance.to_numpy(), np.full(n, 1.0 / n), [(0.0, 1.0)] * n, np.ones((1, n)), np.ones(1)
