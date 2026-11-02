@@ -176,3 +176,18 @@ def test_within_risk_accepts_numpy_and_int_budgets() -> None:
     frontier = efficient_frontier(five_assets(), n_points=3)
     assert frontier_point_within_risk(frontier, np.float64(10.0)) == 2
     assert frontier_point_within_risk(frontier, 0) is None
+
+
+# --- reusing a computed minimum-volatility portfolio -----------------------------------
+
+
+def test_reused_min_volatility_gives_the_same_frontier() -> None:
+    prices = five_assets()
+    computed = efficient_frontier(prices, n_points=15, risk_free_rate=0.02)
+    reused = efficient_frontier(
+        prices, n_points=15, risk_free_rate=0.02, min_volatility=min_volatility_portfolio(prices)
+    )
+
+    pd.testing.assert_frame_equal(reused.points, computed.points)
+    pd.testing.assert_frame_equal(reused.weights, computed.weights)
+    assert reused.infeasible_targets == computed.infeasible_targets
