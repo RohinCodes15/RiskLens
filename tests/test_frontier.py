@@ -12,6 +12,7 @@ from risklens.analytics import (
     efficient_frontier,
     estimate_inputs,
     frontier_point_within_risk,
+    max_sharpe_portfolio,
     min_volatility_portfolio,
     optimization,
 )
@@ -236,3 +237,14 @@ def test_reused_min_volatility_risk_free_rate_does_not_matter() -> None:
     )
 
     pd.testing.assert_frame_equal(reused.points, computed.points)
+
+
+@pytest.mark.parametrize(
+    "portfolio",
+    [max_sharpe_portfolio, lambda prices: "min_volatility"],
+    ids=["max_sharpe", "not_a_portfolio"],
+)
+def test_reused_portfolio_must_be_min_volatility(portfolio: object) -> None:
+    prices = five_assets()
+    with pytest.raises(ValueError, match="must be a min_volatility_portfolio"):
+        efficient_frontier(prices, min_volatility=portfolio(prices))  # type: ignore[operator]
