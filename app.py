@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from risklens.analytics import (
+    FACTOR_COLUMNS,
     HISTORICAL_SCENARIOS,
     KUPIEC_SIGNIFICANCE,
     ROLLING_WINDOWS,
@@ -25,7 +26,9 @@ from risklens.analytics import (
     drawdown_series,
     effective_holdings,
     efficient_frontier,
+    factor_exposure,
     frontier_point_within_risk,
+    group_breakdown,
     herfindahl_index,
     max_sharpe_portfolio,
     min_volatility_portfolio,
@@ -48,6 +51,8 @@ from risklens.analytics.simulation import (
 from risklens.data import (
     DataFetchError,
     fetch_benchmark_prices,
+    fetch_classifications,
+    fetch_factors,
     fetch_price_history,
     fetch_prices,
     to_returns,
@@ -422,6 +427,89 @@ def render_risk_attribution(analysis: dict) -> None:
     st.plotly_chart(attribution_fig, key="risk_attribution_chart")
     st.caption(
         "Share of portfolio risk = weight × the stock's covariance with the portfolio ÷ portfolio variance; shares sum to 100%. A stock can carry more risk than its weight, and a negative share means it reduces total risk."
+    )
+
+
+FACTOR_NAMES = {
+    "Mkt-RF": "Market",
+    "SMB": "Size (small − big)",
+    "HML": "Value (high − low)",
+    "Mom": "Momentum",
+}
+
+
+def render_risk_sources(analysis: dict) -> None:
+    """Show Fama-French factor betas and the sector/country split of weight and risk."""
+    st.divider()
+    st.subheader("Where risk comes from")
+    st.caption(
+        "Factor data comes from the Kenneth R. French Data Library; sectors and countries from Yahoo Finance profiles."
+    )
+    if st.button("Load factor and sector data"):
+        analysis.pop("risk_sources_error", None)
+        prices = analysis["prices"]
+        try:
+            with st.spinner("Downloading factor returns and company profiles…"):
+                factors = fetch_factors(
+                    prices.index.min().date(), prices.index.max().date() + timedelta(days=1)
+                )
+                labels = fetch_classifications(list(prices.columns))
+            analysis["risk_sources"] = (factors, labels)
+        except (ValueError, DataFetchError) as exc:
+            analysis["risk_sources_error"] = str(exc)
+    if "risk_sources_error" in analysis:
+        st.warning(f"Factor and sector data are unavailable. {analysis['risk_sources_error']}")
+        return
+    if "risk_sources" not in analysis:
+        st.info("Select Load factor and sector data to see factor betas and sector exposure.")
+        return
+    factors, labels = analysis["risk_sources"]
+    render_factor_exposure(analysis["daily_returns"], factors)
+    returns = to_returns(analysis["prices"])
+    for column, title in (("sector", "Sector"), ("country", "Country")):
+        try:
+            table = group_breakdown(returns, analysis["weights"], labels[column].rename(title))
+        except ValueError as exc:
+            st.info(f"{title} breakdown is unavailable. {exc}")
+            continue
+        st.markdown(f"**{title} breakdown**")
+        st.dataframe(
+            table.rename(columns={"weight": "Weight", "risk_share": "Share of risk"}).style.format(
+                "{:.2%}"
+            ),
+            key=f"{column}_breakdown",
+        )
+    st.caption(
+        "Share of risk sums each holding's share of portfolio variance, as in Risk attribution above. Funds have no Yahoo sector and are grouped by type (e.g. ETF)."
+    )
+
+
+def render_factor_exposure(daily: pd.Series, factors: pd.DataFrame) -> None:
+    """Show Fama-French-Carhart betas, annualized alpha, and R² for the portfolio."""
+    st.markdown("**Fama-French factor exposure**")
+    try:
+        exposure = factor_exposure(daily, factors)
+    except ValueError as exc:
+        st.info(f"Factor exposure is unavailable. {exc}")
+        return
+    columns = st.columns(len(FACTOR_COLUMNS) + 2)
+    for column, factor in zip(columns, FACTOR_COLUMNS, strict=False):
+        with column.container(border=True):
+            st.metric(f"{FACTOR_NAMES[factor]} beta", f"{exposure.betas[factor]:.2f}")
+    with columns[-2].container(border=True):
+        st.metric(
+            "Alpha (annualized)",
+            f"{exposure.alpha:.2%}",
+            help="Return not explained by the factors: daily regression intercept × 252.",
+        )
+    with columns[-1].container(border=True):
+        st.metric(
+            "R²",
+            f"{exposure.r_squared:.2f}",
+            help="Share of daily excess-return variance the four factors explain.",
+        )
+    st.caption(
+        f"OLS of daily portfolio returns minus the risk-free rate on the market, size, value and momentum factors, over {exposure.observations} days ({exposure.first_date:%b %d, %Y} – {exposure.last_date:%b %d, %Y}). The factor library is published with a lag, so recent days may be left out."
     )
 
 
