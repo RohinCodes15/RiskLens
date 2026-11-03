@@ -436,6 +436,37 @@ about 125 test days) at the Tail Risk confidence level. A window with
 under five days beyond the cutoff (every window at 99%) leaves historical
 VaR noisy and prone to too many breaches, and the dashboard says so.
 
+## Factor and sector exposure
+
+**Load factor and sector data** downloads two extra sources, so it runs only
+when you ask:
+
+- **Factors** (`data.fetch_factors`): daily Fama-French 3 factors (`Mkt-RF`,
+  `SMB`, `HML`), Carhart momentum (`Mom`) and the risk-free rate (`RF`) from the
+  [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html),
+  converted from percent to fractions. The library lags by a month or more,
+  so the latest days of your period may be left out.
+- **Sectors and countries** (`data.fetch_classifications`): from each ticker's
+  Yahoo Finance profile. Funds have no sector and are grouped by quote type
+  (e.g. `ETF`); a profile that cannot be loaded shows as `Unknown`.
+
+`factor_exposure(returns, factors)` regresses daily portfolio returns minus
+`RF` on the four factors by ordinary least squares:
+
+```
+r_p − RF = α + β_mkt·(Mkt−RF) + β_smb·SMB + β_hml·HML + β_mom·Mom + ε
+```
+
+It returns a `FactorExposure` with the betas, alpha annualized as the daily
+intercept × 252, R² (the share of excess-return variance the factors
+explain), and the dates used. It needs at least `MIN_FACTOR_OBS` (60) days
+shared with the factor data. The portfolio returns follow the selected
+rebalancing and are net of trading costs.
+
+`group_breakdown(returns, weights, labels)` sums allocation weights and
+`risk_contributions` shares by sector or country. Like Risk attribution, the
+risk shares use the target weights and the full-period covariance.
+
 ## Rolling risk metrics
 
 ```python
