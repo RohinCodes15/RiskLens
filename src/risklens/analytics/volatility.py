@@ -38,6 +38,7 @@ from risklens.analytics.metrics import (
 
 EWMA_LAMBDA = 0.94  # RiskMetrics daily decay factor
 MIN_GARCH_OBS = 200  # about ten months of trading days for a stable fit
+MAX_FORECAST_DAYS = 252
 MAX_PERSISTENCE = 1.0 - 1e-6  # keeps α + β strictly below 1 (finite long-run variance)
 GARCH_START = (0.05, 0.90)  # typical daily equity values, a safe optimizer start
 ANNUALIZE = np.sqrt(TRADING_DAYS_PER_YEAR)
@@ -156,3 +157,29 @@ def fit_garch(returns: pd.Series) -> GarchFit:
         log_likelihood=-float(result.fun),
         observations=len(values),
     )
+
+
+def garch_forecast(fit: GarchFit, horizon_days: int) -> pd.Series:
+    """Annualized GARCH volatility forecast for each of the next ``horizon_days`` days.
+
+    Day h has variance v̄ + (α + β)^(h−1)·(σ²_next − v̄), where σ²_next is the
+    last conditional variance. The index is the day ahead, 1 to ``horizon_days``.
+
+    Raises:
+        ValueError: if ``horizon_days`` is not a whole number from 1 to
+            ``MAX_FORECAST_DAYS``.
+    """
+    if isinstance(horizon_days, bool) or not isinstance(horizon_days, (int, np.integer)):
+        raise ValueError("horizon_days must be a whole number.")
+    if not 1 <= horizon_days <= MAX_FORECAST_DAYS:
+        raise ValueError(f"horizon_days must be between 1 and {MAX_FORECAST_DAYS}.")
+    long_run = fit.long_run_volatility**2
+    nxt = float(fit.conditional_volatility.iloc[-1]) ** 2
+    days = np.arange(1, int(horizon_days) + 1)
+    variance = long_run + fit.persistence ** (days - 1) * (nxt - long_run)
+    return pd.Series(np.sqrt(variance), index=pd.Index(days, name="day"), name="garch")
+
+
+def horizon_volatility(forecast: pd.Series) -> float:
+    """Annualized volatility over a whole forecast horizon: sqrt of the mean daily variance."""
+    return float(np.sqrt(np.mean(forecast.to_numpy(dtype=float) ** 2)))
