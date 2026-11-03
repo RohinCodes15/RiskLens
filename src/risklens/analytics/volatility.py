@@ -26,6 +26,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from scipy.signal import lfilter
 
 from risklens.analytics.metrics import (
     MIN_VOLATILITY_OBS,
@@ -92,3 +93,20 @@ class GarchFit:
     def persistence(self) -> float:
         """α + β: the share of a variance shock still present the next day."""
         return self.alpha + self.beta
+
+
+def _conditional_variance(
+    shocks: np.ndarray, omega: float, alpha: float, beta: float, start: float
+) -> np.ndarray:
+    """σ²_0..σ²_n: σ²_0 = ``start`` and σ²_t = ω + α·e²_{t−1} + β·σ²_{t−1}."""
+    drive = omega + alpha * shocks**2
+    rest, _ = lfilter([1.0], [1.0, -beta], drive, zi=[beta * start])
+    return np.concatenate([[start], rest])
+
+
+def _negative_log_likelihood(params: np.ndarray, shocks: np.ndarray, variance: float) -> float:
+    """Gaussian negative log-likelihood of ``shocks`` under variance-targeted GARCH(1,1)."""
+    alpha, beta = params
+    omega = variance * (1.0 - alpha - beta)
+    var = _conditional_variance(shocks, omega, alpha, beta, variance)[:-1]
+    return 0.5 * float(np.sum(np.log(2.0 * np.pi * var) + shocks**2 / var))
