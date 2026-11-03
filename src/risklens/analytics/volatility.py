@@ -26,15 +26,20 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import minimize
 from scipy.signal import lfilter
 
 from risklens.analytics.metrics import (
     MIN_VOLATILITY_OBS,
+    RETURN_NOISE_TOLERANCE,
     TRADING_DAYS_PER_YEAR,
     _validate_dated_returns,
 )
 
 EWMA_LAMBDA = 0.94  # RiskMetrics daily decay factor
+MIN_GARCH_OBS = 200  # about ten months of trading days for a stable fit
+MAX_PERSISTENCE = 1.0 - 1e-6  # keeps α + β strictly below 1 (finite long-run variance)
+GARCH_START = (0.05, 0.90)  # typical daily equity values, a safe optimizer start
 ANNUALIZE = np.sqrt(TRADING_DAYS_PER_YEAR)
 
 
@@ -110,3 +115,44 @@ def _negative_log_likelihood(params: np.ndarray, shocks: np.ndarray, variance: f
     omega = variance * (1.0 - alpha - beta)
     var = _conditional_variance(shocks, omega, alpha, beta, variance)[:-1]
     return 0.5 * float(np.sum(np.log(2.0 * np.pi * var) + shocks**2 / var))
+
+
+def fit_garch(returns: pd.Series) -> GarchFit:
+    """Fit GARCH(1,1) with variance targeting by maximum likelihood.
+
+    Raises:
+        ValueError: if returns are not dated, sorted, unique, and finite, there
+            are fewer than ``MIN_GARCH_OBS``, they are constant, or the
+            optimizer does not converge.
+    """
+    values = _checked_returns(returns, MIN_GARCH_OBS)
+    mean = float(values.mean())
+    shocks = values - mean
+    variance = float(shocks.var(ddof=1))
+    if np.sqrt(variance) <= RETURN_NOISE_TOLERANCE:
+        raise ValueError("Returns are constant, so there is no volatility to model.")
+    result = minimize(
+        _negative_log_likelihood,
+        np.array(GARCH_START),
+        args=(shocks, variance),
+        method="SLSQP",
+        bounds=[(0.0, 1.0), (0.0, 1.0)],
+        constraints=[{"type": "ineq", "fun": lambda p: MAX_PERSISTENCE - p[0] - p[1]}],
+    )
+    if not result.success or not np.all(np.isfinite(result.x)):
+        raise ValueError(f"The GARCH(1,1) fit did not converge: {result.message}")
+    alpha, beta = (float(v) for v in result.x)
+    omega = variance * (1.0 - alpha - beta)
+    full = _conditional_variance(shocks, omega, alpha, beta, variance)
+    return GarchFit(
+        omega=omega,
+        alpha=alpha,
+        beta=beta,
+        mean=mean,
+        conditional_volatility=pd.Series(
+            np.sqrt(full[1:]) * ANNUALIZE, index=returns.index, name="garch"
+        ),
+        long_run_volatility=float(np.sqrt(variance) * ANNUALIZE),
+        log_likelihood=-float(result.fun),
+        observations=len(values),
+    )
