@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from risklens.analytics import (
+    EWMA_LAMBDA,
     FACTOR_COLUMNS,
     HISTORICAL_SCENARIOS,
     KUPIEC_SIGNIFICANCE,
@@ -407,6 +408,34 @@ def render_rolling(analysis: dict) -> None:
     st.caption(
         "Each date uses only the trailing window ending that day. Sharpe assumes a 0% risk-free rate and is blank when a window's volatility is zero. Drawdown is measured from the highest wealth inside the window."
     )
+
+
+VOLATILITY_HORIZON_DAYS = 21  # about one month of trading days
+
+
+def volatility_chart(ewma: pd.Series, garch: pd.Series | None) -> go.Figure:
+    """Dated next-day volatility from EWMA, and from GARCH when it could be fitted."""
+    lines = {f"EWMA (λ = {EWMA_LAMBDA})": ewma}
+    if garch is not None:
+        lines["GARCH(1,1)"] = garch
+    frame = pd.DataFrame(lines).rename_axis("Date")
+    figure = px.line(
+        frame,
+        labels={"Date": "Date", "value": "Annualized volatility", "variable": "Model"},
+        color_discrete_sequence=["#264653", "#e76f51"],
+    )
+    figure.update_layout(
+        template="plotly_white",
+        title="Next-day volatility estimate on each date",
+        hovermode="x unified",
+        height=380,
+        legend_title_text="Model",
+    )
+    figure.update_yaxes(tickformat=".0%")
+    figure.update_traces(
+        line_width=2, hovertemplate="%{x|%b %d, %Y}<br>%{y:.1%}<extra>%{fullData.name}</extra>"
+    )
+    return figure
 
 
 def render_risk_attribution(analysis: dict) -> None:
