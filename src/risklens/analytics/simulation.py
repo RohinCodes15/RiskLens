@@ -5,18 +5,29 @@ Model (geometric Brownian motion, i.i.d. daily log returns):
        log(1 + r).
     2. Estimate the daily mean (mu) and sample volatility (sigma, ddof=1)
        of those log returns.
-    3. Draw each future day's log return from Normal(mu, sigma), add them up
-       along each path, and convert back with exp(). Every path starts at
-       wealth 1.0, so 1.25 means up 25% and wealth can never go negative.
+    3. Draw each future day's log return, add them up along each path, and
+       convert back with exp(). Every path starts at wealth 1.0, so 1.25
+       means up 25% and wealth can never go negative. ``distribution`` picks
+       the draws:
+         - ``"normal"``: Normal(mu, sigma), geometric Brownian motion.
+         - ``"student_t"``: mu + sigma * t * sqrt((df - 2) / df), a Student-t
+           with the same mean and volatility but fatter tails. df comes from
+           the bias-corrected excess kurtosis k of the log returns,
+           df = 4 + 6 / k, the value whose kurtosis matches the history.
+         - ``"bootstrap"``: past daily log returns resampled with
+           replacement, which keeps their real skew and fat tails.
 
 Assumptions and limitations, so read results as scenarios, not forecasts:
     - Returns are independent and identically distributed, so volatility
       clustering, regime changes, and momentum are ignored.
-    - Normal log returns understate fat tails, so crashes beyond the
-      historical sample can be worse than the 5th percentile suggests.
+    - Normal log returns understate fat tails; the Student-t and bootstrap
+      models add them, but bootstrap paths never contain a day worse than
+      the worst day in the history.
     - mu and sigma are estimated from a finite sample and treated as known,
       so short histories give unreliable results.
-    - The portfolio keeps fixed weights; no fees, taxes, or cash flows.
+    - Paths are built from the portfolio's past daily returns, so they carry
+      whatever rebalancing and trading costs produced those returns; holdings
+      are not simulated one by one. No taxes or cash flows.
     - Future dates are weekdays after the last historical date; exchange
       holidays are not removed.
     - Percentile paths are computed day by day across all paths. The median
@@ -24,10 +35,11 @@ Assumptions and limitations, so read results as scenarios, not forecasts:
 
 Memory: the ``n_paths x horizon_days`` float64 path array (about 101 MB at
 10,000 x 1,260) is allocated once, transformed in place, and partitioned in
-place for the percentiles. That one array is the minimum without changing
-results: percentiles need every path on each date, and the seeded generator
-draws path by path, so producing dates in chunks would give different
-numbers for the same seed.
+place for the percentiles. Bootstrap fills it 1,000 paths at a time, so its
+day indices never need a second full array. That one array is the minimum
+without changing results: percentiles need every path on each date, and the
+seeded generator draws path by path, so producing dates in chunks would give
+different numbers for the same seed.
 
 No look-ahead: parameters come only from the returns passed in, and every
 simulated date is strictly after the last of them. Pass only history up to
@@ -72,6 +84,8 @@ class MonteCarloResult:
         daily_mean: estimated mean daily log return (mu).
         daily_volatility: estimated daily log-return volatility (sigma);
             0.0 when historical returns are constant.
+        distribution: the model used for the daily draws (``DISTRIBUTIONS``).
+        degrees_of_freedom: Student-t df; NaN for the other models.
     """
 
     percentile_paths: pd.DataFrame
@@ -79,6 +93,8 @@ class MonteCarloResult:
     loss_probability: float
     daily_mean: float
     daily_volatility: float
+    distribution: str = "normal"
+    degrees_of_freedom: float = float("nan")
 
 
 def _validate_int(value: object, name: str, low: int, high: int) -> int:
@@ -171,6 +187,7 @@ def simulate_portfolio(
     horizon_days: int = 252,
     n_paths: int = MIN_PATHS,
     seed: int = DEFAULT_SEED,
+    distribution: str = "normal",
 ) -> MonteCarloResult:
     """Simulate future wealth paths from historical daily portfolio returns.
 
@@ -183,19 +200,25 @@ def simulate_portfolio(
         horizon_days: trading days to simulate, 1 to 1,260.
         n_paths: number of simulated paths, 1,000 to 10,000.
         seed: non-negative integer seed for NumPy's random generator.
+        distribution: ``"normal"`` (default), ``"student_t"``, or
+            ``"bootstrap"``; see the module docstring.
 
     Raises:
-        ValueError: on invalid returns, horizon, path count, or seed.
+        ValueError: on invalid returns, horizon, path count, seed, or
+            distribution, or a Student-t request on returns without fat tails.
     """
     mu, sigma = _estimate_parameters(daily_returns)
     horizon_days = _validate_int(horizon_days, "horizon_days", MIN_HORIZON_DAYS, MAX_HORIZON_DAYS)
     n_paths = _validate_int(n_paths, "n_paths", MIN_PATHS, MAX_PATHS)
     seed = _validate_int(seed, "seed", 0, 2**32 - 1)
+    if distribution not in DISTRIBUTIONS:
+        raise ValueError(f"distribution must be one of {', '.join(DISTRIBUTIONS)}.")
     dates = _future_dates(daily_returns.index[-1], horizon_days)
     rng = np.random.default_rng(seed)
     # One (n_paths, horizon_days) buffer is reused in place: daily log returns,
     # then cumulative log wealth, then wealth. No second full array is made.
-    growth = rng.normal(mu, sigma, size=(n_paths, horizon_days))
+    log_returns = np.log1p(daily_returns.to_numpy(dtype=float))
+    growth, df = _draws(rng, log_returns, mu, sigma, distribution, (n_paths, horizon_days))
     np.cumsum(growth, axis=1, out=growth)
     np.exp(growth, out=growth)
     terminal_returns = growth[:, -1] - 1.0
@@ -212,4 +235,6 @@ def simulate_portfolio(
         loss_probability=float(np.mean(terminal_returns < 0.0)),
         daily_mean=mu,
         daily_volatility=sigma,
+        distribution=distribution,
+        degrees_of_freedom=df,
     )
