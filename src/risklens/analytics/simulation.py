@@ -53,7 +53,9 @@ MAX_HORIZON_DAYS = 1_260  # five years of trading days; bounds memory use
 DEFAULT_SEED = 42
 PERCENTILES = (5, 25, 50, 75, 95)
 PERCENTILE_LABELS = ("p5", "p25", "median", "p75", "p95")
+DISTRIBUTIONS = ("normal", "student_t", "bootstrap")
 MIN_KURTOSIS_OBS = 4  # bias-corrected excess kurtosis needs four returns
+BOOTSTRAP_BLOCK_PATHS = 1_000  # paths resampled at a time, so day indices stay small
 
 
 @dataclass(frozen=True)
@@ -125,6 +127,31 @@ def _t_degrees_of_freedom(log_returns: np.ndarray) -> float:
             "use the normal model."
         )
     return 4.0 + 6.0 / excess
+
+
+def _draws(
+    rng: np.random.Generator,
+    log_returns: np.ndarray,
+    mu: float,
+    sigma: float,
+    distribution: str,
+    shape: tuple[int, int],
+) -> tuple[np.ndarray, float]:
+    """One ``shape`` array of daily log-return draws, plus the Student-t df (NaN otherwise)."""
+    if distribution == "bootstrap":
+        draws = np.empty(shape)
+        for start in range(0, shape[0], BOOTSTRAP_BLOCK_PATHS):
+            block = draws[start : start + BOOTSTRAP_BLOCK_PATHS]
+            block[:] = log_returns[rng.integers(0, len(log_returns), size=block.shape)]
+        return draws, float("nan")
+    if distribution == "student_t" and sigma > 0:
+        df = _t_degrees_of_freedom(log_returns)
+        draws = rng.standard_t(df, size=shape)
+        draws *= sigma * np.sqrt((df - 2.0) / df)  # in place: unit variance, then sigma
+        draws += mu
+        return draws, df
+    # Normal, or Student-t on a constant history (sigma 0): both give the flat mu path.
+    return rng.normal(mu, sigma, size=shape), float("nan")
 
 
 def _future_dates(last_date: pd.Timestamp, horizon_days: int) -> pd.DatetimeIndex:
