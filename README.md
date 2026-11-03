@@ -764,7 +764,8 @@ app.py                    Streamlit dashboard
 src/risklens/
   validation.py           Ticker, weight, risk-free rate, price, and date checks
   data.py                 Price download (yfinance): aligned prices, per-ticker history,
-                          SPY benchmark, daily returns
+                          SPY benchmark, daily returns; Fama-French factors (Ken French
+                          library) and sector/country labels (Yahoo profiles)
   holdings.py             Holdings CSV parsing; shares or dollar values to weights
   analytics/
     engine.py             analyze_portfolio and PortfolioMetrics
@@ -775,11 +776,13 @@ src/risklens/
     optimization.py       Long-only min-volatility and max-Sharpe weights (SciPy)
     benchmark.py          Portfolio vs. SPY growth, statistics, information ratio, capture
     concentration.py      Herfindahl index, effective holdings, correlation
+    attribution.py        Fama-French factor regression; sector/country breakdown
     simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio)
     stress.py             Historical stress windows (stress_test, custom_scenario)
 tests/                    pytest suite (network-free); test_smoke.py,
                           test_tail_risk_ui.py, test_risk_ui.py,
-                          test_holdings_ui.py, and test_risk_metrics_ui.py
+                          test_holdings_ui.py, test_risk_metrics_ui.py, and
+                          test_risk_sources_ui.py
                           drive the dashboard with AppTest
 benchmarks/               Reproducible benchmarks (simulation_memory.py: Monte
                           Carlo peak memory at 10,000 paths × 1,260 days)
