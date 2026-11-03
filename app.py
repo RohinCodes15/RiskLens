@@ -13,9 +13,11 @@ from risklens.analytics import (
     HISTORICAL_SCENARIOS,
     KUPIEC_SIGNIFICANCE,
     ROLLING_WINDOWS,
+    SHOCK_PROXIES,
     VAR_BACKTEST_WINDOWS,
     EfficientFrontier,
     OptimizedPortfolio,
+    ShockImpact,
     analyze_portfolio,
     benchmark_statistics,
     compare_portfolios,
@@ -37,6 +39,7 @@ from risklens.analytics import (
     portfolio_returns,
     risk_contributions,
     rolling_metrics,
+    shock_impact,
     simulate_portfolio,
     stress_test,
     tail_risk_summary,
@@ -964,6 +967,19 @@ def render_what_if_result(analysis: dict, saved: tuple) -> None:
             f"itself, {cost:.3%} of the portfolio{paid}, is not in the metrics."
         )
     )
+
+
+def run_shocks(analysis: dict, shocks: dict[str, float]) -> ShockImpact:
+    """Download the shocked proxies for the analysis dates and estimate the portfolio move."""
+    prices = analysis["prices"]
+    proxy_prices = fetch_prices(
+        [SHOCK_PROXIES[name] for name in shocks],
+        prices.index.min().date(),
+        prices.index.max().date() + timedelta(days=1),
+    )
+    names = {ticker: name for name, ticker in SHOCK_PROXIES.items()}
+    proxy_returns = to_returns(proxy_prices).rename(columns=names)
+    return shock_impact(to_returns(prices), proxy_returns, analysis["weights"], shocks)
 
 
 def render_simulation(analysis: dict) -> None:
