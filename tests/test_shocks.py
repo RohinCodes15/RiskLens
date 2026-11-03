@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from risklens.analytics import SHOCK_PROXIES, shock_impact
+from risklens.analytics import MIN_SHOCK_OBS, SHOCK_PROXIES, shock_impact
 
 
 @pytest.fixture
@@ -77,3 +77,55 @@ def test_a_holding_that_is_the_proxy_has_beta_one(proxies: pd.DataFrame) -> None
     assets = pd.DataFrame({"XLK": proxies["Technology"]})
     result = shock_impact(assets, proxies, [1.0], {"Technology": -0.2})
     assert result.portfolio_impact == pytest.approx(-0.2)
+
+
+@pytest.mark.parametrize(
+    ("shocks", "message"),
+    [
+        ({}, "at least one non-zero"),
+        ({"Technology": 0.0}, "at least one non-zero"),
+        ({"Oil": -0.1}, "No returns for shocked proxy: Oil"),
+        ({"Technology": -1.0}, "above −100%"),
+        ({"Technology": float("nan")}, "above −100%"),
+        ({"Technology": float("inf")}, "above −100%"),
+        ({"Technology": "-0.2"}, "must be a number"),
+        ({"Technology": True}, "must be a number"),
+    ],
+)
+def test_rejects_bad_shocks(
+    assets: pd.DataFrame, proxies: pd.DataFrame, shocks: dict, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        shock_impact(assets, proxies, [0.5, 0.5], shocks)
+
+
+def test_rejects_too_little_shared_history(assets: pd.DataFrame, proxies: pd.DataFrame) -> None:
+    short = proxies.iloc[: MIN_SHOCK_OBS - 1]
+    with pytest.raises(ValueError, match=f"at least {MIN_SHOCK_OBS} days"):
+        shock_impact(assets, short, [0.5, 0.5], {"Technology": -0.1})
+
+
+def test_rejects_proxies_that_cannot_be_told_apart(
+    assets: pd.DataFrame, proxies: pd.DataFrame
+) -> None:
+    twins = proxies.assign(Gold=2.0 * proxies["Technology"])
+    with pytest.raises(ValueError, match="cannot be separated"):
+        shock_impact(assets, twins, [0.5, 0.5], {"Technology": -0.1, "Gold": 0.05})
+    flat = proxies.assign(Gold=0.0)
+    with pytest.raises(ValueError, match="cannot be separated"):
+        shock_impact(assets, flat, [0.5, 0.5], {"Gold": 0.05})
+
+
+def test_rejects_non_finite_returns_and_bad_inputs(
+    assets: pd.DataFrame, proxies: pd.DataFrame
+) -> None:
+    gap = assets.copy()
+    gap.iloc[3, 0] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        shock_impact(gap, proxies, [0.5, 0.5], {"Technology": -0.1})
+    with pytest.raises(ValueError, match="sum to 1"):
+        shock_impact(assets, proxies, [0.5, 0.6], {"Technology": -0.1})
+    with pytest.raises(ValueError, match="DataFrames"):
+        shock_impact(assets["A"], proxies, [1.0], {"Technology": -0.1})  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="map proxy names"):
+        shock_impact(assets, proxies, [0.5, 0.5], [("Technology", -0.1)])  # type: ignore[arg-type]
