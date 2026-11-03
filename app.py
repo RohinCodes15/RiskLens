@@ -13,6 +13,7 @@ from risklens.analytics import (
     FACTOR_COLUMNS,
     HISTORICAL_SCENARIOS,
     KUPIEC_SIGNIFICANCE,
+    MAX_FORECAST_DAYS,
     ROLLING_WINDOWS,
     SHOCK_PROXIES,
     VAR_BACKTEST_WINDOWS,
@@ -30,10 +31,14 @@ from risklens.analytics import (
     drawdown_series,
     effective_holdings,
     efficient_frontier,
+    ewma_volatility,
     factor_exposure,
+    fit_garch,
     frontier_point_within_risk,
+    garch_forecast,
     group_breakdown,
     herfindahl_index,
+    horizon_volatility,
     max_sharpe_portfolio,
     min_volatility_portfolio,
     normal_var,
@@ -436,6 +441,77 @@ def volatility_chart(ewma: pd.Series, garch: pd.Series | None) -> go.Figure:
         line_width=2, hovertemplate="%{x|%b %d, %Y}<br>%{y:.1%}<extra>%{fullData.name}</extra>"
     )
     return figure
+
+
+def render_volatility_forecast(analysis: dict) -> None:
+    """Compare historical volatility with RiskMetrics EWMA and GARCH(1,1) forecasts."""
+    st.divider()
+    st.subheader("Volatility forecast")
+    daily = analysis["daily_returns"]
+    horizon = st.number_input(
+        "Volatility forecast horizon (trading days)",
+        min_value=1,
+        max_value=MAX_FORECAST_DAYS,
+        value=VOLATILITY_HORIZON_DAYS,
+        help="Days ahead the GARCH forecast averages over; EWMA and historical volatility "
+        "are the same for every day.",
+    )
+    try:
+        ewma = ewma_volatility(daily)
+    except ValueError as exc:
+        st.info(f"Volatility forecasts are unavailable. {exc}")
+        return
+    try:
+        garch, garch_error = fit_garch(daily), None
+    except ValueError as exc:
+        garch, garch_error = None, str(exc)
+    historical_column, ewma_column, garch_column, long_run_column = st.columns(4)
+    with historical_column.container(border=True):
+        st.metric(
+            "Historical volatility",
+            f"{analysis['metrics'][1]:.2%}",
+            help="Sample daily standard deviation × √252 over the whole period.",
+        )
+    with ewma_column.container(border=True):
+        st.metric(
+            "EWMA volatility (next day)",
+            f"{ewma.iloc[-1]:.2%}",
+            help=f"RiskMetrics exponentially weighted volatility, λ = {EWMA_LAMBDA}: recent "
+            "days count most. Its forecast is the same for every future day.",
+        )
+    if garch is None:
+        st.info(f"The GARCH(1,1) forecast is unavailable. {garch_error}")
+    else:
+        forecast = garch_forecast(garch, horizon)
+        with garch_column.container(border=True):
+            st.metric(
+                f"GARCH volatility (next {horizon} days)",
+                f"{horizon_volatility(forecast):.2%}",
+                help="Square root of the average forecast daily variance over the horizon, "
+                "annualized.",
+            )
+        with long_run_column.container(border=True):
+            st.metric(
+                "GARCH long-run volatility",
+                f"{garch.long_run_volatility:.2%}",
+                help="The level the GARCH forecast moves back to over long horizons.",
+            )
+    st.plotly_chart(
+        volatility_chart(ewma, None if garch is None else garch.conditional_volatility),
+        key="volatility_chart",
+    )
+    fitted = (
+        ""
+        if garch is None
+        else f" GARCH fit on {garch.observations:,} daily returns: α = {garch.alpha:.3f}, "
+        f"β = {garch.beta:.3f}, persistence α + β = {garch.persistence:.3f}; the closer "
+        "persistence is to 1, the slower the forecast moves toward its long-run level."
+    )
+    st.caption(
+        "Each line's value on a date uses returns up to that date and estimates the next "
+        f"day's volatility, annualized.{fitted} Returns follow your rebalancing and trading "
+        "cost. Estimates from past returns, not predictions."
+    )
 
 
 def render_risk_attribution(analysis: dict) -> None:
