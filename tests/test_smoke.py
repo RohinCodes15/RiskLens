@@ -270,6 +270,7 @@ def test_simulation_controls_fan_and_persistence(prices: pd.DataFrame, download:
             "Simulated futures",
             "Historical scenarios",
             "What-if trade",
+            "Custom shocks",
         ]
         for label, value in [
             ("Forecast horizon (trading days)", 10),
