@@ -75,8 +75,15 @@ from risklens.analytics.value_at_risk import (
     rolling_var,
     var_backtest,
 )
+from risklens.analytics.what_if import (
+    COMPARISON_METRICS,
+    compare_portfolios,
+    trade_cost,
+    trade_weights,
+)
 
 __all__ = [
+    "COMPARISON_METRICS",
     "FACTOR_COLUMNS",
     "HISTORICAL_SCENARIOS",
     "KUPIEC_SIGNIFICANCE",
@@ -102,6 +109,7 @@ __all__ = [
     "annualized_volatility",
     "benchmark_statistics",
     "calmar_ratio",
+    "compare_portfolios",
     "compare_to_benchmark",
     "cornish_fisher_var",
     "correlation_matrix",
@@ -137,5 +145,7 @@ __all__ = [
     "sortino_ratio",
     "stress_test",
     "tail_risk_summary",
+    "trade_cost",
+    "trade_weights",
     "var_backtest",
 ]
