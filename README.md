@@ -768,6 +768,41 @@ Fetch from before the earliest scenario so coverage can be checked. With
 `fetch_price_history`, a recently listed ticker makes only the older
 scenarios it missed unavailable, and the reason names that ticker alone.
 
+## What-if trades and custom shocks
+
+Both tools are tabs next to **Simulated futures** and **Historical
+scenarios**, and each runs only when you press its button.
+
+### What-if trade (`trade_weights`, `compare_portfolios`)
+
+Pick a holding to sell, a ticker to buy (one you hold or a new one), and an
+amount as a percent of the whole portfolio, not of the holding sold.
+**Simulate trade** shows the weights and metrics before and after, side by
+side.
+
+- `trade_weights(weights, sell, buy, amount)` moves `amount` (a fraction of
+  total value, 0.10 = 10%) from `sell` to `buy`. A new ticker is added at
+  the end, and a holding sold down to zero keeps a 0 weight. It raises
+  `ValueError` when `sell` is not held, `buy` is blank or the same ticker, or
+  `amount` is not in (0, weight of `sell`].
+- `compare_portfolios(prices, before, after, risk_free_rate=0.0,
+  rebalance="daily", cost_bps=0.0, confidence=0.95)` runs
+  `analyze_portfolio` and one-day historical VaR and CVaR for both weight
+  sets on the same prices. It returns a DataFrame indexed by
+  `COMPARISON_METRICS` (annualized return and volatility, Sharpe, Sortino,
+  max drawdown, VaR, CVaR, annual turnover) with `before`, `after`, and
+  `change` (after − before) columns. A ticker missing from one weight set
+  counts as 0.
+- `trade_cost(amount, cost_bps)` is the one-time cost of the trade itself,
+  `2 × amount × cost_bps / 10,000` of portfolio value (the sale plus the
+  purchase), the same rule rebalancing uses. The dashboard shows it next to
+  the table but leaves it out of the metrics.
+
+Buying a ticker you do not hold downloads it for your analysis dates. Both
+columns then use only the dates every ticker shares, so a recently listed
+ticker can shorten the period; the caption gives the dates used. Both
+columns follow your rebalancing and trading cost.
+
 ## File structure
 
 ```
