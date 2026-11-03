@@ -1,11 +1,13 @@
 """Where portfolio risk comes from: factor exposures and sector/country breakdowns."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 
-from risklens.analytics.metrics import TRADING_DAYS_PER_YEAR
+from risklens.analytics.metrics import TRADING_DAYS_PER_YEAR, risk_contributions
+from risklens.validation import validate_weights
 
 FACTOR_COLUMNS = ("Mkt-RF", "SMB", "HML", "Mom")  # Fama-French 3 factors + Carhart momentum
 RISK_FREE_COLUMN = "RF"
@@ -66,3 +68,29 @@ def factor_exposure(returns: pd.Series, factors: pd.DataFrame) -> FactorExposure
         first_date=data.index[0],
         last_date=data.index[-1],
     )
+
+
+def group_breakdown(
+    returns: pd.DataFrame, weights: Sequence[float], groups: pd.Series
+) -> pd.DataFrame:
+    """Sum allocation weights and risk shares by a label such as sector or country.
+
+    ``returns`` holds simple daily asset returns, one column per ticker;
+    ``groups`` maps each ticker to its label. Returns a DataFrame indexed by
+    label with ``weight`` and ``risk_share`` columns (fractions, each summing
+    to 1), sorted by risk share, largest first.
+
+    Raises:
+        ValueError: if a ticker has no label, or ``risk_contributions`` rejects
+            the inputs.
+    """
+    w = validate_weights(weights, returns.shape[1])
+    missing = [t for t in returns.columns if t not in groups.index]
+    if missing:
+        raise ValueError(f"No label for: {', '.join(missing)}.")
+    labels = groups.reindex(returns.columns).to_numpy()
+    table = pd.DataFrame(
+        {"weight": w, "risk_share": risk_contributions(returns, w).to_numpy()},
+        index=pd.Index(labels, name=groups.name),
+    )
+    return table.groupby(level=0, sort=False).sum().sort_values("risk_share", ascending=False)
