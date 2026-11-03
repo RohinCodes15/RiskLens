@@ -1,5 +1,12 @@
 """Portfolio risk analytics built on simple daily returns."""
 
+from risklens.analytics.attribution import (
+    FACTOR_COLUMNS,
+    MIN_FACTOR_OBS,
+    FactorExposure,
+    factor_exposure,
+    group_breakdown,
+)
 from risklens.analytics.benchmark import (
     BenchmarkStatistics,
     benchmark_statistics,
@@ -70,8 +77,10 @@ from risklens.analytics.value_at_risk import (
 )
 
 __all__ = [
+    "FACTOR_COLUMNS",
     "HISTORICAL_SCENARIOS",
     "KUPIEC_SIGNIFICANCE",
+    "MIN_FACTOR_OBS",
     "REBALANCE_FREQUENCIES",
     "ROLLING_WINDOWS",
     "TRADING_DAYS_PER_YEAR",
@@ -80,6 +89,7 @@ __all__ = [
     "VAR_METHODS",
     "BenchmarkStatistics",
     "EfficientFrontier",
+    "FactorExposure",
     "MonteCarloResult",
     "OptimizationError",
     "OptimizedPortfolio",
@@ -93,15 +103,17 @@ __all__ = [
     "benchmark_statistics",
     "calmar_ratio",
     "compare_to_benchmark",
-    "correlation_matrix",
     "cornish_fisher_var",
+    "correlation_matrix",
     "cumulative_wealth",
     "custom_scenario",
     "drawdown_series",
     "effective_holdings",
     "efficient_frontier",
     "estimate_inputs",
+    "factor_exposure",
     "frontier_point_within_risk",
+    "group_breakdown",
     "herfindahl_index",
     "historical_cvar",
     "historical_var",
