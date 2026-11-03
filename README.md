@@ -863,10 +863,13 @@ src/risklens/
     attribution.py        Fama-French factor regression; sector/country breakdown
     simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio)
     stress.py             Historical stress windows (stress_test, custom_scenario)
+    what_if.py            What-if trades: trade weights, trade cost, before/after metrics
+    shocks.py             Custom shocks to proxy ETFs, passed to holdings through betas
 tests/                    pytest suite (network-free); test_smoke.py,
                           test_tail_risk_ui.py, test_risk_ui.py,
-                          test_holdings_ui.py, test_risk_metrics_ui.py, and
-                          test_risk_sources_ui.py
+                          test_holdings_ui.py, test_risk_metrics_ui.py,
+                          test_risk_sources_ui.py, test_what_if_ui.py, and
+                          test_shocks_ui.py
                           drive the dashboard with AppTest
 benchmarks/               Reproducible benchmarks (simulation_memory.py: Monte
                           Carlo peak memory at 10,000 paths × 1,260 days)
