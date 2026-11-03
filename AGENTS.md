@@ -20,6 +20,7 @@ src/risklens/
      engine.py        adjusted prices + weights → PortfolioMetrics
      benchmark.py     portfolio vs. SPY growth, statistics, information ratio, capture
      concentration.py HHI, effective holdings, correlation matrix
+     attribution.py   daily returns + factors → Fama-French betas; labels → sector/country split
      rolling.py       daily returns → dated rolling volatility, Sharpe, drawdown
      optimization.py  adjusted prices → long-only min-vol / max-Sharpe weights, efficient frontier
      simulation.py    daily returns → seeded Monte Carlo wealth percentiles
