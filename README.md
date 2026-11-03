@@ -38,6 +38,10 @@ There is no separate backend or database: the Streamlit app calls the
   ratio (0% risk-free rate), maximum drawdown, Sortino ratio, and Calmar
   ratio. Non-finite values show as "N/A".
 - Historical adjusted-price chart and historical drawdown chart (Plotly).
+- **Where risk comes from**: Fama-French market, size, value and momentum
+  betas with annualized alpha and R², plus sector and country tables of
+  weight and share of risk. Loaded on demand; see
+  [Factor and sector exposure](#factor-and-sector-exposure).
 - **Rolling risk**: rolling volatility, Sharpe ratio, or drawdown over a
   21-, 63-, or 126-trading-day window.
 - Diversification: HHI concentration, effective number of holdings, a risk
