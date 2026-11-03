@@ -58,6 +58,14 @@ There is no separate backend or database: the Streamlit app calls the
 - **Simulated futures** tab: seeded Monte Carlo percentile fan chart.
 - **Historical scenarios** tab: 2008, 2020, 2022, or custom stress windows,
   with unavailable scenarios explained.
+- **What-if trade** tab: sell part of one holding, buy another ticker (held
+  or new), and compare the weights, return, volatility, Sharpe, Sortino,
+  drawdown, VaR, CVaR, and turnover before and after, plus the trade's
+  one-time cost. See
+  [What-if trades and custom shocks](#what-if-trades-and-custom-shocks).
+- **Custom shocks** tab: enter moves such as Technology −20% or Long-term
+  bonds +5% and see the estimated portfolio move (in dollars too when the
+  portfolio value is known), with each holding's move and betas.
 - **Portfolio optimization** (on demand): current, minimum-volatility, and
   maximum-Sharpe weights and metrics side by side, plus an efficient
   frontier chart marking each portfolio and the highest-return frontier
