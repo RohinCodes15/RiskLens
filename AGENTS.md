@@ -25,6 +25,8 @@ src/risklens/
      optimization.py  adjusted prices → long-only min-vol / max-Sharpe weights, efficient frontier
      simulation.py    daily returns → seeded Monte Carlo wealth percentiles
      stress.py        per-ticker price history + weights → historical stress-window results
+     what_if.py       adjusted prices + weights + one trade → before/after metrics
+     shocks.py        holding + proxy returns + shocks → betas → estimated portfolio move
 ```
 
 Data flow: raw input → `validation` → `data.fetch_prices` → `data.to_returns`
