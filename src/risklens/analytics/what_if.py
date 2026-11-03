@@ -14,11 +14,27 @@ import numbers
 import numpy as np
 import pandas as pd
 
-from risklens.analytics.metrics import BPS_PER_UNIT
+from risklens.analytics.engine import analyze_portfolio
+from risklens.analytics.metrics import (
+    BPS_PER_UNIT,
+    DEFAULT_VAR_CONFIDENCE,
+    historical_cvar,
+    historical_var,
+)
 from risklens.validation import validate_cost_bps, validate_weights
 
 # Lets "sell the whole position" match a weight that carries float rounding.
 TRADE_TOLERANCE = 1e-9
+COMPARISON_METRICS = (
+    "annualized_return",
+    "annualized_volatility",
+    "sharpe_ratio",
+    "sortino_ratio",
+    "max_drawdown",
+    "var",
+    "cvar",
+    "annual_turnover",
+)
 
 
 def _checked_weights(weights: pd.Series) -> pd.Series:
@@ -86,3 +102,54 @@ def trade_cost(amount: float, cost_bps: float) -> float:
             invalid (see ``validate_cost_bps``).
     """
     return 2.0 * _checked_amount(amount) * validate_cost_bps(cost_bps) / BPS_PER_UNIT
+
+
+def _aligned(weights: pd.Series, columns: pd.Index, label: str) -> np.ndarray:
+    """Weights in ``columns`` order, 0 for unlisted tickers; raise if a held ticker has no prices."""
+    if not isinstance(weights, pd.Series):
+        raise ValueError(f"{label} weights must be a pandas Series indexed by ticker.")
+    extra = weights[~weights.index.isin(columns)]
+    if (extra != 0).any():
+        missing = ", ".join(map(str, extra[extra != 0].index))
+        raise ValueError(f"No prices for {missing} in the {label} portfolio.")
+    return weights.reindex(columns, fill_value=0.0).to_numpy(dtype=float)
+
+
+def compare_portfolios(
+    prices: pd.DataFrame,
+    before: pd.Series,
+    after: pd.Series,
+    risk_free_rate: float = 0.0,
+    rebalance: str = "daily",
+    cost_bps: float = 0.0,
+    confidence: float = DEFAULT_VAR_CONFIDENCE,
+) -> pd.DataFrame:
+    """Run the same metrics for two weight sets on the same adjusted prices.
+
+    ``before`` and ``after`` are weights indexed by ticker. A ticker missing
+    from one of them counts as weight 0; every ticker with a non-zero weight
+    must be a column of ``prices``. Returns a DataFrame indexed by
+    ``COMPARISON_METRICS`` with ``before``, ``after``, and ``change``
+    (after − before) columns. ``var`` and ``cvar`` are one-day historical
+    losses at ``confidence`` as positive fractions; the other rows follow
+    ``PortfolioMetrics`` (annualized fractions, ratios, negative drawdown).
+
+    Raises:
+        ValueError: if a weighted ticker has no prices, or
+            ``analyze_portfolio`` or the VaR functions reject the inputs.
+    """
+    if not isinstance(prices, pd.DataFrame):
+        raise ValueError("prices must be a pandas DataFrame.")
+    columns = {}
+    for label, weights in (("before", before), ("after", after)):
+        w = _aligned(weights, prices.columns, label)
+        result = analyze_portfolio(prices, w, risk_free_rate, rebalance, cost_bps)
+        daily = result.daily_returns
+        columns[label] = [
+            *(getattr(result, name) for name in COMPARISON_METRICS[:5]),
+            historical_var(daily, confidence),
+            historical_cvar(daily, confidence),
+            result.annual_turnover,
+        ]
+    table = pd.DataFrame(columns, index=pd.Index(COMPARISON_METRICS, name="metric"))
+    return table.assign(change=table["after"] - table["before"])
