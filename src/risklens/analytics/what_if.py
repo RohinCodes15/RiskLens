@@ -14,7 +14,8 @@ import numbers
 import numpy as np
 import pandas as pd
 
-from risklens.validation import validate_weights
+from risklens.analytics.metrics import BPS_PER_UNIT
+from risklens.validation import validate_cost_bps, validate_weights
 
 # Lets "sell the whole position" match a weight that carries float rounding.
 TRADE_TOLERANCE = 1e-9
@@ -71,3 +72,17 @@ def trade_weights(weights: pd.Series, sell: str, buy: str, amount: float) -> pd.
     after = before.reindex(index, fill_value=0.0)
     change = pd.Series({sell: -moved, buy: moved}).reindex(index, fill_value=0.0)
     return (after + change).rename("weight")
+
+
+def trade_cost(amount: float, cost_bps: float) -> float:
+    """One-time cost of a trade as a fraction of portfolio value.
+
+    Selling ``amount`` and buying the same value trades ``2 × amount`` dollars
+    per dollar of portfolio, each charged ``cost_bps`` basis points, the same
+    rule ``portfolio_returns`` uses on rebalance dates.
+
+    Raises:
+        ValueError: if ``amount`` is not a positive number or ``cost_bps`` is
+            invalid (see ``validate_cost_bps``).
+    """
+    return 2.0 * _checked_amount(amount) * validate_cost_bps(cost_bps) / BPS_PER_UNIT
