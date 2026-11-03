@@ -266,7 +266,11 @@ def test_simulation_controls_fan_and_persistence(prices: pd.DataFrame, download:
     """Settings reach the real engine; every band and card matches its outputs."""
     with patch("risklens.analytics.simulate_portfolio", wraps=simulate_portfolio) as engine:
         app = submit(AppTest.from_file(APP_PATH).run())
-        assert [tab.label for tab in app.tabs] == ["Simulated futures", "Historical scenarios"]
+        assert [tab.label for tab in app.tabs] == [
+            "Simulated futures",
+            "Historical scenarios",
+            "What-if trade",
+        ]
         for label, value in [
             ("Forecast horizon (trading days)", 10),
             ("Simulation count", 2000),

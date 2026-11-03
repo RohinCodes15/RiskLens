@@ -1541,11 +1541,15 @@ else:
         render_benchmark_ratios(analysis)
 
     render_tail_risk(analysis)
-    simulation_tab, stress_tab = st.tabs(["Simulated futures", "Historical scenarios"])
+    simulation_tab, stress_tab, trade_tab = st.tabs(
+        ["Simulated futures", "Historical scenarios", "What-if trade"]
+    )
     with simulation_tab:
         render_simulation(analysis)
     with stress_tab:
         render_stress_test(analysis)
+    with trade_tab:
+        render_what_if(analysis)
     render_optimization(analysis)
 
 st.divider()
