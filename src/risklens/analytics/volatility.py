@@ -22,6 +22,7 @@ are not modeled), and parameters are treated as known.
 """
 
 import numbers
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
@@ -61,3 +62,33 @@ def ewma_volatility(returns: pd.Series, decay: float = EWMA_LAMBDA) -> pd.Series
     values = _checked_returns(returns, MIN_VOLATILITY_OBS)
     variance = pd.Series(values**2).ewm(alpha=1.0 - decay, adjust=False).mean().to_numpy()
     return pd.Series(np.sqrt(variance) * ANNUALIZE, index=returns.index, name="ewma")
+
+
+@dataclass(frozen=True)
+class GarchFit:
+    """A fitted GARCH(1,1). Volatilities are annualized fractions.
+
+    Attributes:
+        omega: daily variance intercept (fraction², not annualized).
+        alpha: weight on yesterday's squared shock.
+        beta: weight on yesterday's variance.
+        mean: daily mean return removed before fitting.
+        conditional_volatility: dated series; the value on date t forecasts t + 1.
+        long_run_volatility: level the forecast reverts to, sqrt(v̄ × 252).
+        log_likelihood: maximized Gaussian log-likelihood.
+        observations: number of daily returns fitted.
+    """
+
+    omega: float
+    alpha: float
+    beta: float
+    mean: float
+    conditional_volatility: pd.Series
+    long_run_volatility: float
+    log_likelihood: float
+    observations: int
+
+    @property
+    def persistence(self) -> float:
+        """α + β: the share of a variance shock still present the next day."""
+        return self.alpha + self.beta
