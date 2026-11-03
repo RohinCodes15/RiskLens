@@ -825,6 +825,36 @@ def render_stress_result(
     )
 
 
+COMPARISON_LABELS = {  # metric: (row label, value format, change format)
+    "annualized_return": ("Annualized return", "{:.2%}", "{:+.2%}"),
+    "annualized_volatility": ("Annualized volatility", "{:.2%}", "{:+.2%}"),
+    "sharpe_ratio": ("Sharpe ratio", "{:.2f}", "{:+.2f}"),
+    "sortino_ratio": ("Sortino ratio", "{:.2f}", "{:+.2f}"),
+    "max_drawdown": ("Maximum drawdown", "{:.2%}", "{:+.2%}"),
+    "var": ("One-day VaR (95%)", "{:.2%}", "{:+.2%}"),
+    "cvar": ("One-day CVaR (95%)", "{:.2%}", "{:+.2%}"),
+    "annual_turnover": ("Annual turnover", "{:.2%}", "{:+.2%}"),
+}
+
+
+def format_number(value: float, pattern: str) -> str:
+    """Format a finite number with ``pattern``; NaN and infinities show as N/A."""
+    return pattern.format(value) if isfinite(value) else "N/A"
+
+
+def comparison_table(table: pd.DataFrame) -> pd.DataFrame:
+    """Before, after, and change columns of ``compare_portfolios`` as labeled display text."""
+    rows = {}
+    for metric, row in table.iterrows():
+        label, value_format, change_format = COMPARISON_LABELS[metric]
+        rows[label] = {
+            "Before": format_number(row["before"], value_format),
+            "After": format_number(row["after"], value_format),
+            "Change": format_number(row["change"], change_format),
+        }
+    return pd.DataFrame.from_dict(rows, orient="index").rename_axis("Metric")
+
+
 def render_simulation(analysis: dict) -> None:
     """Display hypothetical wealth multiples and cumulative terminal return fractions."""
     st.divider()
