@@ -199,6 +199,29 @@ def fetch_factors(start: str | date, end: str | date | None = None) -> pd.DataFr
     return factors
 
 
+UNKNOWN_LABEL = "Unknown"
+
+
+def fetch_classifications(tickers: Sequence[str]) -> pd.DataFrame:
+    """Return each ticker's Yahoo Finance sector and country.
+
+    The result is indexed by ticker with ``sector`` and ``country`` columns.
+    Funds have no sector on Yahoo, so they are labelled with their quote type
+    (e.g. ``ETF``). A ticker whose profile cannot be loaded gets ``Unknown``.
+    """
+    rows = {}
+    for ticker in tickers:
+        try:
+            info = yf.Ticker(ticker).info or {}
+        except Exception:  # one missing profile should not hide the others
+            info = {}
+        rows[ticker] = {
+            "sector": info.get("sector") or info.get("quoteType") or UNKNOWN_LABEL,
+            "country": info.get("country") or UNKNOWN_LABEL,
+        }
+    return pd.DataFrame.from_dict(rows, orient="index")
+
+
 def to_returns(prices: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
     """Return simple daily returns (fractions) from adjusted prices.
 
