@@ -38,6 +38,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from scipy.stats import kurtosis
 
 from risklens.analytics.metrics import (
     MIN_VOLATILITY_OBS,
@@ -52,6 +53,7 @@ MAX_HORIZON_DAYS = 1_260  # five years of trading days; bounds memory use
 DEFAULT_SEED = 42
 PERCENTILES = (5, 25, 50, 75, 95)
 PERCENTILE_LABELS = ("p5", "p25", "median", "p75", "p95")
+MIN_KURTOSIS_OBS = 4  # bias-corrected excess kurtosis needs four returns
 
 
 @dataclass(frozen=True)
@@ -105,6 +107,24 @@ def _estimate_parameters(returns: pd.Series) -> tuple[float, float]:
     if sigma <= RETURN_NOISE_TOLERANCE:
         sigma = 0.0  # constant history up to float rounding: one deterministic curve
     return float(log_returns.mean()), sigma
+
+
+def _t_degrees_of_freedom(log_returns: np.ndarray) -> float:
+    """Student-t df whose excess kurtosis 6 / (df - 4) matches the history's.
+
+    Raises:
+        ValueError: if there are fewer than 4 returns or the history has no
+            excess kurtosis (tails no fatter than normal).
+    """
+    if len(log_returns) < MIN_KURTOSIS_OBS:
+        raise ValueError(f"The Student-t model needs at least {MIN_KURTOSIS_OBS} returns.")
+    excess = float(kurtosis(log_returns, fisher=True, bias=False))
+    if not np.isfinite(excess) or excess <= 0:
+        raise ValueError(
+            "These returns have no fat tails (excess kurtosis is not above 0); "
+            "use the normal model."
+        )
+    return 4.0 + 6.0 / excess
 
 
 def _future_dates(last_date: pd.Timestamp, horizon_days: int) -> pd.DatetimeIndex:
