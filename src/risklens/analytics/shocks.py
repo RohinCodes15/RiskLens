@@ -15,8 +15,11 @@ reading. The estimate is linear and instantaneous, applies to today's target
 weights, and is not a prediction.
 """
 
+import numbers
+from collections.abc import Mapping
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 # Proxy ETFs a user can shock, by display name.
@@ -55,3 +58,21 @@ class ShockImpact:
     observations: int
     first_date: pd.Timestamp
     last_date: pd.Timestamp
+
+
+def _active_shocks(shocks: Mapping[str, float], proxies: pd.Index) -> pd.Series:
+    """Return the non-zero shocks as a Series, after checking every value."""
+    if not isinstance(shocks, Mapping):
+        raise ValueError("Shocks must map proxy names to moves (e.g. {'Technology': -0.2}).")
+    unknown = [name for name in shocks if name not in proxies]
+    if unknown:
+        raise ValueError(f"No returns for shocked proxy: {', '.join(map(str, unknown))}.")
+    for name, move in shocks.items():
+        if isinstance(move, (bool, np.bool_)) or not isinstance(move, numbers.Real):
+            raise ValueError(f"The {name} shock must be a number (−0.2 for −20%).")
+        if not np.isfinite(move) or move <= MAX_LOSS:
+            raise ValueError(f"The {name} shock must be a finite move above −100%.")
+    active = pd.Series({name: float(move) for name, move in shocks.items() if move != 0})
+    if active.empty:
+        raise ValueError("Enter at least one non-zero shock.")
+    return active
