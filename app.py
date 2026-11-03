@@ -982,6 +982,78 @@ def run_shocks(analysis: dict, shocks: dict[str, float]) -> ShockImpact:
     return shock_impact(to_returns(prices), proxy_returns, analysis["weights"], shocks)
 
 
+def render_shocks(analysis: dict) -> None:
+    """Estimate the portfolio's move if market proxies such as tech or bonds move by set amounts."""
+    st.divider()
+    st.subheader("Custom shocks")
+    st.caption(
+        "Enter a move for one or more market proxies, e.g. Technology −20% and Long-term bonds +5%. Each holding's move comes from its betas to those proxies over your analysis period. Hypothetical: not a prediction."
+    )
+    columns = st.columns(3)
+    moves = {
+        name: columns[i % len(columns)].number_input(
+            f"{name} ({ticker}) move (%)",
+            min_value=-99.0,
+            max_value=200.0,
+            value=0.0,
+            step=1.0,
+            format="%.1f",
+        )
+        for i, (name, ticker) in enumerate(SHOCK_PROXIES.items())
+    }
+    shocks = {name: move / 100 for name, move in moves.items() if move != 0}
+    request = tuple(shocks.items())
+    if st.button("Apply shocks", disabled=not shocks):
+        analysis.pop("shock", None)
+        analysis.pop("shock_error", None)
+        try:
+            with st.spinner("Downloading proxy prices and estimating betas…"):
+                analysis["shock"] = (request, run_shocks(analysis, shocks))
+        except (ValueError, DataFetchError) as exc:
+            analysis["shock_error"] = (request, str(exc))
+    if analysis.get("shock_error", (None,))[0] == request:
+        st.warning(plain_text(f"Shock estimate unavailable. {analysis['shock_error'][1]}"))
+        return
+    saved = analysis.get("shock")
+    if saved is None or saved[0] != request:
+        st.info("Enter at least one non-zero move and select Apply shocks.")
+        return
+    render_shock_result(saved[1], analysis.get("portfolio_value"))
+
+
+def render_shock_result(impact: ShockImpact, portfolio_value: float | None) -> None:
+    """Show the estimated portfolio move and each holding's move, contribution, and betas."""
+    with st.container(border=True):
+        st.metric(
+            "Estimated portfolio move",
+            f"{impact.portfolio_impact:.2%}",
+            delta=dollar_change(impact.portfolio_impact, portfolio_value),
+            help="Weighted sum of each holding's estimated move.",
+        )
+    holdings = impact.holdings.rename(
+        columns={
+            "weight": "Weight",
+            "impact": "Estimated move",
+            "contribution": "Contribution",
+            "r_squared": "R²",
+        }
+    )
+    betas = impact.betas.rename(columns=lambda name: f"Beta to {name}")
+    percent = dict.fromkeys(["Weight", "Estimated move", "Contribution"], "{:.2%}")
+    st.dataframe(
+        pd.concat([holdings, betas], axis=1)
+        .rename_axis("Ticker")
+        .style.format(
+            {**percent, "R²": "{:.2f}", **dict.fromkeys(betas.columns, "{:.2f}")}, na_rep="N/A"
+        ),
+        key="shock_holdings",
+    )
+    applied = ", ".join(f"{name} {move:+.1%}" for name, move in impact.shocks.items())
+    st.caption(
+        f"Shocks: {applied}. Betas come from a least-squares regression of each holding's daily returns on the shocked proxies' daily returns over {impact.observations} shared days ({impact.first_date:%b %d, %Y} – {impact.last_date:%b %d, %Y}). Proxies left at 0% are not used, so a beta also carries whatever moves with that proxy. Linear, instantaneous estimate on your target weights; a holding's move is capped at −100%. Not a prediction."
+    )
+
+
 def render_simulation(analysis: dict) -> None:
     """Display hypothetical wealth multiples and cumulative terminal return fractions."""
     st.divider()
