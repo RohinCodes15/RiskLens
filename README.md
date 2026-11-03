@@ -195,6 +195,7 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `risklens.analytics` also exports `portfolio_returns`, `rebalance_turnover`, `annualized_return`,
 `annualized_volatility`, `sharpe_ratio`, `historical_var`,
 `cumulative_wealth`, `drawdown_series`, `max_drawdown`, `risk_contributions`,
+`factor_exposure`, `FactorExposure`, `group_breakdown`, `FACTOR_COLUMNS`,
 `compare_to_benchmark`, `herfindahl_index`, `effective_holdings`,
 `correlation_matrix`, `simulate_portfolio`, `stress_test`,
 `run_stress_tests`, `custom_scenario`, `HISTORICAL_SCENARIOS`,
