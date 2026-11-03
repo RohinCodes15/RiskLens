@@ -1300,6 +1300,7 @@ else:
         )
 
     render_risk_attribution(analysis)
+    render_risk_sources(analysis)
 
     if len(prices.columns) == 1:
         st.info(
