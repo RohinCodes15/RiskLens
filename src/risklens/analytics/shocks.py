@@ -16,11 +16,13 @@ weights, and is not a prediction.
 """
 
 import numbers
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+
+from risklens.validation import validate_weights
 
 # Proxy ETFs a user can shock, by display name.
 SHOCK_PROXIES = {
@@ -108,3 +110,47 @@ def _regress(y: np.ndarray, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     with np.errstate(divide="ignore", invalid="ignore"):
         r_squared = np.where(total > 0, 1.0 - residual / total, np.nan)
     return coef[1:].T, r_squared
+
+
+def shock_impact(
+    asset_returns: pd.DataFrame,
+    proxy_returns: pd.DataFrame,
+    weights: Sequence[float],
+    shocks: Mapping[str, float],
+) -> ShockImpact:
+    """Estimate the portfolio move when the named proxies move by ``shocks``.
+
+    ``asset_returns`` holds simple daily returns, one column per holding, in
+    the order of ``weights`` (fractions summing to 1). ``proxy_returns``
+    holds simple daily proxy returns with one column per proxy name.
+    ``shocks`` maps proxy names to moves as fractions (−0.2 for −20%);
+    zero shocks are ignored. Only dates in both tables are used.
+
+    Raises:
+        ValueError: if the weights are invalid, a shock names a missing
+            proxy, is not a number above −100%, or none is non-zero, fewer
+            than ``MIN_SHOCK_OBS`` dates are shared, values are not finite,
+            or the shocked proxies cannot be told apart.
+    """
+    if not isinstance(asset_returns, pd.DataFrame) or not isinstance(proxy_returns, pd.DataFrame):
+        raise ValueError("Holding and proxy returns must be pandas DataFrames.")
+    w = validate_weights(weights, asset_returns.shape[1])
+    active = _active_shocks(shocks, proxy_returns.columns)
+    data = _shared_returns(asset_returns, proxy_returns, list(active.index))
+    betas, r_squared = _regress(
+        data["asset"].to_numpy(dtype=float), data["proxy"].to_numpy(dtype=float)
+    )
+    impact = np.maximum(betas @ active.to_numpy(), MAX_LOSS)
+    holdings = pd.DataFrame(
+        {"weight": w, "impact": impact, "contribution": w * impact, "r_squared": r_squared},
+        index=asset_returns.columns,
+    )
+    return ShockImpact(
+        portfolio_impact=float(holdings["contribution"].sum()),
+        holdings=holdings,
+        betas=pd.DataFrame(betas, index=asset_returns.columns, columns=active.index),
+        shocks=active,
+        observations=len(data),
+        first_date=data.index[0],
+        last_date=data.index[-1],
+    )
