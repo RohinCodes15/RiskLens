@@ -18,6 +18,7 @@ from risklens.analytics import (
     OptimizedPortfolio,
     analyze_portfolio,
     benchmark_statistics,
+    compare_portfolios,
     compare_to_benchmark,
     cornish_fisher_var,
     correlation_matrix,
@@ -39,6 +40,7 @@ from risklens.analytics import (
     simulate_portfolio,
     stress_test,
     tail_risk_summary,
+    trade_weights,
     var_backtest,
 )
 from risklens.analytics.simulation import (
@@ -853,6 +855,41 @@ def comparison_table(table: pd.DataFrame) -> pd.DataFrame:
             "Change": format_number(row["change"], change_format),
         }
     return pd.DataFrame.from_dict(rows, orient="index").rename_axis("Metric")
+
+
+WHAT_IF_DEFAULT_BUY = "TLT"  # long-term Treasury ETF, a common diversifier
+
+
+def run_what_if(analysis: dict, sell: str, buy_text: str, amount: float) -> tuple:
+    """Compare one trade on shared prices: (metrics table, weights table, (first, last, rows)).
+
+    ``amount`` is a fraction of the portfolio. A ticker not yet held is
+    downloaded for the analysis dates, and both portfolios use the dates every
+    ticker shares.
+    """
+    buy = validate_tickers(buy_text)
+    if len(buy) != 1:
+        raise ValueError("Enter one ticker to buy.")
+    prices = analysis["prices"]
+    before = pd.Series(analysis["weights"], index=prices.columns)
+    after = trade_weights(before, sell, buy[0], amount)
+    if buy[0] not in prices.columns:
+        prices = fetch_prices(
+            list(after.index),
+            prices.index.min().date(),
+            prices.index.max().date() + timedelta(days=1),
+        )
+    table = compare_portfolios(
+        prices,
+        before,
+        after,
+        rebalance=analysis.get("rebalance", "daily"),
+        cost_bps=analysis.get("cost_bps", 0.0),
+    )
+    weights = pd.DataFrame(
+        {"Before": before.reindex(after.index, fill_value=0.0), "After": after}
+    ).rename_axis("Ticker")
+    return table, weights, (prices.index.min(), prices.index.max(), len(prices))
 
 
 def render_simulation(analysis: dict) -> None:
