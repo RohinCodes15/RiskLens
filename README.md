@@ -210,6 +210,8 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `compare_to_benchmark`, `herfindahl_index`, `effective_holdings`,
 `correlation_matrix`, `simulate_portfolio`, `stress_test`,
 `run_stress_tests`, `custom_scenario`, `HISTORICAL_SCENARIOS`,
+`trade_weights`, `trade_cost`, `compare_portfolios`, `COMPARISON_METRICS`,
+`shock_impact`, `SHOCK_PROXIES`, `MIN_SHOCK_OBS`,
 `historical_cvar`, `tail_risk_summary`, `VAR_CONFIDENCE_LEVELS`,
 `benchmark_statistics`, `rolling_volatility`, `rolling_sharpe`,
 `rolling_drawdown`, `rolling_max_drawdown`, `rolling_metrics`,
@@ -220,7 +222,7 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `VAR_BACKTEST_WINDOWS`, `KUPIEC_SIGNIFICANCE`, and
 `TRADING_DAYS_PER_YEAR`, `REBALANCE_FREQUENCIES`,
 plus the frozen result types `PortfolioMetrics`, `BenchmarkStatistics`,
-`MonteCarloResult`, `StressScenario`, `StressResult`, `OptimizedPortfolio`,
+`MonteCarloResult`, `StressScenario`, `StressResult`, `ShockImpact`, `OptimizedPortfolio`,
 `SolverDiagnostics`, and `EfficientFrontier`, and the `OptimizationError` exception. Each function's
 docstring gives its units and sign conventions.
 
