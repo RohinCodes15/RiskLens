@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from risklens.data import DataFetchError, fetch_factors
+from risklens.data import DataFetchError, fetch_classifications, fetch_factors
 
 FACTORS_CSV = """This file was created by CMPT_ME_BEME_RETS_DAILY.
 
@@ -52,3 +52,21 @@ def test_download_errors_and_files_without_data_raise_data_fetch_error() -> None
     with patch("risklens.data.urlopen", side_effect=[zipped("no table here"), zipped("")]):
         with pytest.raises(DataFetchError, match="no daily data"):
             fetch_factors("2025-01-01")
+
+
+def test_classifications_label_funds_and_missing_profiles() -> None:
+    profiles = {
+        "AAPL": {"sector": "Technology", "country": "United States"},
+        "SPY": {"quoteType": "ETF"},
+    }
+
+    def ticker(symbol: str) -> MagicMock:
+        if symbol == "BAD":
+            raise RuntimeError("no profile")
+        return MagicMock(info=profiles[symbol])
+
+    with patch("yfinance.Ticker", side_effect=ticker):
+        labels = fetch_classifications(["AAPL", "SPY", "BAD"])
+    assert labels.loc["AAPL"].tolist() == ["Technology", "United States"]
+    assert labels.loc["SPY"].tolist() == ["ETF", "Unknown"]
+    assert labels.loc["BAD"].tolist() == ["Unknown", "Unknown"]
