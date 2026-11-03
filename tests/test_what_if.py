@@ -4,7 +4,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from risklens.analytics import trade_weights
+from risklens.analytics import (
+    COMPARISON_METRICS,
+    analyze_portfolio,
+    compare_portfolios,
+    historical_cvar,
+    historical_var,
+    trade_cost,
+    trade_weights,
+)
 
 
 @pytest.fixture
@@ -85,3 +93,87 @@ def test_rejects_invalid_weights() -> None:
         trade_weights(pd.Series([0.5, 0.5], index=["A", "A"]), "A", "B", 0.1)
     with pytest.raises(ValueError, match="pandas Series"):
         trade_weights([0.5, 0.5], "A", "B", 0.1)  # type: ignore[arg-type]
+
+
+# --- trade_cost ------------------------------------------------------------------------
+
+
+def test_trade_cost_charges_both_the_sale_and_the_purchase() -> None:
+    assert trade_cost(0.1, 10.0) == pytest.approx(2 * 0.1 * 0.001)
+    assert trade_cost(0.1, 0.0) == 0.0
+
+
+def test_trade_cost_rejects_bad_inputs() -> None:
+    with pytest.raises(ValueError, match="greater than 0"):
+        trade_cost(0.0, 5.0)
+    with pytest.raises(ValueError):
+        trade_cost(0.1, -1.0)
+
+
+# --- compare_portfolios ----------------------------------------------------------------
+
+
+def test_each_column_matches_the_engine_on_the_same_prices(
+    prices: pd.DataFrame, weights: pd.Series
+) -> None:
+    after = trade_weights(weights, "AAPL", "TLT", 0.2)
+    table = compare_portfolios(prices, weights, after, rebalance="monthly", cost_bps=5.0)
+    assert list(table.index) == list(COMPARISON_METRICS)
+    assert list(table.columns) == ["before", "after", "change"]
+    for label, w in (("before", [0.5, 0.3, 0.2, 0.0]), ("after", [0.3, 0.3, 0.2, 0.2])):
+        result = analyze_portfolio(prices, w, rebalance="monthly", cost_bps=5.0)
+        column = table[label]
+        assert column["annualized_return"] == pytest.approx(result.annualized_return)
+        assert column["annualized_volatility"] == pytest.approx(result.annualized_volatility)
+        assert column["sharpe_ratio"] == pytest.approx(result.sharpe_ratio)
+        assert column["sortino_ratio"] == pytest.approx(result.sortino_ratio)
+        assert column["max_drawdown"] == pytest.approx(result.max_drawdown)
+        assert column["var"] == pytest.approx(historical_var(result.daily_returns))
+        assert column["cvar"] == pytest.approx(historical_cvar(result.daily_returns))
+        assert column["annual_turnover"] == pytest.approx(result.annual_turnover)
+    np.testing.assert_allclose(table["change"], table["after"] - table["before"])
+
+
+def test_risk_free_rate_and_confidence_reach_the_metrics(
+    prices: pd.DataFrame, weights: pd.Series
+) -> None:
+    table = compare_portfolios(prices, weights, weights, risk_free_rate=0.04, confidence=0.99)
+    result = analyze_portfolio(prices, [0.5, 0.3, 0.2, 0.0], risk_free_rate=0.04)
+    assert table.loc["sharpe_ratio", "before"] == pytest.approx(result.sharpe_ratio)
+    assert table.loc["var", "before"] == pytest.approx(historical_var(result.daily_returns, 0.99))
+
+
+def test_no_trade_means_no_change(prices: pd.DataFrame, weights: pd.Series) -> None:
+    table = compare_portfolios(prices, weights, weights)
+    assert (table["change"] == 0).all()
+
+
+def test_moving_into_a_calmer_asset_lowers_volatility(
+    prices: pd.DataFrame, weights: pd.Series
+) -> None:
+    after = trade_weights(weights, "AAPL", "TLT", 0.5)
+    table = compare_portfolios(prices, weights, after)
+    assert table.loc["annualized_volatility", "change"] < 0
+
+
+def test_a_held_ticker_without_prices_is_rejected(prices: pd.DataFrame, weights: pd.Series) -> None:
+    after = trade_weights(weights, "AAPL", "GLD", 0.1)
+    with pytest.raises(ValueError, match="No prices for GLD in the after portfolio"):
+        compare_portfolios(prices, weights, after)
+
+
+def test_a_zero_weight_ticker_without_prices_is_ignored(
+    prices: pd.DataFrame, weights: pd.Series
+) -> None:
+    padded = pd.concat([weights, pd.Series({"GLD": 0.0})])
+    table = compare_portfolios(prices, padded, weights)
+    assert (table["change"] == 0).all()
+
+
+def test_rejects_bad_prices_and_weights(prices: pd.DataFrame, weights: pd.Series) -> None:
+    with pytest.raises(ValueError, match="DataFrame"):
+        compare_portfolios(prices.to_numpy(), weights, weights)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="pandas Series"):
+        compare_portfolios(prices, [0.5, 0.5], weights)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="sum to 1"):
+        compare_portfolios(prices, weights, weights * 2)
