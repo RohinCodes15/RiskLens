@@ -56,6 +56,7 @@ from risklens.analytics.rolling import (
     rolling_sharpe,
     rolling_volatility,
 )
+from risklens.analytics.shocks import MIN_SHOCK_OBS, SHOCK_PROXIES, ShockImpact, shock_impact
 from risklens.analytics.simulation import MonteCarloResult, simulate_portfolio
 from risklens.analytics.stress import (
     HISTORICAL_SCENARIOS,
@@ -88,8 +89,10 @@ __all__ = [
     "HISTORICAL_SCENARIOS",
     "KUPIEC_SIGNIFICANCE",
     "MIN_FACTOR_OBS",
+    "MIN_SHOCK_OBS",
     "REBALANCE_FREQUENCIES",
     "ROLLING_WINDOWS",
+    "SHOCK_PROXIES",
     "TRADING_DAYS_PER_YEAR",
     "VAR_BACKTEST_WINDOWS",
     "VAR_CONFIDENCE_LEVELS",
@@ -101,6 +104,7 @@ __all__ = [
     "OptimizationError",
     "OptimizedPortfolio",
     "PortfolioMetrics",
+    "ShockImpact",
     "SolverDiagnostics",
     "StressResult",
     "StressScenario",
@@ -141,6 +145,7 @@ __all__ = [
     "rolling_volatility",
     "run_stress_tests",
     "sharpe_ratio",
+    "shock_impact",
     "simulate_portfolio",
     "sortino_ratio",
     "stress_test",
