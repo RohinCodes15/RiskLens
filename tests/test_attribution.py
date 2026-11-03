@@ -8,6 +8,8 @@ from risklens.analytics import (
     FACTOR_COLUMNS,
     MIN_FACTOR_OBS,
     factor_exposure,
+    group_breakdown,
+    risk_contributions,
 )
 
 
@@ -49,3 +51,23 @@ def test_rejects_short_overlap_missing_columns_and_constant_returns() -> None:
         factor_exposure(pd.Series(0.01, index=f.index), f.drop(columns="Mom"))
     with pytest.raises(ValueError, match="constant"):
         factor_exposure(f["RF"], f)
+
+
+def test_group_breakdown_sums_weights_and_risk_by_label() -> None:
+    rng = np.random.default_rng(5)
+    returns = pd.DataFrame(rng.normal(0, [0.02, 0.01, 0.01], (200, 3)), columns=["A", "B", "C"])
+    weights = [0.2, 0.3, 0.5]
+    labels = pd.Series({"A": "Tech", "B": "Energy", "C": "Tech"}, name="Sector")
+    table = group_breakdown(returns, weights, labels)
+    shares = risk_contributions(returns, weights)
+    assert table.index.name == "Sector"
+    assert table.loc["Tech", "weight"] == pytest.approx(0.7)
+    assert table.loc["Tech", "risk_share"] == pytest.approx(shares["A"] + shares["C"])
+    assert table["risk_share"].sum() == pytest.approx(1.0)
+    assert table["risk_share"].is_monotonic_decreasing
+
+
+def test_group_breakdown_rejects_unlabelled_ticker() -> None:
+    returns = pd.DataFrame(np.random.default_rng(1).normal(0, 0.01, (50, 2)), columns=["A", "B"])
+    with pytest.raises(ValueError, match="B"):
+        group_breakdown(returns, [0.5, 0.5], pd.Series({"A": "Tech"}))
