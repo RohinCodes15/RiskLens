@@ -76,3 +76,35 @@ def _active_shocks(shocks: Mapping[str, float], proxies: pd.Index) -> pd.Series:
     if active.empty:
         raise ValueError("Enter at least one non-zero shock.")
     return active
+
+
+def _shared_returns(
+    asset_returns: pd.DataFrame, proxy_returns: pd.DataFrame, proxies: list[str]
+) -> pd.DataFrame:
+    """Asset and proxy returns on their shared dates, as one two-level frame."""
+    data = pd.concat(
+        {"asset": asset_returns, "proxy": proxy_returns[proxies]}, axis=1, join="inner"
+    )
+    if len(data) < MIN_SHOCK_OBS:
+        raise ValueError(
+            f"Need at least {MIN_SHOCK_OBS} days shared with the proxy data; got {len(data)}."
+        )
+    if not np.isfinite(data.to_numpy(dtype=float)).all():
+        raise ValueError("Holding and proxy returns must be finite.")
+    return data
+
+
+def _regress(y: np.ndarray, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """OLS of each column of ``y`` on ``x`` plus an intercept: (betas, R² per column)."""
+    design = np.column_stack([np.ones(len(x)), x])
+    if np.linalg.matrix_rank(design) < design.shape[1]:
+        raise ValueError(
+            "The shocked proxies have no variation or move in lockstep, so their "
+            "effects cannot be separated. Shock fewer of them."
+        )
+    coef, *_ = np.linalg.lstsq(design, y, rcond=None)
+    residual = ((y - design @ coef) ** 2).sum(axis=0)
+    total = ((y - y.mean(axis=0)) ** 2).sum(axis=0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        r_squared = np.where(total > 0, 1.0 - residual / total, np.nan)
+    return coef[1:].T, r_squared
