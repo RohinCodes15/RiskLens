@@ -3,8 +3,12 @@
 This is the only module in ``risklens`` that touches the network.
 """
 
+import io
+import re
+import zipfile
 from collections.abc import Sequence
 from datetime import date
+from urllib.request import urlopen
 
 import pandas as pd
 import yfinance as yf
@@ -133,6 +137,66 @@ def fetch_benchmark_prices(
         DataFetchError: if the download fails or returns too little data.
     """
     return fetch_prices([BENCHMARK_TICKER], start, end)[BENCHMARK_TICKER]
+
+
+FRENCH_LIBRARY = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
+FRENCH_FILES = ("F-F_Research_Data_Factors_daily_CSV.zip", "F-F_Momentum_Factor_daily_CSV.zip")
+DOWNLOAD_TIMEOUT_SECONDS = 30
+_FRENCH_ROW = re.compile(r"^\s*\d{8}\s*,")
+
+
+def _parse_french_csv(text: str) -> pd.DataFrame:
+    """Parse the first daily table of a Ken French CSV into fractions on a date index.
+
+    Raises:
+        DataFetchError: if the text has no dated rows or a value is not numeric.
+    """
+    lines = text.splitlines()
+    first = next((i for i, line in enumerate(lines) if _FRENCH_ROW.match(line)), None)
+    if first is None or first == 0:
+        raise DataFetchError("Factor file has no daily data table.")
+    end = next((i for i in range(first, len(lines)) if not _FRENCH_ROW.match(lines[i])), len(lines))
+    columns = [name.strip() for name in lines[first - 1].split(",")[1:]]
+    rows = [line.split(",") for line in lines[first:end]]
+    try:
+        values = [[float(v) / 100.0 for v in row[1:]] for row in rows]  # files are in percent
+        index = pd.to_datetime([row[0].strip() for row in rows], format="%Y%m%d")
+        return pd.DataFrame(values, index=index, columns=columns)
+    except ValueError as exc:
+        raise DataFetchError(f"Factor file is malformed: {exc}") from exc
+
+
+def _download_french(name: str) -> str:
+    """Download one zipped Ken French CSV and return its text."""
+    try:
+        with urlopen(FRENCH_LIBRARY + name, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
+            archive = zipfile.ZipFile(io.BytesIO(response.read()))
+        return archive.read(archive.namelist()[0]).decode("latin-1")
+    except Exception as exc:  # network, HTTP, and zip errors all mean the same here
+        raise DataFetchError(f"Factor download failed: {exc}") from exc
+
+
+def fetch_factors(start: str | date, end: str | date | None = None) -> pd.DataFrame:
+    """Return daily Fama-French 3 factors, momentum, and the risk-free rate.
+
+    Columns are ``Mkt-RF``, ``SMB``, ``HML``, ``RF`` and ``Mom``, as daily
+    fractions (not percent), on dates from ``start`` up to but excluding
+    ``end``. The library publishes with a lag of a month or more.
+
+    Raises:
+        ValueError: if the dates fail ``validate_date_range``.
+        DataFetchError: if a download fails, is malformed, or has no rows in range.
+    """
+    validate_date_range(start, end)
+    factors = pd.concat(
+        [_parse_french_csv(_download_french(name)) for name in FRENCH_FILES], axis=1, join="inner"
+    )
+    factors = factors.loc[pd.Timestamp(start) :]
+    if end is not None:
+        factors = factors.loc[factors.index < pd.Timestamp(end)]
+    if factors.empty:
+        raise DataFetchError("No factor data in the selected period yet.")
+    return factors
 
 
 def to_returns(prices: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
