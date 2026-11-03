@@ -101,6 +101,9 @@ There is no separate backend or database: the Streamlit app calls the
   index, effective number of holdings, correlation matrix).
 - Monte Carlo simulation of future wealth and historical stress testing
   (see [Simulation and stress testing](#simulation-and-stress-testing)).
+- What-if trades compared on the same prices, and custom shocks to market
+  proxies passed to each holding through its betas (see
+  [What-if trades and custom shocks](#what-if-trades-and-custom-shocks)).
 
 Conventions: returns are simple daily returns as fractions (0.01 = 1%),
 annualized with 252 trading days, and portfolios reset to their target weights
