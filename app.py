@@ -40,6 +40,7 @@ from risklens.analytics import (
     simulate_portfolio,
     stress_test,
     tail_risk_summary,
+    trade_cost,
     trade_weights,
     var_backtest,
 )
@@ -890,6 +891,79 @@ def run_what_if(analysis: dict, sell: str, buy_text: str, amount: float) -> tupl
         {"Before": before.reindex(after.index, fill_value=0.0), "After": after}
     ).rename_axis("Ticker")
     return table, weights, (prices.index.min(), prices.index.max(), len(prices))
+
+
+def render_what_if(analysis: dict) -> None:
+    """Compare risk metrics before and after moving part of the portfolio to another ticker."""
+    st.divider()
+    st.subheader("What-if trade")
+    st.caption(
+        "Sell part of one holding and buy another ticker, then replay both portfolios on the same past prices with your rebalancing and trading cost. Hypothetical: not a prediction of how the trade will do."
+    )
+    sell_column, buy_column, amount_column = st.columns(3)
+    sell = sell_column.selectbox("Sell", list(analysis["prices"].columns))
+    buy_text = buy_column.text_input(
+        "Buy",
+        WHAT_IF_DEFAULT_BUY,
+        help="A ticker you hold or a new one; a new one is downloaded for the same dates.",
+    )
+    amount_pct = amount_column.number_input(
+        "Amount (% of portfolio)",
+        min_value=0.01,
+        max_value=100.0,
+        value=10.0,
+        step=1.0,
+        format="%.2f",
+        help="Share of total portfolio value moved, not of the holding sold.",
+    )
+    request = (sell, buy_text.strip().upper(), amount_pct)
+    if st.button("Simulate trade"):
+        analysis.pop("what_if", None)
+        analysis.pop("what_if_error", None)
+        try:
+            with st.spinner("Replaying the portfolio before and after the trade…"):
+                result = run_what_if(analysis, sell, buy_text, amount_pct / 100)
+            analysis["what_if"] = (request, *result)
+        except (ValueError, DataFetchError) as exc:
+            analysis["what_if_error"] = (request, str(exc))
+    if analysis.get("what_if_error", (None,))[0] == request:
+        st.warning(plain_text(f"Trade simulation unavailable. {analysis['what_if_error'][1]}"))
+        return
+    saved = analysis.get("what_if")
+    if saved is None or saved[0] != request:
+        st.info(
+            "Choose a trade and select Simulate trade to compare the portfolio before and after."
+        )
+        return
+    render_what_if_result(analysis, saved)
+
+
+def render_what_if_result(analysis: dict, saved: tuple) -> None:
+    """Show before/after weights and metrics for a simulated trade, with its one-time cost."""
+    (sell, buy, amount_pct), table, weights, (first, last, rows) = saved
+    weights_column, metrics_column = st.columns([1, 2])
+    with weights_column:
+        st.markdown("**Weights**")
+        st.dataframe(weights.style.format("{:.2%}"), key="what_if_weights")
+    with metrics_column:
+        st.markdown("**Metrics**")
+        st.dataframe(comparison_table(table), key="what_if_metrics")
+    amount = amount_pct / 100
+    rebalance = analysis.get("rebalance", "daily")
+    cost_bps = analysis.get("cost_bps", 0.0)
+    cost = trade_cost(amount, cost_bps)
+    value = analysis.get("portfolio_value")
+    moved = f" (${amount * value:,.2f})" if value is not None else ""
+    paid = f" (${cost * value:,.2f})" if value is not None else ""
+    st.caption(
+        plain_text(
+            f"Moves {amount:.2%} of the portfolio{moved} from {sell} to {buy}. Both columns use "
+            f"the same {rows:,} price dates ({first:%b %d, %Y} – {last:%b %d, %Y}). "
+            f"{REBALANCE_DESCRIPTIONS[rebalance]}; {cost_text(cost_bps)}. Change is after minus "
+            "before; VaR and CVaR are one-day historical losses. The one-time cost of the trade "
+            f"itself, {cost:.3%} of the portfolio{paid}, is not in the metrics."
+        )
+    )
 
 
 def render_simulation(analysis: dict) -> None:
