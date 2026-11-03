@@ -803,6 +803,42 @@ columns then use only the dates every ticker shares, so a recently listed
 ticker can shorten the period; the caption gives the dates used. Both
 columns follow your rebalancing and trading cost.
 
+### Custom shocks (`shock_impact`)
+
+Enter a move in percent for one or more of the proxies in `SHOCK_PROXIES`:
+
+| Proxy | ETF |
+|-------|-----|
+| Market | SPY |
+| Technology | XLK |
+| Financials | XLF |
+| Energy | XLE |
+| Long-term bonds | TLT |
+| Gold | GLD |
+
+**Apply shocks** downloads the shocked ETFs for your analysis dates, and
+`shock_impact(asset_returns, proxy_returns, weights, shocks)`:
+
+1. regresses each holding's daily returns on the shocked proxies' daily
+   returns by least squares with an intercept, over the dates both share
+   (at least `MIN_SHOCK_OBS`, 60);
+2. sets each holding's move to its betas times the shocks, capped at −100%
+   because a long position cannot lose more than its value;
+3. adds up weight × move to get the portfolio's move.
+
+```
+move_i = max(−1, Σ_f β_i,f · shock_f)        portfolio move = Σ_i w_i · move_i
+```
+
+It returns a `ShockImpact` with the portfolio move, a table per holding
+(weight, move, contribution, R²), the betas, the shocks used, and the dates.
+Proxies left at 0% are not in the regression, so a beta to technology also
+picks up whatever moves with technology, such as the broad market; shock
+several proxies together to separate them. Each shock must be above −100%,
+and proxies that do not move or move in lockstep are rejected because their
+effects cannot be told apart. The estimate is linear and instantaneous, uses
+your target weights, and is not a prediction.
+
 ## File structure
 
 ```
