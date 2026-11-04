@@ -43,7 +43,7 @@ from risklens.analytics import (
     min_volatility_portfolio,
     normal_var,
     portfolio_returns,
-    risk_contributions,
+    rebalanced_risk_contributions,
     rolling_metrics,
     shock_impact,
     simulate_portfolio,
@@ -515,15 +515,23 @@ def render_volatility_forecast(analysis: dict) -> None:
 
 
 def render_risk_attribution(analysis: dict) -> None:
-    """Compare each stock's share of portfolio variance with its allocation weight."""
+    """Compare each holding's share of the actual portfolio's variance with its weight."""
     st.markdown("**Risk attribution**")
+    rebalance = analysis.get("rebalance", "daily")
+    cost_bps = analysis.get("cost_bps", 0.0)
     try:
-        shares = risk_contributions(to_returns(analysis["prices"]), analysis["weights"])
+        shares = rebalanced_risk_contributions(
+            to_returns(analysis["prices"]), analysis["weights"], rebalance, cost_bps
+        )
     except ValueError as exc:
         st.info(f"Risk attribution is unavailable. {exc}")
         return
+    weights = pd.Series(analysis["weights"], index=analysis["prices"].columns)
     attribution = pd.DataFrame(
-        {"Allocation weight": analysis["weights"], "Share of portfolio risk": shares.to_numpy()},
+        {
+            "Allocation weight": weights.reindex(shares.index, fill_value=0.0).to_numpy(),
+            "Share of portfolio risk": shares.to_numpy(),
+        },
         index=shares.index,
     )
     attribution_fig = px.bar(
