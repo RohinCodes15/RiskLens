@@ -45,8 +45,10 @@ There is no separate backend or database: the Streamlit app calls the
 - **Rolling risk**: rolling volatility, Sharpe ratio, or drawdown over a
   21-, 63-, or 126-trading-day window.
 - Diversification: HHI concentration, effective number of holdings, a risk
-  attribution chart (each stock's share of portfolio variance next to its
-  weight), and a daily-return correlation heatmap.
+  attribution chart (each holding's share of the risk of the portfolio you
+  actually hold, after your rebalancing and trading costs, next to its
+  weight; trading costs get their own bar), and a daily-return correlation
+  heatmap.
 - Portfolio vs. S&P 500 (SPY) growth chart with ending-return cards, plus
   information ratio and up- and down-market capture cards.
 - **Tail Risk**: a 95%/99% confidence selector, one-day historical VaR and
