@@ -1159,6 +1159,21 @@ def render_shock_result(impact: ShockImpact, portfolio_value: float | None) -> N
     )
 
 
+DISTRIBUTION_CHOICES = {
+    "Normal": "normal",
+    "Student-t (fat tails)": "student_t",
+    "Bootstrap (resample past days)": "bootstrap",
+}
+DISTRIBUTION_NOTES = {
+    "normal": "Daily log returns are drawn independently from a normal distribution fitted "
+    "to history, which understates fat tails.",
+    "student_t": "Daily log returns are drawn independently from a Student-t distribution "
+    "with the historical mean and volatility, which has fatter tails than a normal one.",
+    "bootstrap": "Each simulated day reuses a randomly chosen past day's log return, which "
+    "keeps real skew and fat tails but never produces a day worse than the worst past day.",
+}
+
+
 def render_simulation(analysis: dict) -> None:
     """Display hypothetical wealth multiples and cumulative terminal return fractions."""
     st.divider()
