@@ -68,7 +68,7 @@ def test_cards_and_chart_match_the_api(prices: pd.DataFrame) -> None:
     assert shown["Historical volatility"] == f"{daily.std() * np.sqrt(252):.2%}"
     assert shown["EWMA volatility (next day)"] == f"{ewma.iloc[-1]:.2%}"
     expected = horizon_volatility(garch_forecast(garch, 21))
-    assert shown["GARCH volatility (next 21 days)"] == f"{expected:.2%}"
+    assert shown["GARCH (next 21 days)"] == f"{expected:.2%}"
     assert shown["GARCH long-run volatility"] == f"{garch.long_run_volatility:.2%}"
     figure = chart_spec(app, "volatility_chart")
     assert [trace["name"] for trace in figure["data"]] == ["EWMA (λ = 0.94)", "GARCH(1,1)"]
@@ -85,7 +85,7 @@ def test_horizon_changes_only_the_garch_card(prices: pd.DataFrame) -> None:
     after = cards(app)
     daily = analyze_portfolio(prices[["AAPL", "MSFT"]], [0.5, 0.5]).daily_returns
     expected = horizon_volatility(garch_forecast(fit_garch(daily), 126))
-    assert after["GARCH volatility (next 126 days)"] == f"{expected:.2%}"
+    assert after["GARCH (next 126 days)"] == f"{expected:.2%}"
     assert after["EWMA volatility (next day)"] == before["EWMA volatility (next day)"]
 
 

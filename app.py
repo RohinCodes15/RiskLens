@@ -87,12 +87,13 @@ def model_var(model: object, daily: pd.Series, confidence: float) -> float:
 def render_tail_risk(analysis: dict) -> None:
     """Show backend one-day loss fractions and observed daily return fractions."""
     st.divider()
-    st.subheader("Tail Risk")
+    st.subheader("Tail risk")
     confidence = st.selectbox(
         "Tail risk confidence",
         [0.95, 0.99],
         format_func=lambda value: f"{value:.0%}",
         help="Historical one-day loss threshold at the selected confidence; not a guarantee.",
+        width=320,
     )
     daily = analysis.get("daily_returns")
     if daily is None:
@@ -127,13 +128,14 @@ def render_tail_risk(analysis: dict) -> None:
         ),
     )
     for column, (label, loss, help_text) in zip(st.columns(4), estimates, strict=True):
-        with column.container(border=True):
-            st.metric(
-                label,
-                f"{loss:.2%}" if isfinite(loss) else "N/A",
-                delta=dollar_change(-loss, portfolio_value),
-                help=help_text,
-            )
+        column.metric(
+            label,
+            f"{loss:.2%}" if isfinite(loss) else "N/A",
+            delta=dollar_change(-loss, portfolio_value),
+            help=help_text,
+            border=True,
+            height="stretch",
+        )
     in_dollars = (
         f" Dollar amounts are the same changes on your ${portfolio_value:,.2f} portfolio."
         if portfolio_value is not None
@@ -149,7 +151,7 @@ def render_tail_risk(analysis: dict) -> None:
     histogram = px.histogram(
         x=daily,
         labels={"x": "Historical daily portfolio return", "y": "Trading-day count"},
-        color_discrete_sequence=["#264653"],
+        color_discrete_sequence=["#38BDF8"],
     )
     histogram.update_layout(
         template="plotly_white",
@@ -162,7 +164,7 @@ def render_tail_risk(analysis: dict) -> None:
     histogram.update_yaxes(title_text="Trading-day count", rangemode="tozero")
     histogram.add_vline(
         x=-summary["var"],
-        line_color="#e76f51",
+        line_color="#F97316",
         line_dash="dash",
         annotation_text=f"{confidence:.0%} VaR return cutoff",
         annotation_position="top left",
@@ -205,8 +207,13 @@ def render_benchmark_ratios(analysis: dict) -> None:
         ),
     )
     for column, (label, value, spec, help_text) in zip(st.columns(3), ratios, strict=True):
-        with column.container(border=True):
-            st.metric(label, format(value, spec) if isfinite(value) else "N/A", help=help_text)
+        column.metric(
+            label,
+            format(value, spec) if isfinite(value) else "N/A",
+            help=help_text,
+            border=True,
+            height="stretch",
+        )
     st.caption(
         "From daily returns on the shared dates, net of the selected rebalancing and trading "
         "costs. Capture compares average returns on SPY's up days and down days separately."
@@ -244,6 +251,7 @@ def render_var_backtest(daily: pd.Series, confidence: float) -> None:
         format_func=lambda days: f"{days} trading days",
         help="Each day's VaR is estimated from this many earlier returns, then compared "
         "with that day's actual return.",
+        width=320,
     )
     if len(daily) <= window:
         st.info(
@@ -399,7 +407,7 @@ def render_rolling(analysis: dict) -> None:
         x=series.index,
         y=series,
         labels={"x": "Date", "y": axis_title},
-        color_discrete_sequence=["#264653"],
+        color_discrete_sequence=["#38BDF8"],
     )
     rolling_fig.update_layout(
         template="plotly_white",
@@ -430,7 +438,7 @@ def volatility_chart(ewma: pd.Series, garch: pd.Series | None) -> go.Figure:
     figure = px.line(
         frame,
         labels={"Date": "Date", "value": "Annualized volatility", "variable": "Model"},
-        color_discrete_sequence=["#264653", "#e76f51"],
+        color_discrete_sequence=["#38BDF8", "#F97316"],
     )
     figure.update_layout(
         template="plotly_white",
@@ -458,6 +466,7 @@ def render_volatility_forecast(analysis: dict) -> None:
         value=VOLATILITY_HORIZON_DAYS,
         help="Days ahead the GARCH forecast averages over; EWMA and historical volatility "
         "are the same for every day.",
+        width=320,
     )
     try:
         ewma = ewma_volatility(daily)
@@ -469,36 +478,39 @@ def render_volatility_forecast(analysis: dict) -> None:
     except ValueError as exc:
         garch, garch_error = None, str(exc)
     historical_column, ewma_column, garch_column, long_run_column = st.columns(4)
-    with historical_column.container(border=True):
-        st.metric(
-            "Historical volatility",
-            f"{analysis['metrics'][1]:.2%}",
-            help="Sample daily standard deviation × √252 over the whole period.",
-        )
-    with ewma_column.container(border=True):
-        st.metric(
-            "EWMA volatility (next day)",
-            f"{ewma.iloc[-1]:.2%}",
-            help=f"RiskMetrics exponentially weighted volatility, λ = {EWMA_LAMBDA}: recent "
-            "days count most. Its forecast is the same for every future day.",
-        )
+    historical_column.metric(
+        "Historical volatility",
+        f"{analysis['metrics'][1]:.2%}",
+        help="Sample daily standard deviation × √252 over the whole period.",
+        border=True,
+        height="stretch",
+    )
+    ewma_column.metric(
+        "EWMA volatility (next day)",
+        f"{ewma.iloc[-1]:.2%}",
+        help=f"RiskMetrics exponentially weighted volatility, λ = {EWMA_LAMBDA}: recent "
+        "days count most. Its forecast is the same for every future day.",
+        border=True,
+        height="stretch",
+    )
     if garch is None:
         st.info(f"The GARCH(1,1) forecast is unavailable. {garch_error}")
     else:
         forecast = garch_forecast(garch, horizon)
-        with garch_column.container(border=True):
-            st.metric(
-                f"GARCH volatility (next {horizon} days)",
-                f"{horizon_volatility(forecast):.2%}",
-                help="Square root of the average forecast daily variance over the horizon, "
-                "annualized.",
-            )
-        with long_run_column.container(border=True):
-            st.metric(
-                "GARCH long-run volatility",
-                f"{garch.long_run_volatility:.2%}",
-                help="The level the GARCH forecast moves back to over long horizons.",
-            )
+        garch_column.metric(
+            f"GARCH (next {horizon} days)",
+            f"{horizon_volatility(forecast):.2%}",
+            help="Square root of the average forecast daily variance over the horizon, annualized.",
+            border=True,
+            height="stretch",
+        )
+        long_run_column.metric(
+            "GARCH long-run volatility",
+            f"{garch.long_run_volatility:.2%}",
+            help="The level the GARCH forecast moves back to over long horizons.",
+            border=True,
+            height="stretch",
+        )
     st.plotly_chart(
         volatility_chart(ewma, None if garch is None else garch.conditional_volatility),
         key="volatility_chart",
@@ -541,7 +553,7 @@ def render_risk_attribution(analysis: dict) -> None:
         attribution,
         barmode="group",
         labels={"index": "Ticker", "value": "Share of portfolio", "variable": "Measure"},
-        color_discrete_sequence=["#8ab17d", "#e76f51"],
+        color_discrete_sequence=["#22C55E", "#F97316"],
     )
     attribution_fig.update_layout(template="plotly_white", height=380, legend_title_text="Measure")
     attribution_fig.update_yaxes(tickformat=".0%")
@@ -553,6 +565,10 @@ def render_risk_attribution(analysis: dict) -> None:
     st.caption(
         f"Share of portfolio risk = the covariance of each holding's part of the daily portfolio return (the weight it held that day × its return) with the whole return ÷ the portfolio's variance; shares sum to 100%. {REBALANCE_DESCRIPTIONS[rebalance]}; {cost_text(cost_bps)}.{costs} A stock can carry more risk than its weight, and a negative share means it reduces total risk."
     )
+
+
+# Negative correlations in rose, positive in sky, zero blending into the dark page.
+CORRELATION_SCALE = [[0.0, "#BE123C"], [0.5, "#1E293B"], [1.0, "#0369A1"]]
 
 
 FACTOR_NAMES = {
@@ -623,22 +639,28 @@ def render_factor_exposure(daily: pd.Series, factors: pd.DataFrame) -> None:
     except ValueError as exc:
         st.info(f"Factor exposure is unavailable. {exc}")
         return
-    columns = st.columns(len(FACTOR_COLUMNS) + 2)
+    columns = [*st.columns(3), *st.columns(3)]  # two rows keep every label readable
     for column, factor in zip(columns, FACTOR_COLUMNS, strict=False):
-        with column.container(border=True):
-            st.metric(f"{FACTOR_NAMES[factor]} beta", f"{exposure.betas[factor]:.2f}")
-    with columns[-2].container(border=True):
-        st.metric(
-            "Alpha (annualized)",
-            f"{exposure.alpha:.2%}",
-            help="Return not explained by the factors: daily regression intercept × 252.",
+        column.metric(
+            f"{FACTOR_NAMES[factor]} beta",
+            f"{exposure.betas[factor]:.2f}",
+            border=True,
+            height="stretch",
         )
-    with columns[-1].container(border=True):
-        st.metric(
-            "R²",
-            f"{exposure.r_squared:.2f}",
-            help="Share of daily excess-return variance the four factors explain.",
-        )
+    columns[-2].metric(
+        "Alpha (annualized)",
+        f"{exposure.alpha:.2%}",
+        help="Return not explained by the factors: daily regression intercept × 252.",
+        border=True,
+        height="stretch",
+    )
+    columns[-1].metric(
+        "R²",
+        f"{exposure.r_squared:.2f}",
+        help="Share of daily excess-return variance the four factors explain.",
+        border=True,
+        height="stretch",
+    )
     st.caption(
         f"OLS of daily portfolio returns minus the risk-free rate on the market, size, value and momentum factors, over {exposure.observations} days ({exposure.first_date:%b %d, %Y} – {exposure.last_date:%b %d, %Y}). The factor library is published with a lag, so recent days may be left out."
     )
@@ -665,6 +687,7 @@ def render_optimization(analysis: dict) -> None:
         help="Most of the portfolio the minimum-volatility and maximum-Sharpe weights may "
         "trade away from your current weights (one-way: the share bought, which equals the "
         "share sold). 100% means no limit.",
+        width=320,
     )
     if st.button("Optimize portfolio"):
         analysis.pop("optimization", None)
@@ -783,16 +806,16 @@ def render_frontier(
             y=points["expected_return"],
             mode="lines+markers",
             name="Efficient frontier",
-            line={"color": "#264653", "width": 2},
+            line={"color": "#38BDF8", "width": 2},
             marker={"size": 5},
         )
     )
     markers = [
-        ("Current", current_volatility, current_return, "#e76f51", "x"),
+        ("Current", current_volatility, current_return, "#F97316", "x"),
     ]
     for label, result, color, symbol in (
-        ("Minimum volatility", min_vol, "#2a9d8f", "diamond"),
-        ("Maximum Sharpe", max_sharpe, "#e9c46a", "star"),
+        ("Minimum volatility", min_vol, "#2DD4BF", "diamond"),
+        ("Maximum Sharpe", max_sharpe, "#FACC15", "star"),
     ):
         if result is not None:
             markers.append((label, result.volatility, result.expected_return, color, symbol))
@@ -804,7 +827,7 @@ def render_frontier(
                 "Best return at your risk",
                 point["volatility"],
                 point["expected_return"],
-                "#8ab17d",
+                "#22C55E",
                 "circle-open",
             )
         )
@@ -850,13 +873,12 @@ def render_frontier(
 
 def render_stress_test(analysis: dict) -> None:
     """Display historical stress outcomes as fractions and normalized wealth."""
-    st.divider()
-    st.subheader("Historical Stress Testing")
+    st.subheader("Historical stress testing")
     st.caption(
         "Hypothetical replay: current target weights and rebalancing applied to past adjusted prices, not your actual historical holdings. Not a prediction."
     )
     names = [scenario.name for scenario in HISTORICAL_SCENARIOS]
-    selected = st.selectbox("Historical scenario", names + ["Custom date range"])
+    selected = st.selectbox("Historical scenario", names + ["Custom date range"], width=320)
     if selected == "Custom date range":
         start_date = st.date_input(
             "Scenario start date",
@@ -933,31 +955,34 @@ def render_stress_result(
         f"Actual price dates: {result.first_date:%b %d, %Y} – {result.last_date:%b %d, %Y} · {result.n_returns:,} return observations."
     )
     return_column, drawdown_column, volatility_column = st.columns(3)
-    with return_column.container(border=True):
-        st.metric(
-            "Scenario return",
-            f"{result.cumulative_return:.2%}",
-            delta=dollar_change(result.cumulative_return, portfolio_value),
-            help="Cumulative return over the actual scenario price dates.",
-        )
-    with drawdown_column.container(border=True):
-        st.metric(
-            "Scenario maximum drawdown",
-            f"{result.max_drawdown:.2%}",
-            delta=dollar_change(result.max_drawdown, portfolio_value),
-            help="Worst peak-to-trough decline; negative values represent losses.",
-        )
-    with volatility_column.container(border=True):
-        st.metric(
-            "Scenario annualized volatility",
-            f"{result.annualized_volatility:.2%}",
-            help="Sample daily volatility annualized using 252 trading days.",
-        )
+    return_column.metric(
+        "Scenario return",
+        f"{result.cumulative_return:.2%}",
+        delta=dollar_change(result.cumulative_return, portfolio_value),
+        help="Cumulative return over the actual scenario price dates.",
+        border=True,
+        height="stretch",
+    )
+    drawdown_column.metric(
+        "Scenario maximum drawdown",
+        f"{result.max_drawdown:.2%}",
+        delta=dollar_change(result.max_drawdown, portfolio_value),
+        help="Worst peak-to-trough decline; negative values represent losses.",
+        border=True,
+        height="stretch",
+    )
+    volatility_column.metric(
+        "Scenario annualized volatility",
+        f"{result.annualized_volatility:.2%}",
+        help="Sample daily volatility annualized using 252 trading days.",
+        border=True,
+        height="stretch",
+    )
     stress_fig = px.line(
         x=curve.index,
         y=curve,
         labels={"x": "Date", "y": "Portfolio wealth"},
-        color_discrete_sequence=["#264653"],
+        color_discrete_sequence=["#38BDF8"],
     )
     stress_fig.update_layout(
         template="plotly_white",
@@ -967,9 +992,7 @@ def render_stress_result(
         showlegend=False,
     )
     stress_fig.update_xaxes(title_text="Historical date", rangeslider_visible=True)
-    stress_fig.update_yaxes(
-        title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×"
-    )
+    stress_fig.update_yaxes(title_text="Wealth multiple", tickformat=".2f", ticksuffix="×")
     stress_fig.update_traces(
         line_width=2, hovertemplate="%{x|%b %d, %Y}<br>Portfolio wealth: %{y:.3f}×<extra></extra>"
     )
@@ -1052,7 +1075,6 @@ def run_what_if(analysis: dict, sell: str, buy_text: str, amount: float) -> tupl
 
 def render_what_if(analysis: dict) -> None:
     """Compare risk metrics before and after moving part of the portfolio to another ticker."""
-    st.divider()
     st.subheader("What-if trade")
     st.caption(
         "Sell part of one holding and buy another ticker, then replay both portfolios on the same past prices with your rebalancing and trading cost. Hypothetical: not a prediction of how the trade will do."
@@ -1138,7 +1160,6 @@ def run_shocks(analysis: dict, shocks: dict[str, float]) -> ShockImpact:
 
 def render_shocks(analysis: dict) -> None:
     """Estimate the portfolio's move if market proxies such as tech or bonds move by set amounts."""
-    st.divider()
     st.subheader("Custom shocks")
     st.caption(
         "Enter a move for one or more market proxies, e.g. Technology −20% and Long-term bonds +5%. Each holding's move comes from its betas to those proxies over your analysis period. Hypothetical: not a prediction."
@@ -1177,13 +1198,14 @@ def render_shocks(analysis: dict) -> None:
 
 def render_shock_result(impact: ShockImpact, portfolio_value: float | None) -> None:
     """Show the estimated portfolio move and each holding's move, contribution, and betas."""
-    with st.container(border=True):
-        st.metric(
-            "Estimated portfolio move",
-            f"{impact.portfolio_impact:.2%}",
-            delta=dollar_change(impact.portfolio_impact, portfolio_value),
-            help="Weighted sum of each holding's estimated move.",
-        )
+    st.metric(
+        "Estimated portfolio move",
+        f"{impact.portfolio_impact:.2%}",
+        delta=dollar_change(impact.portfolio_impact, portfolio_value),
+        help="Weighted sum of each holding's estimated move.",
+        border=True,
+        height="stretch",
+    )
     holdings = impact.holdings.rename(
         columns={
             "weight": "Weight",
@@ -1225,7 +1247,6 @@ DISTRIBUTION_NOTES = {
 
 def render_simulation(analysis: dict) -> None:
     """Display hypothetical wealth multiples and cumulative terminal return fractions."""
-    st.divider()
     st.subheader("Monte Carlo · hypothetical simulations")
     st.caption("Scenarios based on historical returns, not predictions or guarantees.")
     with st.form("simulation_request"):
@@ -1285,22 +1306,24 @@ def render_simulation(analysis: dict) -> None:
         f"Displayed run: {used_horizon:,} trading days · {used_paths:,} simulations · seed {used_seed} · {used_label}. Run again to apply changes."
     )
     median_column, loss_column = st.columns(2)
-    with median_column.container(border=True):
-        st.metric(
-            "Hypothetical terminal median return",
-            f"{bands['median'].iloc[-1] - 1.0:.2%}",
-            help="Ending median wealth from the simulation API, displayed as cumulative return from the starting wealth of 1.0.",
-        )
-    with loss_column.container(border=True):
-        st.metric(
-            "Hypothetical probability of loss",
-            f"{result.loss_probability:.2%}",
-            help="Share of simulated paths ending below their starting wealth; not a real-world loss forecast.",
-        )
+    median_column.metric(
+        "Hypothetical terminal median return",
+        f"{bands['median'].iloc[-1] - 1.0:.2%}",
+        help="Ending median wealth from the simulation API, displayed as cumulative return from the starting wealth of 1.0.",
+        border=True,
+        height="stretch",
+    )
+    loss_column.metric(
+        "Hypothetical probability of loss",
+        f"{result.loss_probability:.2%}",
+        help="Share of simulated paths ending below their starting wealth; not a real-world loss forecast.",
+        border=True,
+        height="stretch",
+    )
     fan = go.Figure()
     for lower, upper, label, color in (
-        ("p5", "p95", "5th–95th percentiles", "rgba(42,157,143,0.15)"),
-        ("p25", "p75", "25th–75th percentiles", "rgba(42,157,143,0.35)"),
+        ("p5", "p95", "5th–95th percentiles", "rgba(56,189,248,0.14)"),
+        ("p25", "p75", "25th–75th percentiles", "rgba(56,189,248,0.32)"),
     ):
         fan.add_trace(
             go.Scatter(
@@ -1330,7 +1353,7 @@ def render_simulation(analysis: dict) -> None:
             x=bands.index,
             y=bands["median"],
             mode="lines",
-            line={"color": "#264653", "width": 3},
+            line={"color": "#38BDF8", "width": 3},
             name="Median",
             hovertemplate="%{x|%b %d, %Y}<br>Median wealth: %{y:.3f}×<extra></extra>",
         )
@@ -1343,9 +1366,7 @@ def render_simulation(analysis: dict) -> None:
         legend_title_text="Simulated percentiles",
     )
     fan.update_xaxes(title_text="Simulation date", rangeslider_visible=True)
-    fan.update_yaxes(
-        title_text="Wealth multiple (starting wealth = 1.0)", tickformat=".2f", ticksuffix="×"
-    )
+    fan.update_yaxes(title_text="Wealth multiple", tickformat=".2f", ticksuffix="×")
     fan.add_hline(y=1.0, line_dash="dot", line_color="gray")
     st.plotly_chart(fan, key="simulation_chart", width="stretch")
     st.caption(
@@ -1517,8 +1538,14 @@ with st.sidebar:
             help="Commission plus spread per dollar bought or sold, in basis points "
             "(5 bps = 0.05%). Charged on rebalance dates; the initial purchase is free.",
         )
-        submitted = st.form_submit_button("Analyze portfolio", disabled=not tickers)
+        submitted = st.form_submit_button("Analyze portfolio", type="primary", disabled=not tickers)
 
+FEATURES = (
+    ("Risk and return", "Volatility, Sharpe, Sortino, drawdowns, and rolling risk."),
+    ("Tail risk", "Historical, normal, and Cornish-Fisher VaR with backtests."),
+    ("Scenarios", "Stress tests, Monte Carlo, what-if trades, and custom shocks."),
+    ("Optimization", "Minimum-volatility and maximum-Sharpe weights, plus reports."),
+)
 st.caption("PORTFOLIO INTELLIGENCE / OVERVIEW")
 st.title("RiskLens Quant")
 st.markdown(
@@ -1619,6 +1646,10 @@ analysis = st.session_state.get("analysis")
 if analysis is None:
     if not submitted:
         st.info("Choose tickers, enter your holdings, and select Analyze portfolio.")
+        for column, (title, text) in zip(st.columns(4), FEATURES, strict=True):
+            with column.container(border=True, height="stretch"):
+                st.markdown(f"**{title}**")
+                st.caption(text)
 else:
     prices = analysis["prices"]
     st.subheader("Portfolio snapshot")
@@ -1680,13 +1711,14 @@ else:
         deltas,
         strict=True,
     ):
-        with column.container(border=True):
-            st.metric(
-                label,
-                format(value, spec) if isfinite(value) else "N/A",
-                delta=delta,
-                help=help_text,
-            )
+        column.metric(
+            label,
+            format(value, spec) if isfinite(value) else "N/A",
+            delta=delta,
+            help=help_text,
+            border=True,
+            height="stretch",
+        )
     if not isfinite(analysis["metrics"][2]):
         st.caption(
             "Sharpe ratio is unavailable because portfolio volatility is zero or too close to zero."
@@ -1734,7 +1766,7 @@ else:
             x=drawdown.index,
             y=drawdown,
             labels={"x": "Date", "y": "Drawdown"},
-            color_discrete_sequence=["#e76f51"],
+            color_discrete_sequence=["#F97316"],
         )
         st.caption("Drawdown measures the decline below the portfolio’s prior peak.")
         show_slider = st.checkbox("Show date range slider", value=True)
@@ -1753,7 +1785,7 @@ else:
     render_rolling(analysis)
 
     st.divider()
-    st.subheader("Portfolio Diversification")
+    st.subheader("Portfolio diversification")
     st.caption("Allocation balance and how your stocks move together.")
     try:
         hhi = herfindahl_index(analysis["weights"])
@@ -1762,24 +1794,25 @@ else:
         st.warning(f"Diversification metrics are unavailable. {exc}")
     else:
         concentration_column, holdings_column = st.columns(2)
-        with concentration_column.container(border=True):
-            st.metric(
-                "HHI concentration",
-                f"{hhi:.3f}",
-                help="Sum of squared allocation weights, on a 0–1 scale. Lower means more evenly spread; 1 means one holding has all the weight.",
-            )
-        with holdings_column.container(border=True):
-            st.metric(
-                "Effective number of holdings",
-                f"{holdings:.2f}",
-                help="1 / HHI: the number of equally weighted holdings with the same allocation concentration. Zero-weight stocks do not count.",
-            )
+        concentration_column.metric(
+            "HHI concentration",
+            f"{hhi:.3f}",
+            help="Sum of squared allocation weights, on a 0–1 scale. Lower means more evenly spread; 1 means one holding has all the weight.",
+            border=True,
+            height="stretch",
+        )
+        holdings_column.metric(
+            "Effective number of holdings",
+            f"{holdings:.2f}",
+            help="1 / HHI: the number of equally weighted holdings with the same allocation concentration. Zero-weight stocks do not count.",
+            border=True,
+            height="stretch",
+        )
         st.caption(
             "These measures describe allocation balance, not stock independence. Similar stocks can still carry similar risks."
         )
 
     render_risk_attribution(analysis)
-    render_risk_sources(analysis)
 
     if len(prices.columns) == 1:
         st.info(
@@ -1803,20 +1836,24 @@ else:
                 correlations,
                 zmin=-1,
                 zmax=1,
-                color_continuous_scale="RdBu",
+                color_continuous_scale=CORRELATION_SCALE,
                 labels={"x": "Stock", "y": "Stock", "color": "Correlation"},
                 text_auto=".2f",
-                aspect="equal",
+                aspect="auto",
             )
             correlation_fig.update_traces(
                 hovertemplate="%{y} / %{x}<br>Daily return correlation: %{z:.2f}<extra></extra>",
                 hoverongaps=False,
             )
-            correlation_fig.update_layout(template="plotly_white", height=500)
+            correlation_fig.update_layout(
+                template="plotly_white", height=max(320, 70 * len(correlations) + 120)
+            )
             st.plotly_chart(correlation_fig, key="correlation_heatmap")
             st.caption(
                 "Based on adjusted daily returns over the selected period, using dates shared by every stock. Includes entered stocks with zero allocation; this is not a weighted portfolio correlation."
             )
+
+    render_risk_sources(analysis)
 
     st.divider()
     st.subheader("Portfolio vs. S&P 500 (SPY)")
@@ -1845,7 +1882,7 @@ else:
         benchmark_fig = px.line(
             performance,
             labels={"index": "Date", "value": "Cumulative return", "variable": "Investment"},
-            color_discrete_sequence=["#264653", "#e76f51"],
+            color_discrete_sequence=["#38BDF8", "#F97316"],
         )
         benchmark_fig.update_layout(
             template="plotly_white",
@@ -1861,18 +1898,20 @@ else:
         benchmark_fig.add_hline(y=0, line_dash="dot", line_color="gray")
         st.plotly_chart(benchmark_fig, key="benchmark_chart")
         portfolio_column, benchmark_column = st.columns(2)
-        with portfolio_column.container(border=True):
-            st.metric(
-                "Portfolio ending return",
-                f"{ending_returns['Portfolio']:.2%}",
-                help="Cumulative portfolio return over the shared dates; not annualized.",
-            )
-        with benchmark_column.container(border=True):
-            st.metric(
-                "SPY ending return",
-                f"{ending_returns['S&P 500 (SPY)']:.2%}",
-                help="Cumulative adjusted SPY return over the same shared dates; not annualized.",
-            )
+        portfolio_column.metric(
+            "Portfolio ending return",
+            f"{ending_returns['Portfolio']:.2%}",
+            help="Cumulative portfolio return over the shared dates; not annualized.",
+            border=True,
+            height="stretch",
+        )
+        benchmark_column.metric(
+            "SPY ending return",
+            f"{ending_returns['S&P 500 (SPY)']:.2%}",
+            help="Cumulative adjusted SPY return over the same shared dates; not annualized.",
+            border=True,
+            height="stretch",
+        )
         st.caption(
             "Ending returns are cumulative over this shared period, not annualized. The portfolio follows the selected rebalancing on the shared trading dates. Shorter SPY coverage can make this period differ from the risk cards above. Past performance does not predict future returns."
         )
