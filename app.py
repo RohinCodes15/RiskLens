@@ -591,7 +591,13 @@ def render_risk_sources(analysis: dict) -> None:
     returns = to_returns(analysis["prices"])
     for column, title in (("sector", "Sector"), ("country", "Country")):
         try:
-            table = group_breakdown(returns, analysis["weights"], labels[column].rename(title))
+            table = group_breakdown(
+                returns,
+                analysis["weights"],
+                labels[column].rename(title),
+                analysis.get("rebalance", "daily"),
+                analysis.get("cost_bps", 0.0),
+            )
         except ValueError as exc:
             st.info(f"{title} breakdown is unavailable. {exc}")
             continue
