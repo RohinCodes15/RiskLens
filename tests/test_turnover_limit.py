@@ -5,6 +5,8 @@ import pandas as pd
 import pytest
 
 from risklens.analytics import (
+    max_sharpe_portfolio,
+    min_volatility_portfolio,
     one_way_turnover,
     validate_turnover_limit,
 )
@@ -54,3 +56,65 @@ def test_constraints_hold_exactly_at_the_current_weights() -> None:
     assert np.all(rows @ np.concatenate([current, np.zeros(4)]) >= -1e-12)  # 0 up to rounding
     moved = np.array([0.4, 0.2, 0.2, 0.2])  # turnover 0.3, over the 0.2 limit
     assert (rows @ np.concatenate([moved, np.abs(moved - current)]))[-1] < 0
+
+
+@pytest.mark.parametrize("limit", [0.05, 0.1, 0.25])
+@pytest.mark.parametrize("optimizer", [min_volatility_portfolio, max_sharpe_portfolio])
+def test_limited_weights_stay_within_the_limit(
+    prices: pd.DataFrame, optimizer: object, limit: float
+) -> None:
+    result = optimizer(prices, current_weights=CURRENT, max_turnover=limit)
+    assert one_way_turnover(CURRENT, result.weights) <= limit + 1e-6
+    assert result.weights.sum() == pytest.approx(1.0)
+    assert (result.weights >= 0).all()
+
+
+def test_tighter_limits_cost_volatility_and_sharpe(prices: pd.DataFrame) -> None:
+    def volatility(limit: float) -> float:
+        return min_volatility_portfolio(
+            prices, current_weights=CURRENT, max_turnover=limit
+        ).volatility
+
+    def sharpe(limit: float) -> float:
+        return max_sharpe_portfolio(
+            prices, current_weights=CURRENT, max_turnover=limit
+        ).sharpe_ratio
+
+    assert volatility(0.05) > volatility(0.2) > volatility(0.4)
+    assert sharpe(0.05) < sharpe(0.2) < sharpe(0.4)
+
+
+def test_zero_limit_keeps_the_current_weights(prices: pd.DataFrame) -> None:
+    for optimizer in (min_volatility_portfolio, max_sharpe_portfolio):
+        result = optimizer(prices, current_weights=CURRENT, max_turnover=0.0)
+        np.testing.assert_allclose(result.weights, CURRENT, atol=1e-6)
+
+
+@pytest.mark.parametrize("optimizer", [min_volatility_portfolio, max_sharpe_portfolio])
+def test_a_loose_limit_matches_the_unlimited_optimum(
+    prices: pd.DataFrame, optimizer: object
+) -> None:
+    free = optimizer(prices)
+    limited = optimizer(prices, current_weights=CURRENT, max_turnover=1.0)
+    np.testing.assert_allclose(limited.weights, free.weights, atol=1e-5)
+
+
+def test_limited_minimum_volatility_beats_random_feasible_weights(prices: pd.DataFrame) -> None:
+    limit = 0.1
+    best = min_volatility_portfolio(prices, current_weights=CURRENT, max_turnover=limit)
+    cov = prices.pct_change().dropna().cov().to_numpy() * 252
+    current = np.array(CURRENT)
+    rng = np.random.default_rng(0)
+    for target in rng.dirichlet(np.ones(4), 5000):
+        step = min(1.0, limit / max(one_way_turnover(current, target), 1e-12))
+        w = current + (target - current) * step  # shrunk onto the limit, so feasible
+        assert np.sqrt(w @ cov @ w) >= best.volatility - 1e-9
+
+
+def test_limit_needs_both_arguments(prices: pd.DataFrame) -> None:
+    with pytest.raises(ValueError, match="both current_weights and max_turnover"):
+        min_volatility_portfolio(prices, current_weights=CURRENT)
+    with pytest.raises(ValueError, match="both current_weights and max_turnover"):
+        max_sharpe_portfolio(prices, max_turnover=0.2)
+    with pytest.raises(ValueError, match="Expected 4"):
+        min_volatility_portfolio(prices, current_weights=[0.5, 0.5], max_turnover=0.2)
