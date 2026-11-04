@@ -1302,8 +1302,13 @@ def render_simulation(analysis: dict) -> None:
     st.caption(
         "Bands are pointwise percentiles across hypothetical paths, not confidence bounds or individual paths. The median line is not one simulated path."
     )
+    tails = (
+        f" Degrees of freedom: {result.degrees_of_freedom:.1f}, matched to the history's excess kurtosis."
+        if result.distribution == "student_t" and isfinite(result.degrees_of_freedom)
+        else ""
+    )
     st.caption(
-        "Assumes independent normally distributed daily log returns fitted to historical data. Short histories are unreliable; crashes, changing markets, fees, taxes and cash flows are not captured. Dates include weekdays without excluding exchange holidays."
+        f"{DISTRIBUTION_NOTES[result.distribution]}{tails} Paths come from your portfolio's past daily returns, which already follow your rebalancing and trading cost. Short histories are unreliable; changing markets, taxes and cash flows are not captured. Dates include weekdays without excluding exchange holidays."
     )
 
 
