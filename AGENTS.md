@@ -14,16 +14,18 @@ src/risklens/
    validation.py      user input → clean tickers / weights / dates (raises ValueError)
    data.py            tickers → price DataFrame (yfinance) → daily returns
    holdings.py        holdings CSV → ticker amounts; shares or dollars + latest prices → weights
+   report.py          analysis → CSV tables (zip) and an HTML report page
    analytics/
      metrics.py       returns + weights → portfolio returns → risk metrics, ratios, VaR/CVaR
      value_at_risk.py daily returns → normal / Cornish-Fisher VaR, rolling VaR, Kupiec backtest
      engine.py        adjusted prices + weights → PortfolioMetrics
      benchmark.py     portfolio vs. SPY growth, statistics, information ratio, capture
      concentration.py HHI, effective holdings, correlation matrix
-     attribution.py   daily returns + factors → Fama-French betas; labels → sector/country split
+     attribution.py   returns + factors → Fama-French betas; rebalanced risk shares; sector/country split
      rolling.py       daily returns → dated rolling volatility, Sharpe, drawdown
      volatility.py    daily returns → EWMA and GARCH(1,1) volatility forecasts
-     optimization.py  adjusted prices → long-only min-vol / max-Sharpe weights, efficient frontier
+     optimization.py  adjusted prices → min-vol / max-Sharpe weights (optional turnover limit), frontier
+     turnover_limit.py one-way turnover; linear turnover-limit constraints
      simulation.py    daily returns → seeded Monte Carlo wealth percentiles (normal, Student-t, bootstrap)
      stress.py        per-ticker price history + weights → historical stress-window results
      what_if.py       adjusted prices + weights + one trade → before/after metrics
