@@ -653,17 +653,38 @@ def render_optimization(analysis: dict) -> None:
     if len(prices.columns) == 1:
         st.info("Optimization needs at least two stocks. Add another stock to compare allocations.")
         return
+    max_turnover_pct = st.number_input(
+        "Turnover limit (% of portfolio)",
+        min_value=0.0,
+        max_value=100.0,
+        value=100.0,
+        step=5.0,
+        format="%.0f",
+        help="Most of the portfolio the minimum-volatility and maximum-Sharpe weights may "
+        "trade away from your current weights (one-way: the share bought, which equals the "
+        "share sold). 100% means no limit.",
+    )
     if st.button("Optimize portfolio"):
         analysis.pop("optimization", None)
         analysis.pop("optimization_error", None)
         analysis["optimization_errors"] = {}
+        limit = None if max_turnover_pct >= 100 else max_turnover_pct / 100
+        analysis["optimization_limit"] = limit
+        limited = (
+            {} if limit is None else {"current_weights": analysis["weights"], "max_turnover": limit}
+        )
         results = []
         with st.spinner("Solving optimized portfolios…"):
             for label, optimizer in (
-                ("Minimum volatility", min_volatility_portfolio),
-                ("Maximum Sharpe", max_sharpe_portfolio),
-                # Reuse the minimum-volatility result; None makes the frontier solve it.
-                ("Efficient frontier", lambda p: efficient_frontier(p, min_volatility=results[0])),
+                ("Minimum volatility", lambda p: min_volatility_portfolio(p, **limited)),
+                ("Maximum Sharpe", lambda p: max_sharpe_portfolio(p, **limited)),
+                # Reuse an unlimited minimum-volatility result; None makes the frontier solve it.
+                (
+                    "Efficient frontier",
+                    lambda p: efficient_frontier(
+                        p, min_volatility=results[0] if limit is None else None
+                    ),
+                ),
             ):
                 try:
                     results.append(optimizer(prices))
