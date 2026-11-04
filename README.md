@@ -1036,6 +1036,7 @@ src/risklens/
                           SPY benchmark, daily returns; Fama-French factors (Ken French
                           library) and sector/country labels (Yahoo profiles)
   holdings.py             Holdings CSV parsing; shares or dollar values to weights
+  report.py               Report export: CSV tables (zip) and an HTML page
   analytics/
     engine.py             analyze_portfolio and PortfolioMetrics
     metrics.py            Return-based metrics (volatility, Sharpe, Sortino, Calmar,
@@ -1044,9 +1045,11 @@ src/risklens/
     rolling.py            Dated rolling volatility, Sharpe, and drawdown
     volatility.py         EWMA and GARCH(1,1) volatility forecasts
     optimization.py       Long-only min-volatility and max-Sharpe weights (SciPy)
+    turnover_limit.py     One-way turnover and the optimizer's turnover limit
     benchmark.py          Portfolio vs. SPY growth, statistics, information ratio, capture
     concentration.py      Herfindahl index, effective holdings, correlation
-    attribution.py        Fama-French factor regression; sector/country breakdown
+    attribution.py        Fama-French factor regression; rebalanced risk shares;
+                          sector/country breakdown
     simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio):
                           normal, Student-t, or bootstrap daily returns
     stress.py             Historical stress windows (stress_test, custom_scenario)
@@ -1056,8 +1059,9 @@ tests/                    pytest suite (network-free); test_smoke.py,
                           test_tail_risk_ui.py, test_risk_ui.py,
                           test_holdings_ui.py, test_risk_metrics_ui.py,
                           test_risk_sources_ui.py, test_what_if_ui.py,
-                          test_shocks_ui.py, test_volatility_ui.py, and
-                          test_simulation_tails_ui.py
+                          test_shocks_ui.py, test_volatility_ui.py,
+                          test_simulation_tails_ui.py, test_risk_attribution_ui.py,
+                          test_turnover_limit_ui.py, and test_report_ui.py
                           drive the dashboard with AppTest
 benchmarks/               Reproducible benchmarks (simulation_memory.py: Monte
                           Carlo peak memory at 10,000 paths × 1,260 days)
