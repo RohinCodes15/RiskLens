@@ -20,8 +20,15 @@ Limitations, stated plainly:
   score them, so the reported return, volatility, and Sharpe ratio are
   in-sample and optimistic. They are not a forecast; out-of-sample results
   are typically worse.
+
+Turnover limit: ``min_volatility_portfolio`` and ``max_sharpe_portfolio`` take
+optional ``current_weights`` and ``max_turnover`` (one-way, a fraction) and
+then only consider weights within that turnover of the current ones (see
+``risklens.analytics.turnover_limit``). The efficient frontier is never
+limited.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -29,8 +36,9 @@ import pandas as pd
 from scipy.optimize import OptimizeResult, minimize
 
 from risklens.analytics.metrics import MIN_VOLATILITY_OBS, TRADING_DAYS_PER_YEAR
+from risklens.analytics.turnover_limit import turnover_constraints, validate_turnover_limit
 from risklens.data import to_returns
-from risklens.validation import validate_prices, validate_risk_free_rate
+from risklens.validation import validate_prices, validate_risk_free_rate, validate_weights
 
 SOLVER_METHOD = "SLSQP"
 SOLVER_TOLERANCE = 1e-12
@@ -201,6 +209,52 @@ def _solve(
     )
     if not result.success or not feasible:
         raise OptimizationError(f"Portfolio optimizer did not converge: {result.message}")
+    return result
+
+
+def _turnover_limit(
+    n: int, current_weights: Sequence[float] | None, max_turnover: float | None
+) -> tuple[np.ndarray, float] | None:
+    """Checked (current weights, one-way limit), or None when no limit was asked for.
+
+    Raises:
+        ValueError: if only one of the two is given, or either is invalid.
+    """
+    if current_weights is None and max_turnover is None:
+        return None
+    if current_weights is None or max_turnover is None:
+        raise ValueError("Give both current_weights and max_turnover, or neither.")
+    return validate_weights(current_weights, n), validate_turnover_limit(max_turnover)
+
+
+def _limited_solve(
+    covariance: np.ndarray,
+    x0: np.ndarray,
+    bounds: list[tuple[float, float | None]],
+    directions: np.ndarray,
+    targets: np.ndarray,
+    limit: tuple[np.ndarray, float],
+) -> OptimizeResult:
+    """``_solve`` with a turnover limit: adds u >= |x - s * current|, then drops u.
+
+    Raises:
+        OptimizationError: if the solver fails, e.g. when no portfolio meets
+            both the objective's constraints and the limit.
+    """
+    current, max_turnover = limit
+    n = len(current)
+    padded = np.zeros((2 * n, 2 * n))
+    padded[:n, :n] = covariance
+    start = np.concatenate([x0, np.abs(x0 - x0.sum() * current)])
+    result = _solve(
+        padded,
+        start,
+        [*bounds, *[(0.0, None)] * n],
+        np.hstack([directions, np.zeros_like(directions)]),
+        targets,
+        turnover_constraints(current, max_turnover),
+    )
+    result.x = np.asarray(result.x[:n], dtype=float)
     return result
 
 
