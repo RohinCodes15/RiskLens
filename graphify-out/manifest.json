@@ -1,8 +1,8 @@
 {
   "app.py": {
-    "mtime": 1793736308.478524,
-    "seen": 1793736773.2431371,
-    "ast_hash": "4ad4cbaa358c9a22af057fe563e05189",
+    "mtime": 1793750838.3812153,
+    "seen": 1793751334.593163,
+    "ast_hash": "a94b8f79a38e8006f7ee433b851b0e53",
     "semantic_hash": ""
   },
   "pyproject.toml": {
@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/risklens/analytics/__init__.py": {
-    "mtime": 1793736041.7500048,
-    "seen": 1793736773.2431512,
-    "ast_hash": "2ba0529f9e72c8de70a973afcfa2d8ca",
+    "mtime": 1793750645.931927,
+    "seen": 1793751334.593177,
+    "ast_hash": "b742efffd0237312761fa517fe144fc2",
     "semantic_hash": ""
   },
   "src/risklens/analytics/benchmark.py": {
@@ -48,8 +48,8 @@
     "semantic_hash": ""
   },
   "src/risklens/analytics/simulation.py": {
-    "mtime": 1793736653.7336125,
-    "seen": 1793736773.2431638,
+    "mtime": 1793736972.831458,
+    "seen": 1793751334.593189,
     "ast_hash": "08b3eb292ac63e025f423bc427479be0",
     "semantic_hash": ""
   },
@@ -132,8 +132,8 @@
     "semantic_hash": ""
   },
   "tests/test_smoke.py": {
-    "mtime": 1793736308.478678,
-    "seen": 1793736773.243221,
+    "mtime": 1793737849.562195,
+    "seen": 1793751334.59325,
     "ast_hash": "5cb6c32a38d4218d6c0308797f56656a",
     "semantic_hash": ""
   },
@@ -162,21 +162,21 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1793736619.7626154,
-    "seen": 1793736773.243242,
-    "ast_hash": "73a45a68e6b9b592ecb29161e3b099ca",
+    "mtime": 1793751274.837189,
+    "seen": 1793751334.5932732,
+    "ast_hash": "f4a16d164979261d5f882905704d98b1",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793736619.762177,
-    "seen": 1793736773.243243,
-    "ast_hash": "3db39dc34dd3c61719ecde76f232a857",
+    "mtime": 1793751274.8369699,
+    "seen": 1793751334.593274,
+    "ast_hash": "09b160cf8ef01a9050af3cbff2bbf0e8",
     "semantic_hash": ""
   },
   "src/risklens/analytics/optimization.py": {
-    "mtime": 1793713800.0,
-    "seen": 1793733842.229365,
-    "ast_hash": "8552112c398393c4a8004207867870d5",
+    "mtime": 1793750535.7026231,
+    "seen": 1793751334.593185,
+    "ast_hash": "7ff1e5ef53995d8c2ab87397166d3ca4",
     "semantic_hash": ""
   },
   "src/risklens/analytics/rolling.py": {
@@ -366,9 +366,9 @@
     "semantic_hash": ""
   },
   "src/risklens/analytics/attribution.py": {
-    "mtime": 1793713800.0,
-    "seen": 1793733842.2293591,
-    "ast_hash": "9fb088eb863beee8225cc4446e000262",
+    "mtime": 1793741519.4180806,
+    "seen": 1793751334.593178,
+    "ast_hash": "66e0f859dde4d8941680ed3e693dca18",
     "semantic_hash": ""
   },
   "tests/test_attribution.py": {
@@ -426,33 +426,81 @@
     "semantic_hash": ""
   },
   "src/risklens/analytics/volatility.py": {
-    "mtime": 1793735972.3795354,
-    "seen": 1793736773.243169,
+    "mtime": 1793736947.420987,
+    "seen": 1793751334.593195,
     "ast_hash": "f37104ffbfd012413c59085b839e0d51",
     "semantic_hash": ""
   },
   "tests/test_simulation_tails.py": {
-    "mtime": 1793736506.2840278,
-    "seen": 1793736773.243218,
+    "mtime": 1793736980.8246336,
+    "seen": 1793751334.593248,
     "ast_hash": "30f524e3c3995742efc06a72876e3de5",
     "semantic_hash": ""
   },
   "tests/test_simulation_tails_ui.py": {
-    "mtime": 1793736329.625334,
-    "seen": 1793736773.243219,
+    "mtime": 1793737868.5952091,
+    "seen": 1793751334.593249,
     "ast_hash": "7af74e72bc656f089fcdc224d06f8a8d",
     "semantic_hash": ""
   },
   "tests/test_volatility.py": {
-    "mtime": 1793736092.6333508,
-    "seen": 1793736773.243237,
+    "mtime": 1793736958.7267442,
+    "seen": 1793751334.593268,
     "ast_hash": "2d43bd26054d5d5398743b37ea155277",
     "semantic_hash": ""
   },
   "tests/test_volatility_ui.py": {
-    "mtime": 1793736219.4341428,
-    "seen": 1793736773.243238,
+    "mtime": 1793737802.7231138,
+    "seen": 1793751334.593269,
     "ast_hash": "1ffe5c1b3972905c30cebfc2762a7fa2",
+    "semantic_hash": ""
+  },
+  "src/risklens/analytics/turnover_limit.py": {
+    "mtime": 1793748028.9309385,
+    "seen": 1793751334.5931919,
+    "ast_hash": "901624156945eb43cce0f0d8cfa9e2ef",
+    "semantic_hash": ""
+  },
+  "src/risklens/report.py": {
+    "mtime": 1793750632.0466218,
+    "seen": 1793751334.5932002,
+    "ast_hash": "a6336fe5151869b3f5d493877715f5b9",
+    "semantic_hash": ""
+  },
+  "tests/test_rebalanced_risk.py": {
+    "mtime": 1793750738.566893,
+    "seen": 1793751334.593228,
+    "ast_hash": "052de8e356f781f96320d3dac387e927",
+    "semantic_hash": ""
+  },
+  "tests/test_report.py": {
+    "mtime": 1793750701.983426,
+    "seen": 1793751334.5932312,
+    "ast_hash": "6d25afef9ab1826f333c18be85ed15a0",
+    "semantic_hash": ""
+  },
+  "tests/test_report_ui.py": {
+    "mtime": 1793750938.6669376,
+    "seen": 1793751334.593232,
+    "ast_hash": "1e4915c7905e941084396d98af2a3478",
+    "semantic_hash": ""
+  },
+  "tests/test_risk_attribution_ui.py": {
+    "mtime": 1793750938.6590333,
+    "seen": 1793751334.5932329,
+    "ast_hash": "085a3eb4e74a2aea99811fe2c9963249",
+    "semantic_hash": ""
+  },
+  "tests/test_turnover_limit.py": {
+    "mtime": 1793750724.3298552,
+    "seen": 1793751334.5932631,
+    "ast_hash": "e54ab6687972d847e9c556f93a6509ce",
+    "semantic_hash": ""
+  },
+  "tests/test_turnover_limit_ui.py": {
+    "mtime": 1793750938.662974,
+    "seen": 1793751334.5932648,
+    "ast_hash": "36a8eb46ced17becd6c8b52e504027fc",
     "semantic_hash": ""
   }
 }
