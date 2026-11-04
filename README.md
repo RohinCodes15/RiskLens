@@ -59,7 +59,8 @@ There is no separate backend or database: the Streamlit app calls the
   GARCH(1,1) volatility cards, with the GARCH forecast averaged over a
   horizon you choose, and a chart of each model's estimate on each date. See
   [Volatility forecasts](#volatility-forecasts).
-- **Simulated futures** tab: seeded Monte Carlo percentile fan chart.
+- **Simulated futures** tab: seeded Monte Carlo percentile fan chart, with
+  normal, Student-t (fat tails), or bootstrap (resampled past days) returns.
 - **Historical scenarios** tab: 2008, 2020, 2022, or custom stress windows,
   with unavailable scenarios explained.
 - **What-if trade** tab: sell part of one holding, buy another ticker (held
