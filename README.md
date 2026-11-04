@@ -752,10 +752,15 @@ changed. The one remaining array is unavoidable without changing results:
 percentiles need every path on each date, and the seeded generator draws
 path by path, so generating dates in chunks would give different numbers.
 
+Student-t uses the same single buffer. Bootstrap fills it 1,000 paths at a
+time, so its day indices never need a second full array; it peaks at about
+121 MB (1.2 full arrays) at 10,000 × 1,260.
+
 **Assumptions and limitations.**
-- Returns are treated as i.i.d. and normal in log space, so the model has no
-  volatility clustering, regime changes or fat tails. Real crashes can be
-  worse than the 5th percentile.
+- Daily returns are drawn independently, so there is no volatility
+  clustering or regime change. The normal model also has no fat tails;
+  Student-t and bootstrap add them, but real crashes can still be worse than
+  the 5th percentile.
 - μ and σ are estimated from a finite sample and treated as known, so short
   histories give unreliable bands.
 - Exchange holidays are not removed from future dates.
