@@ -629,8 +629,12 @@ estimates from past returns, not predictions.
 ## Portfolio optimization
 
 ```python
-min_volatility_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
-max_sharpe_portfolio(prices, risk_free_rate=0.0) -> OptimizedPortfolio
+min_volatility_portfolio(
+    prices, risk_free_rate=0.0, *, current_weights=None, max_turnover=None
+) -> OptimizedPortfolio
+max_sharpe_portfolio(
+    prices, risk_free_rate=0.0, *, current_weights=None, max_turnover=None
+) -> OptimizedPortfolio
 efficient_frontier(prices, n_points=40, risk_free_rate=0.0, *, min_volatility=None) -> EfficientFrontier
 frontier_point_within_risk(frontier, current_volatility) -> int | None
 estimate_inputs(prices) -> (expected_returns, covariance, observations)
@@ -646,6 +650,19 @@ covariance is the sample covariance × 252, the same conventions as
 (SLSQP). Minimum volatility minimizes w′Σw and ignores expected returns (the
 rate only sets its reported Sharpe ratio). Maximum Sharpe is solved as an
 equivalent convex problem, so it finds the global optimum, not a local one.
+
+**Turnover limit.** Pass `current_weights` (summing to 1) and `max_turnover`
+(a fraction from 0 to 1) together to consider only weights within that
+one-way turnover of the current ones: 0.5 × Σ|w − current| ≤
+`max_turnover`, the share of the portfolio bought, which equals the share
+sold (`one_way_turnover(before, after)` measures it). The limit is added
+with extra variables uᵢ ≥ |wᵢ − currentᵢ|, so every constraint stays linear
+and both problems stay convex: the result is the true minimum volatility or
+maximum Sharpe ratio within the limit. A limit of 0 returns the current
+weights, and 1 never binds; `validate_turnover_limit` checks the value. The
+efficient frontier is never limited. In the dashboard, **Turnover limit (%
+of portfolio)** sets it (100% means no limit), and the table shows each
+column's turnover from your current weights.
 
 **Result.** `OptimizedPortfolio` holds `weights` (a Series indexed by
 ticker), `expected_return`, `volatility`, `sharpe_ratio` (all annual
