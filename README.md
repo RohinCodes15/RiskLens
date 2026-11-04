@@ -730,6 +730,9 @@ if i is not None:
   ratio would be unbounded).
 - A solver that fails or returns infeasible weights raises
   `OptimizationError`, a `ValueError` subclass carrying scipy's message.
+- Giving only one of `current_weights` and `max_turnover` raises
+  `ValueError`. With a limit, maximum Sharpe raises `OptimizationError` when
+  no weights within it have a positive excess return.
 
 **Limitations.** Expected returns estimated from a few years of prices are
 very noisy, and mean-variance optimization amplifies that error: maximum-
