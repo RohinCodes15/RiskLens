@@ -235,6 +235,8 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `rolling_drawdown`, `rolling_max_drawdown`, `rolling_metrics`,
 `ROLLING_WINDOWS`, `ewma_volatility`, `fit_garch`, `garch_forecast`,
 `horizon_volatility`, `EWMA_LAMBDA`, `MIN_GARCH_OBS`, `MAX_FORECAST_DAYS`,
+`rebalanced_risk_contributions`, `COST_LABEL`, `one_way_turnover`,
+`validate_turnover_limit`,
 `estimate_inputs`, `min_volatility_portfolio`,
 `max_sharpe_portfolio`, `efficient_frontier`, `frontier_point_within_risk`,
 `sortino_ratio`, `calmar_ratio`, `normal_var`, `cornish_fisher_var`,
@@ -252,7 +254,8 @@ docstring gives its units and sign conventions.
 `validate_date_range`; `risklens.data` provides `fetch_prices`,
 `fetch_price_history`, `fetch_benchmark_prices`, `to_returns`, and
 `DataFetchError`; `risklens.holdings` provides `parse_holdings_csv`,
-`holdings_to_weights`, and `HOLDING_KINDS`.
+`holdings_to_weights`, and `HOLDING_KINDS`; `risklens.report` provides
+`report_tables`, `report_csv_zip`, `report_html`, and `REPORT_TITLE`.
 
 **Two ways to fetch prices.**
 
