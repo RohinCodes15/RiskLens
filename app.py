@@ -1734,6 +1734,7 @@ else:
         render_benchmark_ratios(analysis)
 
     render_tail_risk(analysis)
+    render_volatility_forecast(analysis)
     simulation_tab, stress_tab, trade_tab, shock_tab = st.tabs(
         ["Simulated futures", "Historical scenarios", "What-if trade", "Custom shocks"]
     )
