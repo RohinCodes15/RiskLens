@@ -10,6 +10,7 @@ current weights and s = Σx (1 for fully invested weights, and the scale of
 the rescaled maximum-Sharpe problem), the limit becomes Σu ≤ 2·T·s.
 """
 
+import numbers
 from collections.abc import Sequence
 
 import numpy as np
@@ -26,3 +27,17 @@ def one_way_turnover(before: Sequence[float], after: Sequence[float]) -> float:
     start = validate_weights(before, len(before))
     end = validate_weights(after, len(start))
     return 0.5 * float(np.abs(end - start).sum())
+
+
+def validate_turnover_limit(max_turnover: float) -> float:
+    """Return ``max_turnover`` as a float if it is a number from 0 to 1.
+
+    Raises:
+        ValueError: if it is not a finite number in [0, 1].
+    """
+    if isinstance(max_turnover, (bool, np.bool_)) or not isinstance(max_turnover, numbers.Real):
+        raise ValueError("max_turnover must be a number (0.2 for 20% of the portfolio).")
+    value = float(max_turnover)
+    if not np.isfinite(value) or not 0 <= value <= 1:
+        raise ValueError("max_turnover must be between 0 and 1.")
+    return value
