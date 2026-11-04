@@ -503,9 +503,35 @@ explain), and the dates used. It needs at least `MIN_FACTOR_OBS` (60) days
 shared with the factor data. The portfolio returns follow the selected
 rebalancing and are net of trading costs.
 
-`group_breakdown(returns, weights, labels)` sums allocation weights and
-`risk_contributions` shares by sector or country. Like Risk attribution, the
-risk shares use the target weights and the full-period covariance.
+`group_breakdown(returns, weights, labels, rebalance="daily", cost_bps=0.0)`
+sums allocation weights and risk shares by sector or country. The risk
+shares come from `rebalanced_risk_contributions`, the same as the Risk
+attribution chart, so they follow your rebalancing and trading cost; with
+costs, a `Trading costs` group (weight 0) holds the cost share.
+
+### Risk shares with rebalancing and costs (`rebalanced_risk_contributions`)
+
+```python
+rebalanced_risk_contributions(returns, weights, rebalance="daily", cost_bps=0.0) -> pd.Series
+```
+
+Each day's net portfolio return, as `portfolio_returns` computes it, splits
+exactly into one piece per holding (the weight it held that morning times
+its return) plus a cost piece, −cost × (1 + gross return). Between
+rebalances the held weights drift with prices. A piece's share of risk is
+its sample covariance with the portfolio's daily return divided by the
+portfolio's variance, so the shares sum to 1:
+
+```
+share_i = cov(h_i,t · r_i,t, r_p,t) / var(r_p,t)
+```
+
+With daily rebalancing and no costs the held weights never change and this
+equals `risk_contributions` (weight × the asset's covariance with the
+portfolio ÷ portfolio variance). The `COST_LABEL` (`"Trading costs"`) row
+appears only when `cost_bps` > 0; it is usually close to 0 and can be
+negative. It needs at least 2 returns and raises `ValueError` when the
+portfolio's variance is zero.
 
 ## Rolling risk metrics
 
