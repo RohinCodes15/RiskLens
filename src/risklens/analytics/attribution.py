@@ -6,12 +6,20 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from risklens.analytics.metrics import TRADING_DAYS_PER_YEAR, risk_contributions
-from risklens.validation import validate_weights
+from risklens.analytics.metrics import (
+    BPS_PER_UNIT,
+    MIN_VOLATILITY_OBS,
+    TRADING_DAYS_PER_YEAR,
+    _portfolio_inputs,
+    _turnover,
+    risk_contributions,
+)
+from risklens.validation import validate_cost_bps, validate_weights
 
 FACTOR_COLUMNS = ("Mkt-RF", "SMB", "HML", "Mom")  # Fama-French 3 factors + Carhart momentum
 RISK_FREE_COLUMN = "RF"
 MIN_FACTOR_OBS = 60  # about three months of shared trading days
+COST_LABEL = "Trading costs"  # risk-share row for the cost drag; tickers never contain spaces
 
 
 @dataclass(frozen=True)
@@ -86,6 +94,45 @@ def _held_weights(values: np.ndarray, w: np.ndarray, periods: np.ndarray) -> np.
         with np.errstate(divide="ignore", invalid="ignore"):
             held[start:stop] = np.where(totals > 0, holdings / totals, 0.0)
     return held
+
+
+def rebalanced_risk_contributions(
+    returns: pd.DataFrame,
+    weights: Sequence[float],
+    rebalance: str = "daily",
+    cost_bps: float = 0.0,
+) -> pd.Series:
+    """Each holding's share of the variance of the portfolio you actually hold.
+
+    The net daily portfolio return (``portfolio_returns`` with ``rebalance``
+    and ``cost_bps``) splits exactly into one piece per holding, the weight
+    it held that morning times its return, plus a trading-cost piece,
+    −cost × (1 + gross return). A piece's share is its sample covariance with
+    the portfolio return divided by the portfolio's variance, so the shares
+    sum to 1. With daily rebalancing and no costs this equals
+    ``risk_contributions``. The ``COST_LABEL`` row is added only when
+    ``cost_bps`` > 0; it is usually tiny and can be negative.
+
+    Raises:
+        ValueError: on the inputs ``portfolio_returns`` rejects, fewer than 2
+            returns, or zero portfolio variance.
+    """
+    cost_rate = validate_cost_bps(cost_bps) / BPS_PER_UNIT
+    values, w, periods = _portfolio_inputs(returns, weights, rebalance)
+    if len(values) < MIN_VOLATILITY_OBS:
+        raise ValueError("need at least 2 rows of returns to estimate covariance")
+    pieces = _held_weights(values, w, periods) * values
+    gross = pieces.sum(axis=1)
+    cost = -cost_rate * 2.0 * _turnover(values, w, periods) * (1.0 + gross)
+    net = gross + cost
+    centered = net - net.mean()
+    variance = float(centered @ centered)
+    if variance <= 0:
+        raise ValueError("portfolio variance is zero; risk shares are undefined")
+    parts = np.column_stack([pieces, cost]) if cost_rate > 0 else pieces
+    shares = (parts - parts.mean(axis=0)).T @ centered / variance
+    index = [*returns.columns, COST_LABEL] if cost_rate > 0 else list(returns.columns)
+    return pd.Series(shares, index=index, name="risk_contribution")
 
 
 def group_breakdown(
