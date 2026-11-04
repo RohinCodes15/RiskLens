@@ -98,13 +98,16 @@ There is no separate backend or database: the Streamlit app calls the
   [VaR models and backtesting](#var-models-and-backtesting)).
 - Dated rolling volatility, Sharpe ratio, and drawdown over 21-, 63-, and
   126-day windows (see [Rolling risk metrics](#rolling-risk-metrics)).
+- EWMA and GARCH(1,1) volatility forecasts (see
+  [Volatility forecasts](#volatility-forecasts)).
 - Long-only minimum-volatility and maximum-Sharpe portfolios and the
   efficient frontier (see [Portfolio optimization](#portfolio-optimization)).
 - Benchmark comparison against SPY (growth curves plus excess return, beta,
   correlation, tracking error, information ratio, and up/down capture) and
   concentration measures (Herfindahl
   index, effective number of holdings, correlation matrix).
-- Monte Carlo simulation of future wealth and historical stress testing
+- Monte Carlo simulation of future wealth with normal, Student-t, or
+  bootstrap daily returns, and historical stress testing
   (see [Simulation and stress testing](#simulation-and-stress-testing)).
 - What-if trades compared on the same prices, and custom shocks to market
   proxies passed to each holding through its betas (see
