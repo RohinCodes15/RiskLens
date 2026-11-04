@@ -342,8 +342,10 @@ that costs 1/300 of the portfolio.
 `stress_test`, and `run_stress_tests` take the same `rebalance` and
 `cost_bps` arguments and pass them through, so every return-based metric is
 net of costs. `PortfolioMetrics.annual_turnover` reports mean daily
-turnover × 252. Optimization, risk contributions, and Monte Carlo still
-assume constant weights without costs.
+turnover × 252. Optimization and risk contributions still assume constant
+weights without costs. `simulate_portfolio` resamples whatever daily returns
+it is given; the dashboard gives it the portfolio's returns after
+rebalancing and costs, but does not simulate holdings one by one.
 
 ## Risk-adjusted ratios
 
