@@ -22,8 +22,9 @@ src/risklens/
      concentration.py HHI, effective holdings, correlation matrix
      attribution.py   daily returns + factors → Fama-French betas; labels → sector/country split
      rolling.py       daily returns → dated rolling volatility, Sharpe, drawdown
+     volatility.py    daily returns → EWMA and GARCH(1,1) volatility forecasts
      optimization.py  adjusted prices → long-only min-vol / max-Sharpe weights, efficient frontier
-     simulation.py    daily returns → seeded Monte Carlo wealth percentiles
+     simulation.py    daily returns → seeded Monte Carlo wealth percentiles (normal, Student-t, bootstrap)
      stress.py        per-ticker price history + weights → historical stress-window results
      what_if.py       adjusted prices + weights + one trade → before/after metrics
      shocks.py        holding + proxy returns + shocks → betas → estimated portfolio move
