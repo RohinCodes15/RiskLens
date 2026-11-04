@@ -223,14 +223,17 @@ var_95 = analytics.historical_var(result.daily_returns, confidence=0.95)
 `historical_cvar`, `tail_risk_summary`, `VAR_CONFIDENCE_LEVELS`,
 `benchmark_statistics`, `rolling_volatility`, `rolling_sharpe`,
 `rolling_drawdown`, `rolling_max_drawdown`, `rolling_metrics`,
-`ROLLING_WINDOWS`, `estimate_inputs`, `min_volatility_portfolio`,
+`ROLLING_WINDOWS`, `ewma_volatility`, `fit_garch`, `garch_forecast`,
+`horizon_volatility`, `EWMA_LAMBDA`, `MIN_GARCH_OBS`, `MAX_FORECAST_DAYS`,
+`estimate_inputs`, `min_volatility_portfolio`,
 `max_sharpe_portfolio`, `efficient_frontier`, `frontier_point_within_risk`,
 `sortino_ratio`, `calmar_ratio`, `normal_var`, `cornish_fisher_var`,
 `rolling_var`, `kupiec_test`, `var_backtest`, `VAR_METHODS`,
 `VAR_BACKTEST_WINDOWS`, `KUPIEC_SIGNIFICANCE`, and
 `TRADING_DAYS_PER_YEAR`, `REBALANCE_FREQUENCIES`,
 plus the frozen result types `PortfolioMetrics`, `BenchmarkStatistics`,
-`MonteCarloResult`, `StressScenario`, `StressResult`, `ShockImpact`, `OptimizedPortfolio`,
+`MonteCarloResult`, `GarchFit`, `StressScenario`, `StressResult`, `ShockImpact`,
+`OptimizedPortfolio`,
 `SolverDiagnostics`, and `EfficientFrontier`, and the `OptimizationError` exception. Each function's
 docstring gives its units and sign conventions.
 
