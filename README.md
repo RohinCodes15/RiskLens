@@ -98,7 +98,7 @@ There is no separate backend or database: the Streamlit app calls the
   (buy-and-hold); see [Rebalancing and trading costs](#rebalancing-and-trading-costs).
 - Risk metrics: annualized return and volatility, Sharpe, Sortino, and
   Calmar ratios, cumulative wealth, drawdown series, max drawdown, and
-  per-asset risk contributions.
+  per-asset risk contributions, also for rebalanced, cost-adjusted portfolios.
 - Tail risk: historical VaR and CVaR (Expected Shortfall) at 95% and 99%
   (see [Historical VaR and CVaR](#historical-var-and-cvar)), plus normal and
   Cornish-Fisher VaR, rolling out-of-sample VaR, and a Kupiec backtest (see
@@ -107,8 +107,11 @@ There is no separate backend or database: the Streamlit app calls the
   126-day windows (see [Rolling risk metrics](#rolling-risk-metrics)).
 - EWMA and GARCH(1,1) volatility forecasts (see
   [Volatility forecasts](#volatility-forecasts)).
-- Long-only minimum-volatility and maximum-Sharpe portfolios and the
-  efficient frontier (see [Portfolio optimization](#portfolio-optimization)).
+- Long-only minimum-volatility and maximum-Sharpe portfolios, optionally
+  within a turnover limit, and the efficient frontier (see
+  [Portfolio optimization](#portfolio-optimization)).
+- Report export as CSV tables and an HTML page (see
+  [Report export](#report-export)).
 - Benchmark comparison against SPY (growth curves plus excess return, beta,
   correlation, tracking error, information ratio, and up/down capture) and
   concentration measures (Herfindahl
