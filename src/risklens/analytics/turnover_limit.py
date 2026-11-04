@@ -41,3 +41,18 @@ def validate_turnover_limit(max_turnover: float) -> float:
     if not np.isfinite(value) or not 0 <= value <= 1:
         raise ValueError("max_turnover must be between 0 and 1.")
     return value
+
+
+def turnover_constraints(current: np.ndarray, limit: float) -> np.ndarray:
+    """Rows G with G @ [x, u] ≥ 0 for u ≥ |x − s·current| and Σu ≤ 2·limit·s, s = Σx.
+
+    ``current`` holds the current weights (summing to 1) and ``limit`` the
+    one-way turnover limit; the result has 2n + 1 rows and 2n columns.
+    """
+    n = len(current)
+    scaled = np.outer(current, np.ones(n))  # row i of scaled @ x is current_i · Σx
+    identity = np.eye(n)
+    above = np.hstack([scaled - identity, identity])  # u − x + current·s ≥ 0
+    below = np.hstack([identity - scaled, identity])  # u + x − current·s ≥ 0
+    budget = np.concatenate([np.full(n, 2.0 * limit), -np.ones(n)])[None, :]
+    return np.vstack([above, below, budget])
