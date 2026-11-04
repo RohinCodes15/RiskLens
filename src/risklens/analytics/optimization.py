@@ -156,10 +156,12 @@ def _solve(
     bounds: list[tuple[float, float | None]],
     directions: np.ndarray,
     targets: np.ndarray,
+    inequalities: np.ndarray | None = None,
 ) -> OptimizeResult:
     """Minimize x' covariance x s.t. directions @ x == targets and ``bounds``.
 
-    ``directions`` has one row per linear equality constraint. The
+    ``directions`` has one row per linear equality constraint; optional
+    ``inequalities`` rows G add G @ x >= 0. The
     covariance is divided by its largest variance first: SLSQP's tolerance
     is absolute, and rescaling the objective leaves the minimizer unchanged.
 
@@ -176,13 +178,18 @@ def _solve(
     def constraint_gradient(x: np.ndarray) -> np.ndarray:
         return directions
 
+    constraints = [{"type": "eq", "fun": constraint, "jac": constraint_gradient}]
+    if inequalities is not None:
+        constraints.append(
+            {"type": "ineq", "fun": lambda x: inequalities @ x, "jac": lambda x: inequalities}
+        )
     result = minimize(
         lambda x: float(x @ cov @ x),
         x0,
         jac=lambda x: 2.0 * cov @ x,
         method=SOLVER_METHOD,
         bounds=bounds,
-        constraints=[{"type": "eq", "fun": constraint, "jac": constraint_gradient}],
+        constraints=constraints,
         options={"ftol": SOLVER_TOLERANCE, "maxiter": SOLVER_MAX_ITERATIONS},
     )
     x = np.asarray(result.x, dtype=float)
@@ -190,6 +197,7 @@ def _solve(
         np.all(np.isfinite(x))
         and np.all(x >= -CONSTRAINT_TOLERANCE)
         and np.all(np.abs(constraint(x)) <= CONSTRAINT_TOLERANCE)
+        and (inequalities is None or np.all(inequalities @ x >= -CONSTRAINT_TOLERANCE))
     )
     if not result.success or not feasible:
         raise OptimizationError(f"Portfolio optimizer did not converge: {result.message}")
