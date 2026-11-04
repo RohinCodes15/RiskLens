@@ -72,6 +72,7 @@ from risklens.data import (
     to_returns,
 )
 from risklens.holdings import holdings_to_weights, parse_holdings_csv
+from risklens.report import report_csv_zip, report_html, report_tables
 from risklens.validation import MAX_COST_BPS, validate_tickers, validate_weights
 
 
@@ -1357,6 +1358,73 @@ def render_simulation(analysis: dict) -> None:
     )
     st.caption(
         f"{DISTRIBUTION_NOTES[result.distribution]}{tails} Paths come from your portfolio's past daily returns, which already follow your rebalancing and trading cost. Short histories are unreliable; changing markets, taxes and cash flows are not captured. Dates include weekdays without excluding exchange holidays."
+    )
+
+
+def report_charts(analysis: dict) -> dict[str, str]:
+    """Wealth and drawdown charts as HTML; the first embeds plotly.js so the page works offline."""
+    daily = analysis["daily_returns"]
+    wealth = cumulative_wealth(daily)
+    drawdown = analysis["drawdown"]
+    figures = {
+        "Portfolio wealth": px.line(
+            x=wealth.index, y=wealth, labels={"x": "Date", "y": "Wealth (start = 1.0)"}
+        ),
+        "Drawdown": px.area(x=drawdown.index, y=drawdown, labels={"x": "Date", "y": "Drawdown"}),
+    }
+    for figure in figures.values():
+        figure.update_layout(template="plotly_white", height=360)
+    figures["Drawdown"].update_yaxes(tickformat=".0%")
+    return {
+        title: figure.to_html(full_html=False, include_plotlyjs=index == 0)
+        for index, (title, figure) in enumerate(figures.items())
+    }
+
+
+def render_report(analysis: dict) -> None:
+    """Offer the core analysis as an HTML report and a zip of CSV tables."""
+    st.divider()
+    st.subheader("Download report")
+    st.caption(
+        "Settings, risk metrics, holdings with their share of risk, SPY statistics and daily returns, as an HTML page with charts and as CSV tables in a zip. Results of the on-demand tools above are not included. To get a PDF, open the HTML page and print it to PDF from your browser."
+    )
+    if st.button("Prepare report"):
+        analysis.pop("report", None)
+        analysis.pop("report_error", None)
+        try:
+            with st.spinner("Building the report…"):
+                tables = report_tables(
+                    analysis["prices"],
+                    analysis["weights"],
+                    analysis.get("rebalance", "daily"),
+                    analysis.get("cost_bps", 0.0),
+                    analysis.get("portfolio_value"),
+                    analysis.get("benchmark_stats"),
+                )
+                page = report_html(tables, report_charts(analysis), date.today())
+                analysis["report"] = (page.encode("utf-8"), report_csv_zip(tables))
+        except ValueError as exc:
+            analysis["report_error"] = str(exc)
+    if "report_error" in analysis:
+        st.warning(plain_text(f"The report is unavailable. {analysis['report_error']}"))
+        return
+    if "report" not in analysis:
+        st.info("Select Prepare report to build the HTML and CSV downloads.")
+        return
+    page, archive = analysis["report"]
+    last = analysis["prices"].index[-1]
+    html_column, csv_column = st.columns(2)
+    html_column.download_button(
+        "Download HTML report",
+        page,
+        file_name=f"risklens-report-{last:%Y-%m-%d}.html",
+        mime="text/html",
+    )
+    csv_column.download_button(
+        "Download CSV tables (.zip)",
+        archive,
+        file_name=f"risklens-tables-{last:%Y-%m-%d}.zip",
+        mime="application/zip",
     )
 
 
