@@ -285,7 +285,12 @@ def test_simulation_controls_fan_and_persistence(prices: pd.DataFrame, download:
         expected = simulate_portfolio(
             analyze_portfolio(prices, [0.5, 0.5]).daily_returns, 10, 2000, 7
         )
-        assert engine.call_args.kwargs == {"horizon_days": 10, "n_paths": 2000, "seed": 7}
+        assert engine.call_args.kwargs == {
+            "horizon_days": 10,
+            "n_paths": 2000,
+            "seed": 7,
+            "distribution": "normal",
+        }
         pd.testing.assert_series_equal(
             engine.call_args.args[0], analyze_portfolio(prices, [0.5, 0.5]).daily_returns
         )

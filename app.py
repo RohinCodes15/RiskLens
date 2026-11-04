@@ -1202,6 +1202,11 @@ def render_simulation(analysis: dict) -> None:
             DEFAULT_SEED,
             help="Identical history and settings reproduce the same scenarios.",
         )
+        distribution_label = st.selectbox(
+            "Return distribution",
+            list(DISTRIBUTION_CHOICES),
+            help="How each simulated day's return is drawn from the history.",
+        )
         run = st.form_submit_button("Run hypothetical simulations")
     if run:
         analysis.pop("simulation", None)
@@ -1209,9 +1214,13 @@ def render_simulation(analysis: dict) -> None:
         try:
             with st.spinner("Generating hypothetical portfolio scenarios…"):
                 result = simulate_portfolio(
-                    analysis["daily_returns"], horizon_days=horizon, n_paths=paths, seed=seed
+                    analysis["daily_returns"],
+                    horizon_days=horizon,
+                    n_paths=paths,
+                    seed=seed,
+                    distribution=DISTRIBUTION_CHOICES[distribution_label],
                 )
-                analysis["simulation"] = (result, horizon, paths, seed)
+                analysis["simulation"] = (result, horizon, paths, seed, distribution_label)
         except (ValueError, NotImplementedError, MemoryError) as exc:
             analysis["simulation_error"] = str(exc) or "Try fewer simulations or a shorter horizon."
     if analysis.get("simulation_error"):
@@ -1221,10 +1230,10 @@ def render_simulation(analysis: dict) -> None:
     if saved is None:
         st.info("Choose simulation settings and run to explore hypothetical outcomes.")
         return
-    result, used_horizon, used_paths, used_seed = saved
+    result, used_horizon, used_paths, used_seed, used_label = saved
     bands = result.percentile_paths
     st.caption(
-        f"Displayed run: {used_horizon:,} trading days · {used_paths:,} simulations · seed {used_seed}. Run again to apply changes."
+        f"Displayed run: {used_horizon:,} trading days · {used_paths:,} simulations · seed {used_seed} · {used_label}. Run again to apply changes."
     )
     median_column, loss_column = st.columns(2)
     with median_column.container(border=True):
