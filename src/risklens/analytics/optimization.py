@@ -288,7 +288,11 @@ def _portfolio(
 
 
 def min_volatility_portfolio(
-    prices: pd.DataFrame, risk_free_rate: float = 0.0
+    prices: pd.DataFrame,
+    risk_free_rate: float = 0.0,
+    *,
+    current_weights: Sequence[float] | None = None,
+    max_turnover: float | None = None,
 ) -> OptimizedPortfolio:
     """Long-only, fully invested portfolio with the lowest in-sample volatility.
 
@@ -296,24 +300,36 @@ def min_volatility_portfolio(
     equal weights. The weights ignore expected returns and
     ``risk_free_rate``, which only sets the reported Sharpe ratio (NaN if
     the minimum volatility is zero, e.g. with a constant-price asset).
+    With ``current_weights`` and ``max_turnover``, only weights within that
+    one-way turnover of the current weights are considered, starting from
+    the current weights.
 
     Raises:
-        ValueError: on invalid prices, too few returns, or an invalid rate.
+        ValueError: on invalid prices, too few returns, an invalid rate, or
+            an invalid or half-given turnover limit.
         OptimizationError: if the solver fails.
     """
     rate = validate_risk_free_rate(risk_free_rate)
     expected, covariance, n_obs = estimate_inputs(prices)
-    return _min_volatility(expected, covariance, rate, n_obs)
+    limit = _turnover_limit(len(expected), current_weights, max_turnover)
+    return _min_volatility(expected, covariance, rate, n_obs, limit)
 
 
 def _min_volatility(
-    expected: pd.Series, covariance: pd.DataFrame, rate: float, n_obs: int
+    expected: pd.Series,
+    covariance: pd.DataFrame,
+    rate: float,
+    n_obs: int,
+    limit: tuple[np.ndarray, float] | None = None,
 ) -> OptimizedPortfolio:
     """Minimum-volatility portfolio from already estimated, validated inputs."""
     n = len(expected)
-    result = _solve(
-        covariance.to_numpy(), np.full(n, 1.0 / n), [(0.0, 1.0)] * n, np.ones((1, n)), np.ones(1)
-    )
+    problem = (covariance.to_numpy(), np.full(n, 1.0 / n), [(0.0, 1.0)] * n, np.ones((1, n)))
+    if limit is None:
+        result = _solve(*problem, np.ones(1))
+    else:
+        cov, _, bounds, directions = problem
+        result = _limited_solve(cov, limit[0], bounds, directions, np.ones(1), limit)
     return _portfolio("min_volatility", result, expected, covariance, rate, n_obs)
 
 
