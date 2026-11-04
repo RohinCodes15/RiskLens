@@ -689,14 +689,33 @@ taxes.
 ### Monte Carlo (`simulate_portfolio`)
 
 ```python
-simulate_portfolio(daily_returns, horizon_days=252, n_paths=1_000, seed=42) -> MonteCarloResult
+simulate_portfolio(
+    daily_returns, horizon_days=252, n_paths=1_000, seed=42, distribution="normal"
+) -> MonteCarloResult
 ```
 
 **Method.** Historical simple daily portfolio returns `r` become log returns
-`log(1 + r)`. Their mean (μ) and sample volatility (σ, ddof=1) drive
-geometric Brownian motion: each future day's log return is drawn from
-Normal(μ, σ) with NumPy's seeded generator, summed along each path, and
-converted back with `exp()`. Every path starts at wealth 1.0.
+`log(1 + r)`, with mean μ and sample volatility σ (ddof=1). Each future
+day's log return is drawn with NumPy's seeded generator, summed along each
+path, and converted back with `exp()`. Every path starts at wealth 1.0.
+`distribution` (one of `DISTRIBUTIONS` in `risklens.analytics.simulation`)
+picks the draws:
+
+- `"normal"` (default): Normal(μ, σ), geometric Brownian motion. Results are
+  the same as before this option existed, for the same seed.
+- `"student_t"`: μ + σ·t·√((df − 2)/df), a Student-t with the same mean and
+  volatility but fatter tails. The degrees of freedom match the history's
+  bias-corrected excess kurtosis k: df = 4 + 6/k. Fewer than 4 returns, or
+  k ≤ 0 (no fat tails), raises `ValueError`.
+- `"bootstrap"`: past daily log returns drawn with replacement, which keeps
+  their real skew and fat tails but never produces a day worse than the
+  worst past day.
+
+`MonteCarloResult` also reports `distribution` and `degrees_of_freedom` (NaN
+unless Student-t). The dashboard's **Return distribution** menu picks the
+model. Paths come from the portfolio's past daily returns, so in the
+dashboard they already reflect your rebalancing and trading cost; holdings
+are not simulated one by one.
 
 **Output.** `percentile_paths` holds the 5th, 25th, 50th, 75th and 95th
 percentile of wealth for each date. Its first row is the last historical
