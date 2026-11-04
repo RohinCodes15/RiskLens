@@ -43,6 +43,7 @@ from risklens.analytics import (
     max_sharpe_portfolio,
     min_volatility_portfolio,
     normal_var,
+    one_way_turnover,
     portfolio_returns,
     rebalanced_risk_contributions,
     rolling_metrics,
@@ -708,7 +709,7 @@ def render_optimization_results(analysis: dict) -> None:
         "optimization_baseline", analysis["metrics"][:3]
     )
     allocations = {
-        "Current": [*analysis["weights"], current_return, current_volatility, current_sharpe],
+        "Current": [*analysis["weights"], current_return, current_volatility, current_sharpe, 0.0],
     }
     for label, result in (("Minimum volatility", min_vol), ("Maximum Sharpe", max_sharpe)):
         if result is not None:
@@ -717,6 +718,7 @@ def render_optimization_results(analysis: dict) -> None:
                 result.expected_return,
                 result.volatility,
                 result.sharpe_ratio,
+                one_way_turnover(analysis["weights"], result.weights),
             ]
     table = pd.DataFrame(
         allocations,
@@ -725,6 +727,7 @@ def render_optimization_results(analysis: dict) -> None:
             "Annualized return",
             "Annualized volatility",
             "Sharpe ratio",
+            "Turnover from current",
         ],
     )
     st.dataframe(
@@ -741,6 +744,12 @@ def render_optimization_results(analysis: dict) -> None:
     st.caption(
         "In-sample results: weights are fit to the same history used to score them, so these figures are optimistic and not a forecast. Maximum-Sharpe weights are especially sensitive to the chosen period."
     )
+    limit = analysis.get("optimization_limit")
+    if limit is not None:
+        st.caption(
+            f"Minimum-volatility and maximum-Sharpe weights are limited to {limit * 100:g}% "
+            "one-way turnover from your current weights; the efficient frontier is not limited."
+        )
     if "optimization_baseline" in analysis:
         st.caption(
             "Every column, including Current, assumes daily rebalancing with no trading costs, "
