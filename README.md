@@ -55,6 +55,10 @@ There is no separate backend or database: the Streamlit app calls the
   warning when the sample is too small for the selected tail, and a **VaR
   backtest** table: each method's breaches over the days after a 63-, 126-,
   or 252-day estimation window, with the Kupiec test's verdict.
+- **Volatility forecast**: historical, EWMA (RiskMetrics, λ = 0.94), and
+  GARCH(1,1) volatility cards, with the GARCH forecast averaged over a
+  horizon you choose, and a chart of each model's estimate on each date. See
+  [Volatility forecasts](#volatility-forecasts).
 - **Simulated futures** tab: seeded Monte Carlo percentile fan chart.
 - **Historical scenarios** tab: 2008, 2020, 2022, or custom stress windows,
   with unavailable scenarios explained.
