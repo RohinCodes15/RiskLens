@@ -989,6 +989,40 @@ and proxies that do not move or move in lockstep are rejected because their
 effects cannot be told apart. The estimate is linear and instantaneous, uses
 your target weights, and is not a prediction.
 
+## Report export
+
+```python
+from risklens.report import report_csv_zip, report_html, report_tables
+
+report_tables(
+    prices, weights, rebalance="daily", cost_bps=0.0, portfolio_value=None, benchmark=None
+) -> dict[str, pd.DataFrame]
+report_csv_zip(tables) -> bytes
+report_html(tables, charts, generated_on) -> str
+```
+
+**Prepare report**, at the bottom of the dashboard, builds two downloads: an
+HTML page and a zip of CSV files. `report_tables` recomputes everything
+with `analyze_portfolio` and `rebalanced_risk_contributions`, using your
+rebalancing and trading cost, so the files match the dashboard:
+
+| Table | Contents |
+|-------|----------|
+| `settings` | start and end date, price dates, rebalancing, trading cost, portfolio value |
+| `metrics` | annualized return and volatility, Sharpe, Sortino, Calmar, max drawdown, annual turnover, one-day historical VaR and CVaR at 95% and 99% |
+| `holdings` | weight, last price, dollar value (when the portfolio value is known), and share of risk; a `Trading costs` row when costs apply |
+| `benchmark` | the SPY statistics, when SPY could be loaded |
+| `daily` | each date's net return, wealth (start = 1.0), and drawdown |
+
+`report_csv_zip` writes one `<name>.csv` per table, with rates as fractions
+and dates as YYYY-MM-DD. `report_html` writes every table except `daily` as
+formatted, escaped HTML, followed by the chart snippets it is given. The
+dashboard passes wealth and drawdown charts and embeds plotly.js once, so
+the page (about 5 MB) works offline. For a PDF, open the page and print it
+to PDF from the browser. Results of the on-demand tools (simulations,
+stress tests, optimization, factors, what-if trades, shocks) are not
+included.
+
 ## File structure
 
 ```
