@@ -10,7 +10,9 @@ Streamlit and Plotly. Results of on-demand tools (simulations, stress tests,
 optimization, factors, what-if trades, shocks) are not included.
 """
 
-from collections.abc import Sequence
+import io
+import zipfile
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 
 import pandas as pd
@@ -122,3 +124,12 @@ def report_tables(
         }
     ).rename_axis("date")
     return tables
+
+
+def report_csv_zip(tables: Mapping[str, pd.DataFrame]) -> bytes:
+    """A zip archive with one ``<name>.csv`` file per table; dates as YYYY-MM-DD."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, table in tables.items():
+            archive.writestr(f"{name}.csv", table.to_csv(date_format="%Y-%m-%d"))
+    return buffer.getvalue()
