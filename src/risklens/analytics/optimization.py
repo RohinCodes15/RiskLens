@@ -333,13 +333,21 @@ def _min_volatility(
     return _portfolio("min_volatility", result, expected, covariance, rate, n_obs)
 
 
-def max_sharpe_portfolio(prices: pd.DataFrame, risk_free_rate: float = 0.0) -> OptimizedPortfolio:
+def max_sharpe_portfolio(
+    prices: pd.DataFrame,
+    risk_free_rate: float = 0.0,
+    *,
+    current_weights: Sequence[float] | None = None,
+    max_turnover: float | None = None,
+) -> OptimizedPortfolio:
     """Long-only, fully invested portfolio with the highest in-sample Sharpe ratio.
 
     Solved as the equivalent convex problem: minimize y' covariance y subject
     to (expected - rate) @ y = 1 (rescaled) and y >= 0, then w = y / sum(y). Because it
     is convex, the solution is the global maximum, not a local one, and w
-    satisfies 0 <= w <= 1 and sum(w) = 1.
+    satisfies 0 <= w <= 1 and sum(w) = 1. A turnover limit (``current_weights``
+    and ``max_turnover``) is scale-free in y, so the problem stays convex and
+    the result is the best Sharpe ratio within that turnover.
 
     Raises:
         ValueError: on invalid prices, too few returns, or an invalid rate;
@@ -347,10 +355,12 @@ def max_sharpe_portfolio(prices: pd.DataFrame, risk_free_rate: float = 0.0) -> O
             portfolio has a positive Sharpe ratio, so none is "best"); or if
             a zero-volatility portfolio beats the risk-free rate (the
             Sharpe ratio is then unbounded).
-        OptimizationError: if the solver fails.
+        OptimizationError: if the solver fails, including when no weights
+            within the turnover limit beat the risk-free rate.
     """
     rate = validate_risk_free_rate(risk_free_rate)
     expected, covariance, n_obs = estimate_inputs(prices)
+    limit = _turnover_limit(len(expected), current_weights, max_turnover)
     excess = expected.to_numpy() - rate
     if not np.any(excess > 0):
         raise ValueError(
@@ -360,9 +370,16 @@ def max_sharpe_portfolio(prices: pd.DataFrame, risk_free_rate: float = 0.0) -> O
     direction = excess / excess.max()  # unit scale keeps y near 1; w = y / sum(y) is unchanged
     beats_rate = (excess > 0).astype(float)
     start = beats_rate / float(direction @ beats_rate)  # feasible: direction @ start == 1
-    result = _solve(
-        covariance.to_numpy(), start, [(0.0, None)] * len(excess), direction[None, :], np.ones(1)
-    )
+    problem = (covariance.to_numpy(), start, [(0.0, None)] * len(excess), direction[None, :])
+    if limit is None:
+        result = _solve(*problem, np.ones(1))
+    else:
+        current = limit[0]
+        scale = float(direction @ current)
+        # Start from the current weights when they can be scaled onto the constraint.
+        cov, _, bounds, directions = problem
+        x0 = current / scale if scale > 0 else start
+        result = _limited_solve(cov, x0, bounds, directions, np.ones(1), limit)
     portfolio = _portfolio("max_sharpe", result, expected, covariance, rate, n_obs)
     if np.isclose(portfolio.volatility, 0.0):
         raise ValueError(
