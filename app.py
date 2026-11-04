@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from risklens.analytics import (
+    COST_LABEL,
     EWMA_LAMBDA,
     FACTOR_COLUMNS,
     HISTORICAL_SCENARIOS,
@@ -544,8 +545,11 @@ def render_risk_attribution(analysis: dict) -> None:
     attribution_fig.update_yaxes(tickformat=".0%")
     attribution_fig.update_traces(hovertemplate="%{x}<br>%{y:.2%}<extra>%{fullData.name}</extra>")
     st.plotly_chart(attribution_fig, key="risk_attribution_chart")
+    costs = (
+        f" {COST_LABEL} is the drag from rebalancing trades." if COST_LABEL in shares.index else ""
+    )
     st.caption(
-        "Share of portfolio risk = weight × the stock's covariance with the portfolio ÷ portfolio variance; shares sum to 100%. A stock can carry more risk than its weight, and a negative share means it reduces total risk."
+        f"Share of portfolio risk = the covariance of each holding's part of the daily portfolio return (the weight it held that day × its return) with the whole return ÷ the portfolio's variance; shares sum to 100%. {REBALANCE_DESCRIPTIONS[rebalance]}; {cost_text(cost_bps)}.{costs} A stock can carry more risk than its weight, and a negative share means it reduces total risk."
     )
 
 
