@@ -158,7 +158,7 @@ streamlit run app.py
 
 ```bash
 pytest                                                # full suite, no network (yfinance is mocked)
-pytest tests/test_smoke.py tests/test_tail_risk_ui.py tests/test_risk_ui.py tests/test_holdings_ui.py tests/test_risk_metrics_ui.py tests/test_risk_sources_ui.py tests/test_what_if_ui.py tests/test_shocks_ui.py tests/test_volatility_ui.py tests/test_simulation_tails_ui.py  # dashboard tests only
+pytest tests/test_smoke.py tests/test_tail_risk_ui.py tests/test_risk_ui.py tests/test_holdings_ui.py tests/test_risk_metrics_ui.py tests/test_risk_sources_ui.py tests/test_what_if_ui.py tests/test_shocks_ui.py tests/test_volatility_ui.py tests/test_simulation_tails_ui.py tests/test_risk_attribution_ui.py tests/test_turnover_limit_ui.py tests/test_report_ui.py  # dashboard tests only
 pytest --cov                                          # with branch coverage of src/risklens
 ruff check .                                          # lint
 ruff format --check .                                 # formatting
