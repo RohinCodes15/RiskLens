@@ -14,6 +14,8 @@ import io
 import zipfile
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict
+from datetime import date
+from html import escape
 
 import pandas as pd
 
@@ -133,3 +135,60 @@ def report_csv_zip(tables: Mapping[str, pd.DataFrame]) -> bytes:
         for name, table in tables.items():
             archive.writestr(f"{name}.csv", table.to_csv(date_format="%Y-%m-%d"))
     return buffer.getvalue()
+
+
+def _number(value: float, ratio: bool) -> str:
+    """A ratio with two decimals or a fraction as a percent; NaN shows as N/A."""
+    if pd.isna(value):
+        return "N/A"
+    return f"{value:.2f}" if ratio else f"{value:.2%}"
+
+
+def _display(name: str, table: pd.DataFrame) -> pd.DataFrame:
+    """A copy of ``table`` formatted as text for the HTML page."""
+    if name == "metrics":
+        return table.assign(
+            value=[_number(v, m in RATIO_METRICS) for m, v in table["value"].items()]
+        )
+    if name == "benchmark":
+        values = [_number(v, s in BENCHMARK_RATIOS) for s, v in table["value"].items()]
+        return table.assign(value=values)
+    if name == "holdings":
+        shown = table.assign(
+            weight=[_number(v, False) for v in table["weight"]],
+            risk_share=[_number(v, False) for v in table["risk_share"]],
+            last_price=["" if pd.isna(v) else f"{v:,.2f}" for v in table["last_price"]],
+        )
+        if "value" in shown:
+            shown = shown.assign(value=[f"${v:,.2f}" for v in table["value"]])
+        return shown
+    return table
+
+
+def report_html(
+    tables: Mapping[str, pd.DataFrame], charts: Mapping[str, str], generated_on: date
+) -> str:
+    """One HTML page with every table except ``daily``, then the given charts.
+
+    ``charts`` maps a title to an HTML snippet (such as Plotly's
+    ``to_html(full_html=False)``); snippets are trusted and inserted as is.
+    Table cells and titles are escaped.
+    """
+    sections = [
+        f"<h2>{escape(name.capitalize())}</h2>\n{_display(name, table).to_html(escape=True)}"
+        for name, table in tables.items()
+        if name != "daily"
+    ]
+    sections += [f"<h2>{escape(title)}</h2>\n{snippet}" for title, snippet in charts.items()]
+    body = "\n".join(sections)
+    return (
+        '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
+        f"<title>{escape(REPORT_TITLE)}</title>"
+        "<style>body{font-family:sans-serif;margin:2rem;max-width:960px}"
+        "table{border-collapse:collapse;margin-bottom:1rem}"
+        "th,td{border:1px solid #ccc;padding:4px 10px;text-align:right}</style></head>"
+        f"<body><h1>{escape(REPORT_TITLE)}</h1>"
+        f"<p>Generated {generated_on:%B %d, %Y}. Historical analysis for education only; "
+        "not investment advice. Daily figures are in the CSV export.</p>\n"
+        f"{body}\n</body></html>\n"
+    )
