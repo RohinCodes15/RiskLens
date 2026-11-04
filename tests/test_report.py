@@ -2,6 +2,7 @@
 
 import io
 import zipfile
+from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -16,7 +17,7 @@ from risklens.analytics import (
     rebalanced_risk_contributions,
 )
 from risklens.data import to_returns
-from risklens.report import report_csv_zip, report_tables
+from risklens.report import REPORT_TITLE, report_csv_zip, report_html, report_tables
 
 
 @pytest.fixture
@@ -74,3 +75,26 @@ def test_csv_zip_holds_one_file_per_table(tables: dict) -> None:
     daily = pd.read_csv(archive.open("daily.csv"), index_col="date", parse_dates=True)
     np.testing.assert_allclose(daily["return"], tables["daily"]["return"])
     assert archive.read("daily.csv").decode().splitlines()[1].startswith("2025-01-03,")
+
+
+def test_html_has_formatted_tables_and_charts(tables: dict) -> None:
+    page = report_html(tables, {"Wealth": "<div id='chart'></div>"}, date(2026, 9, 20))
+    assert page.startswith("<!doctype html>")
+    assert f"<title>{REPORT_TITLE}</title>" in page
+    assert "Generated September 20, 2026" in page
+    assert "<h2>Holdings</h2>" in page and "<h2>Benchmark</h2>" in page
+    assert "<h2>Daily</h2>" not in page
+    assert "$15,000.00" in page and "60.00%" in page
+    assert "<h2>Wealth</h2>\n<div id='chart'></div>" in page
+
+
+def test_html_escapes_table_text_and_titles(tables: dict) -> None:
+    tampered = {**tables, "settings": pd.DataFrame({"value": {"Note": "<script>x</script>"}})}
+    page = report_html(tampered, {"<b>title</b>": ""}, date(2026, 9, 20))
+    assert "<script>x</script>" not in page and "&lt;script&gt;" in page
+    assert "<h2>&lt;b&gt;title&lt;/b&gt;</h2>" in page
+
+
+def test_report_rejects_bad_inputs(prices: pd.DataFrame) -> None:
+    with pytest.raises(ValueError, match="sum to 1"):
+        report_tables(prices[["AAPL", "MSFT"]], [0.5, 0.6])
