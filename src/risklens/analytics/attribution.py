@@ -1,4 +1,4 @@
-"""Where portfolio risk comes from: factor exposures and sector/country breakdowns."""
+"""Where portfolio risk comes from: factor exposures, rebalanced risk shares, and groups."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -12,7 +12,6 @@ from risklens.analytics.metrics import (
     TRADING_DAYS_PER_YEAR,
     _portfolio_inputs,
     _turnover,
-    risk_contributions,
 )
 from risklens.validation import validate_cost_bps, validate_weights
 
@@ -136,26 +135,36 @@ def rebalanced_risk_contributions(
 
 
 def group_breakdown(
-    returns: pd.DataFrame, weights: Sequence[float], groups: pd.Series
+    returns: pd.DataFrame,
+    weights: Sequence[float],
+    groups: pd.Series,
+    rebalance: str = "daily",
+    cost_bps: float = 0.0,
 ) -> pd.DataFrame:
     """Sum allocation weights and risk shares by a label such as sector or country.
 
     ``returns`` holds simple daily asset returns, one column per ticker;
-    ``groups`` maps each ticker to its label. Returns a DataFrame indexed by
-    label with ``weight`` and ``risk_share`` columns (fractions, each summing
-    to 1), sorted by risk share, largest first.
+    ``groups`` maps each ticker to its label. Risk shares come from
+    ``rebalanced_risk_contributions`` with ``rebalance`` and ``cost_bps``;
+    with costs, a ``COST_LABEL`` group with weight 0 holds the cost share.
+    Returns a DataFrame indexed by label with ``weight`` and ``risk_share``
+    columns (fractions, each summing to 1), sorted by risk share, largest
+    first.
 
     Raises:
-        ValueError: if a ticker has no label, or ``risk_contributions`` rejects
-            the inputs.
+        ValueError: if a ticker has no label, or
+            ``rebalanced_risk_contributions`` rejects the inputs.
     """
     w = validate_weights(weights, returns.shape[1])
     missing = [t for t in returns.columns if t not in groups.index]
     if missing:
         raise ValueError(f"No label for: {', '.join(missing)}.")
-    labels = groups.reindex(returns.columns).to_numpy()
+    shares = rebalanced_risk_contributions(returns, w, rebalance, cost_bps)
+    labels = [*groups.reindex(returns.columns), *[COST_LABEL] * (len(shares) - len(w))]
     table = pd.DataFrame(
-        {"weight": w, "risk_share": risk_contributions(returns, w).to_numpy()},
-        index=pd.Index(labels, name=groups.name),
-    )
+        {
+            "weight": pd.Series(w, index=returns.columns).reindex(shares.index, fill_value=0.0),
+            "risk_share": shares,
+        }
+    ).set_axis(pd.Index(labels, name=groups.name))
     return table.groupby(level=0, sort=False).sum().sort_values("risk_share", ascending=False)
