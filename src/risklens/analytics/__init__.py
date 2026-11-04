@@ -1,11 +1,13 @@
 """Portfolio risk analytics built on simple daily returns."""
 
 from risklens.analytics.attribution import (
+    COST_LABEL,
     FACTOR_COLUMNS,
     MIN_FACTOR_OBS,
     FactorExposure,
     factor_exposure,
     group_breakdown,
+    rebalanced_risk_contributions,
 )
 from risklens.analytics.benchmark import (
     BenchmarkStatistics,
@@ -66,6 +68,7 @@ from risklens.analytics.stress import (
     run_stress_tests,
     stress_test,
 )
+from risklens.analytics.turnover_limit import one_way_turnover, validate_turnover_limit
 from risklens.analytics.value_at_risk import (
     KUPIEC_SIGNIFICANCE,
     VAR_BACKTEST_WINDOWS,
@@ -95,6 +98,7 @@ from risklens.analytics.what_if import (
 
 __all__ = [
     "COMPARISON_METRICS",
+    "COST_LABEL",
     "EWMA_LAMBDA",
     "FACTOR_COLUMNS",
     "HISTORICAL_SCENARIOS",
@@ -152,8 +156,10 @@ __all__ = [
     "max_sharpe_portfolio",
     "min_volatility_portfolio",
     "normal_var",
+    "one_way_turnover",
     "portfolio_returns",
     "rebalance_turnover",
+    "rebalanced_risk_contributions",
     "risk_contributions",
     "rolling_drawdown",
     "rolling_max_drawdown",
@@ -170,5 +176,6 @@ __all__ = [
     "tail_risk_summary",
     "trade_cost",
     "trade_weights",
+    "validate_turnover_limit",
     "var_backtest",
 ]
