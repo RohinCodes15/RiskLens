@@ -1,0 +1,19 @@
+# RiskLens theme: dark slate, green accent, Fira Sans / Fira Code.
+[theme]
+base = "dark"
+primaryColor = "#22C55E"
+backgroundColor = "#0B1120"
+secondaryBackgroundColor = "#111827"
+textColor = "#E2E8F0"
+borderColor = "#1F2937"
+baseRadius = "0.6rem"
+font = "Fira Sans:https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap"
+codeFont = "Fira Code:https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap"
+chartCategoricalColors = [
+    "#38BDF8", "#22C55E", "#F59E0B", "#A78BFA", "#F472B6",
+    "#2DD4BF", "#FB7185", "#FACC15", "#60A5FA", "#4ADE80",
+]
+
+[theme.sidebar]
+backgroundColor = "#0F172A"
+secondaryBackgroundColor = "#1E293B"
