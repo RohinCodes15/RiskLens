@@ -74,9 +74,14 @@ There is no separate backend or database: the Streamlit app calls the
   bonds +5% and see the estimated portfolio move (in dollars too when the
   portfolio value is known), with each holding's move and betas.
 - **Portfolio optimization** (on demand): current, minimum-volatility, and
-  maximum-Sharpe weights and metrics side by side, plus an efficient
-  frontier chart marking each portfolio and the highest-return frontier
-  point no riskier than the current weights.
+  maximum-Sharpe weights and metrics side by side, with each one's turnover
+  from your current weights and an optional turnover limit, plus an
+  efficient frontier chart marking each portfolio and the highest-return
+  frontier point no riskier than the current weights.
+- **Download report**: an HTML page (tables plus wealth and drawdown charts,
+  viewable offline and printable to PDF) and a zip of CSV tables with the
+  settings, metrics, holdings, SPY statistics, and daily returns. See
+  [Report export](#report-export).
 - Bad input, failed downloads, and too-short histories show a readable error
   instead of a traceback.
 
