@@ -946,19 +946,22 @@ src/risklens/
                           VaR/CVaR, drawdown, ...)
     value_at_risk.py      Normal and Cornish-Fisher VaR, rolling VaR, Kupiec backtest
     rolling.py            Dated rolling volatility, Sharpe, and drawdown
+    volatility.py         EWMA and GARCH(1,1) volatility forecasts
     optimization.py       Long-only min-volatility and max-Sharpe weights (SciPy)
     benchmark.py          Portfolio vs. SPY growth, statistics, information ratio, capture
     concentration.py      Herfindahl index, effective holdings, correlation
     attribution.py        Fama-French factor regression; sector/country breakdown
-    simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio)
+    simulation.py         Seeded Monte Carlo wealth paths (simulate_portfolio):
+                          normal, Student-t, or bootstrap daily returns
     stress.py             Historical stress windows (stress_test, custom_scenario)
     what_if.py            What-if trades: trade weights, trade cost, before/after metrics
     shocks.py             Custom shocks to proxy ETFs, passed to holdings through betas
 tests/                    pytest suite (network-free); test_smoke.py,
                           test_tail_risk_ui.py, test_risk_ui.py,
                           test_holdings_ui.py, test_risk_metrics_ui.py,
-                          test_risk_sources_ui.py, test_what_if_ui.py, and
-                          test_shocks_ui.py
+                          test_risk_sources_ui.py, test_what_if_ui.py,
+                          test_shocks_ui.py, test_volatility_ui.py, and
+                          test_simulation_tails_ui.py
                           drive the dashboard with AppTest
 benchmarks/               Reproducible benchmarks (simulation_memory.py: Monte
                           Carlo peak memory at 10,000 paths × 1,260 days)
