@@ -530,6 +530,58 @@ the worst peak-to-trough fall inside each window. Both are fractions ≤ 0.
 `rolling_metrics` returns all four as columns `volatility`, `sharpe`,
 `drawdown`, and `max_drawdown`.
 
+## Volatility forecasts
+
+```python
+ewma_volatility(returns, decay=0.94) -> pd.Series
+fit_garch(returns) -> GarchFit
+garch_forecast(fit, horizon_days) -> pd.Series
+horizon_volatility(forecast) -> float
+```
+
+The dashboard's **Volatility forecast** section, below Tail Risk, uses the
+portfolio's daily returns after your rebalancing and trading cost. It shows
+four cards (historical volatility, EWMA next-day volatility, GARCH
+volatility over a horizon you choose from 1 to 252 trading days, default 21,
+and GARCH long-run volatility) and a chart of the EWMA and GARCH estimates
+on each date.
+
+**Dates.** Both models return a series with the input's dates. The value on
+a date uses returns up to and including that date and estimates the next
+day's volatility, so there is no look-ahead and the last value is the
+next-day forecast. Every volatility is annualized (daily × √252).
+
+**EWMA (RiskMetrics).** `σ²_t = λ·σ²_{t−1} + (1 − λ)·r_t²` with
+`λ = EWMA_LAMBDA = 0.94`, started at `σ²_0 = r_0²`, with no mean removed, as
+in RiskMetrics. Its forecast is the same for every future day.
+
+**GARCH(1,1).** On demeaned returns `e_t = r_t − mean`, with variance
+targeting:
+
+```
+σ²_{t+1} = ω + α·e_t² + β·σ²_t,    ω = v̄·(1 − α − β),    σ²_0 = v̄
+```
+
+where `v̄` is the sample variance. `fit_garch` picks α and β by maximizing
+the Gaussian likelihood with SciPy's SLSQP, keeping α, β ≥ 0 and
+α + β < 1. It returns a `GarchFit` with ω, α, β, `persistence` (α + β), the
+mean, the dated `conditional_volatility`, `long_run_volatility`
+(√(v̄ × 252)), the log-likelihood, and the number of returns. It needs at
+least `MIN_GARCH_OBS` (200) returns and raises `ValueError` for constant
+returns or when the optimizer does not converge; the dashboard then shows
+EWMA only and says why.
+
+`garch_forecast(fit, horizon_days)` gives the volatility for each of the
+next 1 to `MAX_FORECAST_DAYS` (252) days. Day h has variance
+`v̄ + (α + β)^(h−1)·(σ²_next − v̄)`, so the forecast starts at the next-day
+value and moves toward the long-run level, more slowly the closer
+persistence is to 1. `horizon_volatility(forecast)` gives one number for the
+whole horizon: the square root of the average daily variance.
+
+**Limitations.** One fit on the whole sample with a normal likelihood, so
+fat tails are not modeled and the parameters are treated as known. These are
+estimates from past returns, not predictions.
+
 ## Portfolio optimization
 
 ```python
