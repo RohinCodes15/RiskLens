@@ -1892,6 +1892,7 @@ else:
     with shock_tab:
         render_shocks(analysis)
     render_optimization(analysis)
+    render_report(analysis)
 
 st.divider()
 st.caption(
