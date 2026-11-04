@@ -1,5 +1,8 @@
 # RiskLens Quant
 
+**Live demo:** https://risklens-quant.streamlit.app (free hosting: the app sleeps when
+idle, so the first visit can take a minute to wake it).
+
 A portfolio risk analyzer built with Python and Streamlit. Enter holdings as
 percent weights, share counts, or dollar values (or import them from a CSV
 file), pull adjusted daily prices from Yahoo Finance, and see the
