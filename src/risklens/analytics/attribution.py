@@ -70,6 +70,24 @@ def factor_exposure(returns: pd.Series, factors: pd.DataFrame) -> FactorExposure
     )
 
 
+def _held_weights(values: np.ndarray, w: np.ndarray, periods: np.ndarray) -> np.ndarray:
+    """Weights held at the start of each return row: ``w`` on a reset row, then drifted.
+
+    Row t of the result times row t of ``values`` sums to that day's gross
+    portfolio return, the same number ``portfolio_returns`` gives before costs.
+    A period that lost everything holds nothing (all zeros).
+    """
+    held = np.empty_like(values)
+    starts = np.flatnonzero(np.diff(periods, prepend=-1))
+    for start, stop in zip(starts, [*starts[1:], len(values)], strict=True):
+        growth = np.cumprod(1.0 + values[start : stop - 1], axis=0)  # through each earlier day
+        holdings = np.vstack([w, w * growth])
+        totals = holdings.sum(axis=1, keepdims=True)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            held[start:stop] = np.where(totals > 0, holdings / totals, 0.0)
+    return held
+
+
 def group_breakdown(
     returns: pd.DataFrame, weights: Sequence[float], groups: pd.Series
 ) -> pd.DataFrame:
