@@ -7,6 +7,7 @@ import pytest
 from risklens.analytics import (
     COST_LABEL,
     REBALANCE_FREQUENCIES,
+    group_breakdown,
     portfolio_returns,
     rebalanced_risk_contributions,
     risk_contributions,
@@ -85,3 +86,20 @@ def test_rejects_bad_inputs(returns: pd.DataFrame) -> None:
         rebalanced_risk_contributions(returns, WEIGHTS, "weekly")
     with pytest.raises(ValueError):
         rebalanced_risk_contributions(returns, WEIGHTS, cost_bps=-1.0)
+
+
+def test_group_breakdown_follows_rebalancing_and_costs(returns: pd.DataFrame) -> None:
+    groups = pd.Series({"AAPL": "Tech", "MSFT": "Tech", "KO": "Staples"}, name="Sector")
+    table = group_breakdown(returns, WEIGHTS, groups, "monthly", 20.0)
+    shares = rebalanced_risk_contributions(returns, WEIGHTS, "monthly", 20.0)
+    assert table.loc["Tech", "risk_share"] == pytest.approx(shares["AAPL"] + shares["MSFT"])
+    assert table.loc[COST_LABEL, "weight"] == 0.0
+    assert table.loc[COST_LABEL, "risk_share"] == pytest.approx(shares[COST_LABEL])
+    assert table["weight"].sum() == pytest.approx(1.0)
+    assert table["risk_share"].sum() == pytest.approx(1.0)
+    assert table.index.name == "Sector"
+
+
+def test_group_breakdown_default_has_no_cost_group(returns: pd.DataFrame) -> None:
+    groups = pd.Series({"AAPL": "Tech", "MSFT": "Tech", "KO": "Staples"}, name="Sector")
+    assert COST_LABEL not in group_breakdown(returns, WEIGHTS, groups).index
